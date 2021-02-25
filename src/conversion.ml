@@ -96,9 +96,9 @@ let rec vterm2_of_vterm = function
   | Expr.Div (lhs, rhs) -> Expr2.BinaryOp ("/", vterm2_of_vterm rhs, vterm2_of_vterm rhs)
   | Expr.Concat (lhs, rhs) -> Expr2.BinaryOp ("^", vterm2_of_vterm rhs, vterm2_of_vterm rhs)
   | Expr.Neg arg ->  Expr2.UnaryOp ("-", vterm2_of_vterm arg)
-  | BoolAnd _ -> invalid_arg "BoolAnd operation is not acceptable in Expr2"
-  | BoolOr _ -> invalid_arg "BoolOr operation is not acceptable in Expr2"
-  | BoolNot _ -> invalid_arg "BoolNot operation is not acceptable in Expr2"
+  | Expr.BoolAnd _ -> invalid_arg "BoolAnd operation is not acceptable in Expr2"
+  | Expr.BoolOr _ -> invalid_arg "BoolOr operation is not acceptable in Expr2"
+  | Expr.BoolNot _ -> invalid_arg "BoolNot operation is not acceptable in Expr2"
 
 let rterm2_of_rterm = function
   | Expr.Pred (str, vars) -> Expr2.Pred (str, List.map var2_of_var vars)
@@ -117,16 +117,17 @@ let stype2_of_stype = function
   | Expr.Sstring -> Expr2.Sstring
   | Expr.Sbool -> Expr2.Sbool
 
+  let stt2_of_stt = function
+    | Expr.Rule (rterm, terms) -> Expr2.Stt_Rule (rterm2_of_rterm rterm, List.map term2_of_term terms)
+    | Expr.Fact rterm -> Expr2.Stt_Fact (rterm2_of_rterm rterm)
+    | Expr.Query rterm -> Expr2.Stt_Query (rterm2_of_rterm rterm)
+    | Expr.Source (str, stypes) -> Expr2.Stt_Source (str, List.map (fun (str, stype) -> (str, stype2_of_stype stype)) stypes)
+    | Expr.View (str, stypes) -> Expr2.Stt_View (str, List.map (fun (str, stype) -> (str, stype2_of_stype stype)) stypes)
+    | Expr.Constraint (rterm, terms) -> Expr2.Stt_Constraint (rterm2_of_rterm rterm, List.map term2_of_term terms)
+    | Expr.Pk (str, strs) -> Expr2.Stt_Pk (str, strs)
+
 let expr2_of_expr = function
   | Expr.Prog stts ->
-    let stt2_of_stt = function
-      | Expr.Rule (rterm, terms) -> Expr2.Stt_Rule (rterm2_of_rterm rterm, List.map term2_of_term terms)
-      | Expr.Fact rterm -> Expr2.Stt_Fact (rterm2_of_rterm rterm)
-      | Expr.Query rterm -> Expr2.Stt_Query (rterm2_of_rterm rterm)
-      | Expr.Source (str, stypes) -> Expr2.Stt_Source (str, List.map (fun (str, stype) -> (str, stype2_of_stype stype)) stypes)
-      | Expr.View (str, stypes) -> Expr2.Stt_View (str, List.map (fun (str, stype) -> (str, stype2_of_stype stype)) stypes)
-      | Expr.Constraint (rterm, terms) -> Expr2.Stt_Constraint (rterm2_of_rterm rterm, List.map term2_of_term terms)
-      | Expr.Pk (str, strs) -> Expr2.Stt_Pk (str, strs) in
     List.fold_left (fun expr stt -> Expr2.add_stt (stt2_of_stt stt) expr) Expr2.get_empty_expr stts
 
 let conj_query2_of_conj_query = function
@@ -136,3 +137,5 @@ let conj_query2_of_conj_query = function
       List.map rterm2_of_rterm rterms1,
       List.map rterm2_of_rterm rterms2
     )
+
+let get_rule rule = let Expr2.Stt_Rule (head, body) = stt2_of_stt rule in (head, body)

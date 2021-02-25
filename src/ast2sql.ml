@@ -322,7 +322,7 @@ let non_rec_unfold_sql_of_query (dbschema:string) (idb:symtable) (cnt:colnamtab)
         symt_insert local_idb qrule;
         (* get column names (cols_by_var) for the view by using the dummy predicate which is head of qrule *)
         let cols_by_var = List.map string_of_var (get_rterm_varlist (rule_head qrule)) in
-        let qrule_alias = get_rule_predname qrule in
+        let qrule_alias = Expr2.get_rule_predname @@ Conversion.get_rule qrule in
         if not (Hashtbl.mem cnt (symtkey_of_rterm query)) then raise (SemErr "The query does not match any idb relation") 
         else
         let cols = Hashtbl.find cnt (symtkey_of_rterm query) in

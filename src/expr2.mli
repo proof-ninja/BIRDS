@@ -80,3 +80,13 @@ type stt =
   | Stt_Pk of primary_key (* primary key *)
 
 val add_stt: stt -> expr -> expr
+
+val get_rterm_predname: rterm -> string
+
+val get_arity: rterm -> int
+
+val get_rule_arity: rule -> int
+
+val get_predname: term -> string option
+
+val get_rule_predname: rule -> string
