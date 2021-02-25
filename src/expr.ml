@@ -70,29 +70,6 @@ let get_arity rterm = match rterm with
     | Deltadelete (x, vl) -> List.length vl
 ;;
 
-(** get the arity of a rule *)
-let get_rule_arity rule = match rule with
-    | Rule (h, b) -> get_arity h
-    | _ -> invalid_arg "function get_rule_arity called without a rule"
-;;
-
-(** get the predicate name of a term *)
-let rec get_predname t = match t with
-    | Rel r            -> get_rterm_predname r
-    | _                -> invalid_arg "function get_predname called without a relation"
-;;
-
-(** get a rule's head predicate name *)
-let get_rule_predname r = match r with
-    | Rule(h, t) -> get_rterm_predname h
-    | Query _    -> invalid_arg "function get_rule_predname called with a query"
-    | Source _    -> invalid_arg "function get_rule_predname called with a source schema"
-    | View _ -> invalid_arg "function get_rule_predname called with a view schema"
-    | Constraint _ -> invalid_arg "function get_rule_predname called with a constraint"
-    | Pk _ -> invalid_arg "function get_rule_predname called with a Pk"
-    | Fact _ -> invalid_arg "function get_rule_predname called with a Fact"
-;;
-
 (** get a rule's head pred *)
 let rule_head r = match r with
     | Rule(h, _) -> h

@@ -81,12 +81,13 @@ type stt =
 
 val add_stt: stt -> expr -> expr
 
+(** get the predicate name of an rterm using Δ_ins_/Δ_del_ for delta predicates *)
 val get_rterm_predname: rterm -> string
 
-val get_arity: rterm -> int
+val get_arity: rterm -> int (** get the arity of an rterm *)
 
-val get_rule_arity: rule -> int
+val get_rule_arity: rule -> int (** get the arity of a rule *)
 
-val get_predname: term -> string option
+val get_predname: term -> string option (** get the predicate name of a term *)
 
-val get_rule_predname: rule -> string
+val get_rule_predname: rule -> string (** get a rule's head predicate name *)
