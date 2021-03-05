@@ -94,7 +94,7 @@ let get_select_clause (vt:vartab) (eqt:eqtab) rterm =
     if vlst = [] then
         (* select no colum, two choices: raise error or continue with select no column clause*)
         (* raise (SemErr
-            ("Predicate "^(get_rterm_predname rterm)^
+            ("Predicate "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rterm)^
             " has arity 0, which is not allowed")) *)
         "SELECT " 
     else
@@ -209,7 +209,7 @@ let rec non_rec_unfold_sql_of_symtkey (dbschema:string) (idb:symtable) (cnt:coln
                     else dbschema^"."^pname^" AS "^pname^"_a"^(string_of_int arity)^"_"^(string_of_int n) 
                 in
                 let set_alias rterm (a_lst,n) =
-                    let pname = get_rterm_predname rterm in
+                    let pname = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rterm in
                     let arity = get_arity rterm in
                     let key = symtkey_of_rterm rterm in
                     let alias_f = if Hashtbl.mem idb key then idb_alias else edb_alias in
@@ -245,7 +245,7 @@ let rec non_rec_unfold_sql_of_symtkey (dbschema:string) (idb:symtable) (cnt:coln
                     let gen_neg_sql rt =
                         (*get basic info of the rterm*)
                         let key = symtkey_of_rterm rt in
-                        let pname = get_rterm_predname rt in
+                        let pname = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt in
                         let arity = get_arity rt in 
                         let alias = pname^"_a"^(string_of_int arity) in
                         let vlst = get_rterm_varlist rt in
@@ -357,7 +357,7 @@ let unfold_view_sql (dbschema:string) (debug:bool) prog = match prog with
             ("The view "^(string_of_rterm view_rt)^
             " has arity 0, which is not allowed to create a view"))
     else
-    "CREATE OR REPLACE VIEW "^ dbschema ^"."^(get_rterm_predname view_rt) ^ " AS \n" ^unfold_query_sql_stt dbschema debug edb (Prog((Query view_rt)::sttlst)) ^";"
+    "CREATE OR REPLACE VIEW "^ dbschema ^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) ^ " AS \n" ^unfold_query_sql_stt dbschema debug edb (Prog((Query view_rt)::sttlst)) ^";"
 ;;
 
 let unfold_program_query (dbschema:string) (debug:bool) prog =
@@ -374,11 +374,11 @@ let view_constraint_sql_of_stt (dbschema:string) (debug:bool) (inc:bool) (optimi
         let view_sch = get_view inc_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) inc_prog in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) inc_prog in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(get_inc_original view_rt,[Rel (view_rt)]));
         (Rule(get_inc_ins view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]));
         (Rule(get_inc_del view_rt,[Rel (get_temp_delta_deletion_rterm view_rt)]))
@@ -405,11 +405,11 @@ let view_constraint_sql_of_stt (dbschema:string) (debug:bool) (inc:bool) (optimi
         let view_sch = get_view clean_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) (delete_rule_of_predname (get_rterm_predname view_rt) clean_prog) in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) (delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) clean_prog) in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(new_view_rt,[Rel (view_rt); Not (get_temp_delta_deletion_rterm view_rt)]));
         (Rule(new_view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]))
         ] subst_prog in
@@ -441,11 +441,11 @@ let non_view_constraint_sql_of_stt (dbschema:string) (debug:bool) (inc:bool) (op
         let view_sch = get_view inc_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) inc_prog in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) inc_prog in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(get_inc_original view_rt,[Rel (view_rt)]));
         (Rule(get_inc_ins view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]));
         (Rule(get_inc_del view_rt,[Rel (get_temp_delta_deletion_rterm view_rt)]))
@@ -472,11 +472,11 @@ let non_view_constraint_sql_of_stt (dbschema:string) (debug:bool) (inc:bool) (op
         let view_sch = get_view clean_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) (delete_rule_of_predname (get_rterm_predname view_rt) clean_prog) in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) (delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) clean_prog) in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(new_view_rt,[Rel (view_rt); Not (get_temp_delta_deletion_rterm view_rt)]));
         (Rule(new_view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]))
         ] subst_prog in
@@ -526,23 +526,23 @@ let non_rec_unfold_sql_of_update (dbschema:string) (debug:bool) (optimize:bool) 
         Deltainsert (pname, varlst) -> if Hashtbl.mem edb (pname, List.length varlst) 
             then  (
             (* variable with rowtype of the source relation *)
-            "temprec"^ (get_rterm_predname delta) ^" " ^dbschema^"."^ pname ^"%ROWTYPE;", 
+            "temprec"^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^" " ^dbschema^"."^ pname ^"%ROWTYPE;", 
             (* calculate the delta relation by creating a temporary table *)
-            "CREATE TEMPORARY TABLE "^ (get_rterm_predname delta) ^" WITH OIDS ON COMMIT DROP AS " ^ 
+            "CREATE TEMPORARY TABLE "^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^" WITH OIDS ON COMMIT DROP AS " ^ 
             "SELECT "^"(ROW("^(String.concat "," (Hashtbl.find cnt (symtkey_of_rterm delta))) ^") :: "^dbschema^"."^ pname ^").* 
             FROM ("^
-            (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule))) ^") AS "^(get_rterm_predname delta)^"_extra_alia"^" 
+            (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule))) ^") AS "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta)^"_extra_alia"^" 
             EXCEPT 
             SELECT * FROM  "^dbschema^"."^ pname ^";", 
             (* insert tuples using batch insertion *)
-            "INSERT INTO " ^dbschema^"."^ pname ^" (SELECT * FROM  "^ (get_rterm_predname delta) ^") ; " ^
+            "INSERT INTO " ^dbschema^"."^ pname ^" (SELECT * FROM  "^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^") ; " ^
             (* insert  each tuple by using a LOOP*)
-            (* "FOR temprec"^ (get_rterm_predname delta) ^" IN ( SELECT * FROM " ^ (get_rterm_predname delta) ^ ") LOOP 
+            (* "FOR temprec"^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^" IN ( SELECT * FROM " ^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^ ") LOOP 
             " ^
-            "INSERT INTO " ^dbschema^"."^ pname ^" SELECT (temprec"^ (get_rterm_predname delta) ^").*; 
+            "INSERT INTO " ^dbschema^"."^ pname ^" SELECT (temprec"^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^").*; 
             END LOOP; " ^ *)
 
-            "\nDROP TABLE "^ (get_rterm_predname delta)^";")
+            "\nDROP TABLE "^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta)^";")
             else raise (SemErr "delta predicate is not of any base predicate")
         
         | Deltadelete (pname, varlst) -> if Hashtbl.mem edb (pname, List.length varlst) 
@@ -553,18 +553,18 @@ let non_rec_unfold_sql_of_update (dbschema:string) (debug:bool) (optimize:bool) 
             let cols_tuple_str = "("^(String.concat "," cols) ^")" in
             (
             (* variable with rowtype of the source relation *)
-            "temprec"^ (get_rterm_predname delta) ^" " ^dbschema^"."^ pname ^"%ROWTYPE;", 
+            "temprec"^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^" " ^dbschema^"."^ pname ^"%ROWTYPE;", 
             (* calculate the delta relation by creating a temporary table *)
-            "CREATE TEMPORARY TABLE "^ (get_rterm_predname delta) ^" WITH OIDS ON COMMIT DROP AS " ^ 
+            "CREATE TEMPORARY TABLE "^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^" WITH OIDS ON COMMIT DROP AS " ^ 
             "SELECT "^"(ROW("^(String.concat "," (Hashtbl.find cnt (symtkey_of_rterm delta))) ^") :: "^dbschema^"."^ pname ^").* 
             FROM ("^
-            (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule)))^") AS "^(get_rterm_predname delta)^"_extra_alias;", 
+            (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule)))^") AS "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta)^"_extra_alias;", 
             (* delete each tuple *)
-            "FOR temprec"^ (get_rterm_predname delta) ^" IN ( SELECT * FROM " ^ (get_rterm_predname delta) ^ ") LOOP 
+            "FOR temprec"^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^" IN ( SELECT * FROM " ^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^ ") LOOP 
             " ^
             "DELETE FROM " ^dbschema^"."^ pname ^" WHERE ROW" ^cols_tuple_str^ (sql_of_operator "==") ^
-            " temprec"^ (get_rterm_predname delta) ^";" ^ "
-            END LOOP;\nDROP TABLE " ^ (get_rterm_predname delta)^";")
+            " temprec"^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta) ^";" ^ "
+            END LOOP;\nDROP TABLE " ^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm delta)^";")
             
             else raise (SemErr "delta predicate is not of any base predicate")
         | _ -> raise (SemErr "the non_rec_unfold_sql_of_update is called without and delta predicate")
@@ -575,11 +575,11 @@ let unfold_delta_sql_stt (dbschema:string) (debug:bool) (inc:bool) (optimize:boo
         let view_sch = get_view inc_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) inc_prog in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) inc_prog in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(get_inc_original view_rt,[Rel (view_rt)]));
         (Rule(get_inc_ins view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]));
         (Rule(get_inc_del view_rt,[Rel (get_temp_delta_deletion_rterm view_rt)]))
@@ -596,11 +596,11 @@ let unfold_delta_sql_stt (dbschema:string) (debug:bool) (inc:bool) (optimize:boo
         let view_sch = get_view prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) (delete_rule_of_predname (get_rterm_predname view_rt) prog) in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) (delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) prog) in
         let prog2 = add_stts [
-        (Source(get_rterm_predname view_rt , get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt , get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(new_view_rt,[Rel (view_rt); Not (get_temp_delta_deletion_rterm view_rt)]));
         (Rule(new_view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]))
         ] subst_prog in
@@ -619,19 +619,19 @@ let unfold_delta_sql_stt (dbschema:string) (debug:bool) (inc:bool) (optimize:boo
 (** SQL for triggers of detecting update on the source relations, which call the action of executing shell script on the view*)
 let source_update_detection_trigger_stt (dbschema:string) (debug:bool) (dejima_user:string) prog =
     let view_rt = get_schema_rterm (get_view prog) in
-    let view_name = get_rterm_predname view_rt in
+    let view_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt in
     let all_source = get_source_stts prog in 
     let sql_lst = List.map (fun x  -> 
         let source_rt = get_schema_rterm x in
         let cols_tuple_str = "("^ (String.concat "," (List.map  string_of_var (get_rterm_varlist (source_rt)) )) ^")" in
-        let source_name = get_rterm_predname source_rt in 
+        let source_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm source_rt in 
         let inc_view_definition_raw = incrementalize_view_definition debug source_rt prog in
         let new_source_rt = rename_rterm "new_" source_rt in
-        let subst_prog = subst_pred (get_rterm_predname source_rt) (get_rterm_predname new_source_rt) inc_view_definition_raw in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm source_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_source_rt) inc_view_definition_raw in
         let inc_view_definition = add_stts [
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm source_rt)^"_for_"^view_name, get_schema_col_typs x ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm source_rt)^"_for_"^view_name, get_schema_col_typs x ));
-        (Source(get_rterm_predname (get_temp_rterm source_rt)^"_for_"^view_name, get_schema_col_typs x ));
+        (Source((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name, get_schema_col_typs x ));
+        (Source((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm source_rt))^"_for_"^view_name, get_schema_col_typs x ));
+        (Source((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_rterm source_rt))^"_for_"^view_name, get_schema_col_typs x ));
         (Rule(get_inc_original source_rt,[Rel (rename2_rterm ("_for_"^view_name) (get_temp_rterm source_rt))]));
         (Rule(get_inc_ins source_rt,[Rel (rename2_rterm ("_for_"^view_name) (get_temp_delta_insertion_rterm source_rt))]));
         (Rule(get_inc_del source_rt,[Rel (rename2_rterm ("_for_"^view_name) (get_temp_delta_deletion_rterm source_rt))]))
@@ -651,12 +651,12 @@ text_var1 text;
 text_var2 text;
 text_var3 text;
 BEGIN
-    IF NOT EXISTS (SELECT * FROM information_schema.tables WHERE table_name = '"^(get_rterm_predname (get_temp_delta_insertion_rterm source_rt))^ "_for_"^view_name^ "' OR table_name = '"^(get_rterm_predname (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name^"')
+    IF NOT EXISTS (SELECT * FROM information_schema.tables WHERE table_name = '"^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm source_rt))^ "_for_"^view_name^ "' OR table_name = '"^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name^"')
     THEN
         -- RAISE LOG 'execute procedure "^source_name^"_materialization_for_"^view_name^"';
-        CREATE TEMPORARY TABLE "^(get_rterm_predname (get_temp_delta_insertion_rterm source_rt))^"_for_"^view_name^" ( LIKE " ^dbschema^"."^(get_rterm_predname (source_rt)) ^" INCLUDING ALL ) WITH OIDS ON COMMIT DROP;
-        CREATE TEMPORARY TABLE "^(get_rterm_predname (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name^" ( LIKE " ^dbschema^"."^(get_rterm_predname (source_rt)) ^" INCLUDING ALL ) WITH OIDS ON COMMIT DROP;
-        CREATE TEMPORARY TABLE "^(get_rterm_predname (get_temp_rterm source_rt))^"_for_"^view_name^" WITH OIDS ON COMMIT DROP AS (SELECT * FROM " ^dbschema^"."^(get_rterm_predname (source_rt)) ^");
+        CREATE TEMPORARY TABLE "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm source_rt))^"_for_"^view_name^" ( LIKE " ^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (source_rt)) ^" INCLUDING ALL ) WITH OIDS ON COMMIT DROP;
+        CREATE TEMPORARY TABLE "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name^" ( LIKE " ^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (source_rt)) ^" INCLUDING ALL ) WITH OIDS ON COMMIT DROP;
+        CREATE TEMPORARY TABLE "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_rterm source_rt))^"_for_"^view_name^" WITH OIDS ON COMMIT DROP AS (SELECT * FROM " ^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (source_rt)) ^");
         
     END IF;
     RETURN NULL;
@@ -693,20 +693,20 @@ BEGIN
     IF (SELECT count(*) FILTER (WHERE j.value = jsonb 'null') FROM  jsonb_each(to_jsonb(NEW)) j) > 0 THEN 
         RAISE check_violation USING MESSAGE = 'Invalid update: null value is not accepted';
     END IF;
-    DELETE FROM "^(get_rterm_predname (get_temp_delta_deletion_rterm source_rt)^"_for_"^view_name)^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"NEW;
-    INSERT INTO "^(get_rterm_predname (get_temp_delta_insertion_rterm source_rt)^"_for_"^view_name)^" SELECT (NEW).*; 
+    DELETE FROM "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name)^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"NEW;
+    INSERT INTO "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm source_rt))^"_for_"^view_name)^" SELECT (NEW).*; 
     ELSIF TG_OP = 'UPDATE' THEN
     IF (SELECT count(*) FILTER (WHERE j.value = jsonb 'null') FROM  jsonb_each(to_jsonb(NEW)) j) > 0 THEN 
         RAISE check_violation USING MESSAGE = 'Invalid update: null value is not accepted';
     END IF;
-    DELETE FROM "^(get_rterm_predname (get_temp_delta_insertion_rterm source_rt)^"_for_"^view_name)^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"OLD;
-    INSERT INTO "^(get_rterm_predname (get_temp_delta_deletion_rterm source_rt)^"_for_"^view_name)^" SELECT (OLD).*;
-    DELETE FROM "^(get_rterm_predname (get_temp_delta_deletion_rterm source_rt)^"_for_"^view_name)^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"NEW;
-    INSERT INTO "^(get_rterm_predname (get_temp_delta_insertion_rterm source_rt)^"_for_"^view_name)^" SELECT (NEW).*; 
+    DELETE FROM "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm source_rt))^"_for_"^view_name)^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"OLD;
+    INSERT INTO "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name)^" SELECT (OLD).*;
+    DELETE FROM "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name)^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"NEW;
+    INSERT INTO "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm source_rt))^"_for_"^view_name)^" SELECT (NEW).*; 
     ELSIF TG_OP = 'DELETE' THEN
     -- RAISE LOG 'OLD: %', OLD;
-    DELETE FROM "^(get_rterm_predname (get_temp_delta_insertion_rterm source_rt)^"_for_"^view_name)^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"OLD;
-    INSERT INTO "^(get_rterm_predname (get_temp_delta_deletion_rterm source_rt)^"_for_"^view_name)^" SELECT (OLD).*;
+    DELETE FROM "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm source_rt))^"_for_"^view_name)^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"OLD;
+    INSERT INTO "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name)^" SELECT (OLD).*;
     END IF;
     RETURN NULL;
 EXCEPTION
@@ -765,9 +765,9 @@ IF NOT EXISTS (SELECT * FROM information_schema.tables WHERE table_name = '"^sou
                 json_data := concat('{\"view\": ' , '\""^dbschema^"."^view_name^"\"', ', ' , '\"insertions\": ' , insertion_data , ', ' , '\"deletions\": ' , deletion_data , '}');
                 result := "^dbschema^"."^view_name^"_run_shell(json_data);
                 IF result = 'true' THEN 
-                    DROP TABLE "^(get_rterm_predname (get_temp_delta_insertion_rterm source_rt)^"_for_"^view_name)^";
-                    DROP TABLE "^(get_rterm_predname (get_temp_delta_deletion_rterm source_rt)^"_for_"^view_name)^";
-                    DROP TABLE "^(get_rterm_predname (get_temp_rterm source_rt)^"_for_"^view_name)^";
+                    DROP TABLE "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm source_rt))^"_for_"^view_name)^";
+                    DROP TABLE "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm source_rt))^"_for_"^view_name)^";
+                    DROP TABLE "^((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_rterm source_rt))^"_for_"^view_name)^";
                 ELSE
                     -- RAISE LOG 'result from running the sh script: %', result;
                     RAISE check_violation USING MESSAGE = 'update on view is rejected by the external tool, result from running the sh script: ' 
@@ -832,8 +832,8 @@ $$;
 (** generate trigger for delta predicates on the view *)
 let unfold_delta_trigger_stt (dbschema:string) (debug:bool) (dejima_update_detect) (sh_script:string) (dejima_user:string) (inc:bool) (optimize:bool) prog =
     let view_rt = get_schema_rterm (get_view prog) in
-    let view_name = get_rterm_predname view_rt in
-    (* let temporary_view_name = get_rterm_predname (get_temp_rterm view_rt) in *)
+    let view_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt in
+    (* let temporary_view_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_rterm view_rt) in *)
     (* get all the columns of base predicate *)
     (* convert these cols to string of tuple of these cols *)
     let cols_tuple_str = "("^ (String.concat "," (List.map  string_of_var (get_rterm_varlist (get_temp_rterm view_rt)) )) ^")" in
@@ -842,9 +842,9 @@ let unfold_delta_trigger_stt (dbschema:string) (debug:bool) (dejima_update_detec
 ( 
 if dejima_update_detect then 
 (* "
-DROP MATERIALIZED VIEW IF EXISTS "^dbschema^"."^(get_rterm_predname (get_materializied_rterm view_rt))^";
+DROP MATERIALIZED VIEW IF EXISTS "^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_materializied_rterm view_rt))^";
 
-CREATE  MATERIALIZED VIEW "^dbschema^"."^(get_rterm_predname (get_materializied_rterm view_rt))^" AS 
+CREATE  MATERIALIZED VIEW "^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_materializied_rterm view_rt))^" AS 
 SELECT * FROM "^dbschema^"."^view_name^";
 
 " ^ *)
@@ -905,11 +905,11 @@ AS $$
   user_name text;
   BEGIN
   IF NOT EXISTS (SELECT * FROM information_schema.tables WHERE table_name = '"^view_name^"_delta_action_flag') THEN
-    insertion_data := (SELECT (array_to_json(array_agg(t)))::text FROM (SELECT * FROM "^dbschema^"."^view_name^" EXCEPT SELECT * FROM "^dbschema^"."^(get_rterm_predname (get_materializied_rterm view_rt))^") as t);
+    insertion_data := (SELECT (array_to_json(array_agg(t)))::text FROM (SELECT * FROM "^dbschema^"."^view_name^" EXCEPT SELECT * FROM "^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_materializied_rterm view_rt))^") as t);
     IF insertion_data IS NOT DISTINCT FROM NULL THEN 
         insertion_data := '[]';
     END IF; 
-    deletion_data := (SELECT (array_to_json(array_agg(t)))::text FROM (SELECT * FROM "^dbschema^"."^(get_rterm_predname (get_materializied_rterm view_rt))^" EXCEPT SELECT * FROM "^dbschema^"."^view_name^") as t);
+    deletion_data := (SELECT (array_to_json(array_agg(t)))::text FROM (SELECT * FROM "^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_materializied_rterm view_rt))^" EXCEPT SELECT * FROM "^dbschema^"."^view_name^") as t);
     IF deletion_data IS NOT DISTINCT FROM NULL THEN 
         deletion_data := '[]';
     END IF; 
@@ -919,7 +919,7 @@ AS $$
             json_data := concat('{\"view\": ' , '\""^dbschema^"."^view_name^"\"', ', ' , '\"insertions\": ' , insertion_data , ', ' , '\"deletions\": ' , deletion_data , '}');
             result := "^dbschema^"."^view_name^"_run_shell(json_data);
             IF result = 'true' THEN 
-                REFRESH MATERIALIZED VIEW "^dbschema^"."^(get_rterm_predname (get_materializied_rterm view_rt))^";
+                REFRESH MATERIALIZED VIEW "^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_materializied_rterm view_rt))^";
                 FOR func IN (select distinct trigger_schema||'.non_trigger_'||substring(action_statement, 19) as function 
                 from information_schema.triggers where trigger_schema = '"^dbschema^"' and event_object_table='"^view_name^"'
                 and action_timing='AFTER' and (event_manipulation='INSERT' or event_manipulation='DELETE' or event_manipulation='UPDATE')
@@ -994,11 +994,11 @@ AS $$
         "^delta_sql_stt^
         (if dejima_update_detect then "
         
-        insertion_data := (SELECT (array_to_json(array_agg(t)))::text FROM (SELECT * FROM "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^") as t);
+        insertion_data := (SELECT (array_to_json(array_agg(t)))::text FROM (SELECT * FROM "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^") as t);
         IF insertion_data IS NOT DISTINCT FROM NULL THEN 
             insertion_data := '[]';
         END IF; 
-        deletion_data := (SELECT (array_to_json(array_agg(t)))::text FROM (SELECT * FROM "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^") as t);
+        deletion_data := (SELECT (array_to_json(array_agg(t)))::text FROM (SELECT * FROM "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^") as t);
         IF deletion_data IS NOT DISTINCT FROM NULL THEN 
             deletion_data := '[]';
         END IF; 
@@ -1018,11 +1018,11 @@ AS $$
                 -- update the table that stores the insertions and deletions we calculated
                 DELETE FROM "^dbschema^".__dummy__"^view_name^"_detected_deletions;
                 INSERT INTO "^dbschema^".__dummy__"^view_name^"_detected_deletions
-                    SELECT * FROM "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^";
+                    SELECT * FROM "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^";
 
                 DELETE FROM "^dbschema^".__dummy__"^view_name^"_detected_insertions;
                 INSERT INTO "^dbschema^".__dummy__"^view_name^"_detected_insertions
-                    SELECT * FROM "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^";
+                    SELECT * FROM "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^";
             END IF;
         END IF;" else "") ^"
     END IF;
@@ -1049,19 +1049,19 @@ AS $$
   text_var2 text;
   text_var3 text;
   BEGIN
-    IF NOT EXISTS (SELECT * FROM information_schema.tables WHERE table_name = '"^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^"' OR table_name = '"^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^"')
+    IF NOT EXISTS (SELECT * FROM information_schema.tables WHERE table_name = '"^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^"' OR table_name = '"^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^"')
     THEN
         -- RAISE LOG 'execute procedure "^view_name^"_materialization';
-        CREATE TEMPORARY TABLE "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^" ( LIKE " ^dbschema^"."^(get_rterm_predname (view_rt)) ^" INCLUDING ALL ) WITH OIDS ON COMMIT DROP;
+        CREATE TEMPORARY TABLE "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^" ( LIKE " ^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt)) ^" INCLUDING ALL ) WITH OIDS ON COMMIT DROP;
         CREATE CONSTRAINT TRIGGER __temp__"^view_name^"_trigger_delta_action_ins
         AFTER INSERT OR UPDATE OR DELETE ON 
-            "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^" DEFERRABLE INITIALLY DEFERRED 
+            "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^" DEFERRABLE INITIALLY DEFERRED 
             FOR EACH ROW EXECUTE PROCEDURE "^dbschema^"."^view_name^"_delta_action();
 
-        CREATE TEMPORARY TABLE "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^" ( LIKE " ^dbschema^"."^(get_rterm_predname (view_rt)) ^" INCLUDING ALL ) WITH OIDS ON COMMIT DROP;
+        CREATE TEMPORARY TABLE "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^" ( LIKE " ^dbschema^"."^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt)) ^" INCLUDING ALL ) WITH OIDS ON COMMIT DROP;
         CREATE CONSTRAINT TRIGGER __temp__"^view_name^"_trigger_delta_action_del
         AFTER INSERT OR UPDATE OR DELETE ON 
-            "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^" DEFERRABLE INITIALLY DEFERRED 
+            "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^" DEFERRABLE INITIALLY DEFERRED 
             FOR EACH ROW EXECUTE PROCEDURE "^dbschema^"."^view_name^"_delta_action();
     END IF;
     RETURN NULL;
@@ -1098,20 +1098,20 @@ AS $$
       IF (SELECT count(*) FILTER (WHERE j.value = jsonb 'null') FROM  jsonb_each(to_jsonb(NEW)) j) > 0 THEN 
         RAISE check_violation USING MESSAGE = 'Invalid update on view: view does not accept null value';
       END IF;
-      DELETE FROM "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"NEW;
-      INSERT INTO "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^" SELECT (NEW).*; 
+      DELETE FROM "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"NEW;
+      INSERT INTO "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^" SELECT (NEW).*; 
     ELSIF TG_OP = 'UPDATE' THEN
       IF (SELECT count(*) FILTER (WHERE j.value = jsonb 'null') FROM  jsonb_each(to_jsonb(NEW)) j) > 0 THEN 
         RAISE check_violation USING MESSAGE = 'Invalid update on view: view does not accept null value';
       END IF;
-      DELETE FROM "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"OLD;
-      INSERT INTO "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^" SELECT (OLD).*;
-      DELETE FROM "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"NEW;
-      INSERT INTO "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^" SELECT (NEW).*; 
+      DELETE FROM "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"OLD;
+      INSERT INTO "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^" SELECT (OLD).*;
+      DELETE FROM "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"NEW;
+      INSERT INTO "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^" SELECT (NEW).*; 
     ELSIF TG_OP = 'DELETE' THEN
       -- RAISE LOG 'OLD: %', OLD;
-      DELETE FROM "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"OLD;
-      INSERT INTO "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^" SELECT (OLD).*;
+      DELETE FROM "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^" WHERE ROW"^cols_tuple_str^(sql_of_operator "==")^"OLD;
+      INSERT INTO "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^" SELECT (OLD).*;
     END IF;
     RETURN NULL;
   EXCEPTION
@@ -1142,7 +1142,7 @@ AS $$
     (let all_source = get_source_stts prog in 
     let trigger_names = List.map (fun x  -> 
         let source_rt = get_schema_rterm x in
-        let source_name = get_rterm_predname source_rt in 
+        let source_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm source_rt in 
         dbschema^"."^source_name^"_detect_update_on_"^view_name) all_source in 
         if dejima_update_detect then  ", " ^ String.concat "," trigger_names else "")
     ^ 
@@ -1152,14 +1152,14 @@ AS $$
     (let all_source = get_source_stts prog in 
     let trigger_names = List.map (fun x  -> 
         let source_rt = get_schema_rterm x in
-        let source_name = get_rterm_predname source_rt in 
+        let source_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm source_rt in 
         dbschema^"."^source_name^"_detect_update_on_"^view_name) all_source in 
         if dejima_update_detect then  ", " ^ String.concat "," trigger_names else "")
     ^ 
     " DEFERRED;
     DROP TABLE IF EXISTS "^view_name^"_delta_action_flag;
-    DROP TABLE IF EXISTS "^(get_rterm_predname (get_temp_delta_deletion_rterm view_rt))^";
-    DROP TABLE IF EXISTS "^(get_rterm_predname (get_temp_delta_insertion_rterm view_rt))^";
+    DROP TABLE IF EXISTS "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt))^";
+    DROP TABLE IF EXISTS "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt))^";
     RETURN true;
   END;
 $$;

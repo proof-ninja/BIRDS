@@ -95,7 +95,7 @@ let gen_counterexample (log:bool) (property:string) (maxsize:int) (timeout:int) 
 
 let is_missing_fact fact = match fact with 
     Fact rt -> 
-    let name = get_rterm_predname rt in 
+    let name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt in 
         (match name.[0] with 
         '!' -> true
         | _ -> false
@@ -104,7 +104,7 @@ let is_missing_fact fact = match fact with
 
 let is_builtin_fact fact = match fact with 
     Fact rt -> 
-    let name = get_rterm_predname rt in 
+    let name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt in 
         (match name with 
         | "lt" 
         | "<" 
@@ -130,17 +130,17 @@ let get_rterm_relname rterm = match rterm with
 ;;
 
 let extract_facts facts relname = 
-    List.filter (fun f -> match f with Fact rt -> (get_rterm_predname rt) = relname | _-> false) facts
+    List.filter (fun f -> match f with Fact rt -> (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt) = relname | _-> false) facts
 ;;
 
 let is_builtin_rule rule = 
-    let head_name = get_rterm_predname (rule_head rule) in 
+    let head_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (rule_head rule) in 
     str_contains head_name "±"
 ;;
 
 let debug_getput (log:bool) prog = 
     let view_rt = get_view_rterm prog in
-    let buggy_prog = delete_fact_of_predname (get_rterm_predname view_rt) prog in
+    let buggy_prog = delete_fact_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) prog in
     if log then (print_endline "\n_______getput counterexample full program_____" ;
         print_endline (string_of_prog buggy_prog);
         print_endline "________________");
@@ -160,7 +160,7 @@ let debug_getput (log:bool) prog =
         (* chi nhung fact nao ma prednam cua no nam trong source schema thi moi bo qua *)
         let original_source_names = List.map get_schema_name (get_source_stts prog) in
         let source_names = original_source_names @ (List.map (fun x -> "!"^x) original_source_names) in
-        let buggy_facts = List.filter (fun f -> match f with Fact rt -> (Lib.non is_builtin_fact f) && (not (List.mem (get_rterm_predname rt) source_names)) | _ -> false) edb_facts in 
+        let buggy_facts = List.filter (fun f -> match f with Fact rt -> (Lib.non is_builtin_fact f) && (not (List.mem (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt) source_names)) | _ -> false) edb_facts in 
         (if List.length buggy_facts > 0 then 
             print_endline ("One of the facts " ^
             String.concat ", " (List.map (fun x -> colored_string "red" (string_of_fact x)) buggy_facts)
@@ -216,7 +216,7 @@ let debug_getput (log:bool) prog =
 
 let check_constraints (log:bool) prog =
     let view_rt = get_view_rterm prog in
-    let buggy_prog = delete_rule_of_predname (get_rterm_predname view_rt) (Expr.view_schema_to_source_schema prog) in
+    let buggy_prog = delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr.view_schema_to_source_schema prog) in
     if log then (print_endline "\n_______full program with counterexample_____" ;
         print_endline (string_of_prog buggy_prog);
         print_endline "________________");
@@ -229,7 +229,7 @@ let check_constraints (log:bool) prog =
 
 let explain_getput (log:bool) prog =
     let view_rt = get_view_rterm prog in
-    let buggy_prog = delete_fact_of_predname (get_rterm_predname view_rt) prog in
+    let buggy_prog = delete_fact_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) prog in
     if log then (print_endline "\n_______getput counterexample full program_____" ;
         print_endline (string_of_prog buggy_prog);
         print_endline "________________");
@@ -265,7 +265,7 @@ let explain_getput (log:bool) prog =
         print_endline @@ colored_string "" ("     || \n     || get the view\n" ^
                 "     \\/  \n")^
                 "+--------- View ----------------------------+";
-        let getted_view = extract_facts resulted_facts (get_rterm_predname view_rt) in
+        let getted_view = extract_facts resulted_facts (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) in
         if (List.length getted_view > 0) then (
             List.iter (fun x -> print_string "| "; print_endline (string_of_fact x)) getted_view
         ) 
@@ -303,7 +303,7 @@ let debug_disdelta (log:bool) prog =
         List.fold_left pair_of_delta_insert [] delta_rt_lst in 
     let emptiness = Pred ("__emptiness",[]) in
     let disdelta_rules = List.map (fun (r1,r2) -> (Rule(rename_rterm "±" (get_source_rel_pred r1),[ Rel r1; Rel r2]))) delta_pair_lst in
-    let buggy_prog = Expr.add_stts (disdelta_rules) (Expr.delete_rule_of_predname (get_rterm_predname (get_view_rterm prog)) prog) in
+    let buggy_prog = Expr.add_stts (disdelta_rules) (Expr.delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_view_rterm prog)) prog) in
     let buggy_prog = Expr.view_schema_to_source_schema buggy_prog in
     if log then (print_endline "\n_______disdelta counterexample full program_____" ;
         print_endline (string_of_prog buggy_prog);
@@ -325,7 +325,7 @@ let debug_disdelta (log:bool) prog =
         (* chi bo qua nhung fact nao ma prednam cua no nam trong source/view schema *)
         let original_source_view_names = List.map get_schema_name (get_schema_stts prog) in
         let source_view_names = original_source_view_names @ (List.map (fun x -> "!"^x) original_source_view_names) in
-        let buggy_facts = List.filter (fun f -> match f with Fact rt -> (Lib.non is_builtin_fact f) && (not (List.mem (get_rterm_predname rt) source_view_names)) | _ -> false) edb_facts in 
+        let buggy_facts = List.filter (fun f -> match f with Fact rt -> (Lib.non is_builtin_fact f) && (not (List.mem (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt) source_view_names)) | _ -> false) edb_facts in 
         (if List.length buggy_facts > 0 then 
             print_endline ("One of the facts " ^
             String.concat ", " (List.map (fun x -> colored_string "red" (string_of_fact x)) buggy_facts)
@@ -390,7 +390,7 @@ let explain_disdelta (log:bool) prog =
         List.fold_left pair_of_delta_insert [] delta_rt_lst in 
     let emptiness = Pred ("__emptiness",[]) in
     let disdelta_rules = List.map (fun (r1,r2) -> (Rule(rename_rterm "±" (get_source_rel_pred r1),[ Rel r1; Rel r2]))) delta_pair_lst in
-    let buggy_prog = Expr.add_stts (disdelta_rules) (Expr.delete_rule_of_predname (get_rterm_predname (get_view_rterm prog)) prog) in
+    let buggy_prog = Expr.add_stts (disdelta_rules) (Expr.delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_view_rterm prog)) prog) in
     let buggy_prog = Expr.view_schema_to_source_schema buggy_prog in
     if log then (print_endline "\n_______disdelta counterexample full program_____" ;
         print_endline (string_of_prog buggy_prog);
@@ -401,7 +401,7 @@ let explain_disdelta (log:bool) prog =
     else (
         print_endline ">>> The delta disjointness property is not satisfied: ";
         print_endline "+--------- Updated View -----------------+";
-        let init_view = extract_facts (get_all_facts buggy_prog) (get_rterm_predname view_rt) in
+        let init_view = extract_facts (get_all_facts buggy_prog) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) in
         if (List.length init_view > 0) then (
             List.iter (fun x -> print_string "| "; print_endline (string_of_fact x)) init_view
         ) 
@@ -431,12 +431,12 @@ let explain_disdelta (log:bool) prog =
 let debug_putget (log:bool) prog = 
     let buggy_prog = prog in
     let view_rt = get_view_rterm prog in
-    let buggy_putget_prog = delete_rule_of_predname (get_rterm_predname view_rt) (Expr.view_schema_to_source_schema (Derivation.datalog_of_putget log true buggy_prog)) in
+    let buggy_putget_prog = delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr.view_schema_to_source_schema (Derivation.datalog_of_putget log true buggy_prog)) in
     if log then (print_endline "\n_______putget counterexample full program_____" ;
         print_endline (string_of_prog buggy_putget_prog);
         print_endline "________________");
     let resulted_facts, explanation = Evaluation.eval log [rename_rterm "__dummy_new_" view_rt] buggy_putget_prog in
-    let updated_view = List.map (rename_fact "__dummy_new_") (extract_facts (get_all_facts buggy_putget_prog) (get_rterm_predname view_rt)) in
+    let updated_view = List.map (rename_fact "__dummy_new_") (extract_facts (get_all_facts buggy_putget_prog) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt)) in
     (* find wrong tuples in new view which is not in updated_view *)
     let wrong_tuples_explanation = List.filter (fun (fact, edb_facts, all_clauses, detail) -> List.length (List.filter (fun x -> string_of_fact x = string_of_fact fact) updated_view) = 0) explanation in
     let new_view = (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) explanation) in
@@ -462,7 +462,7 @@ let debug_putget (log:bool) prog =
         (* chi bo qua nhung fact nao ma prednam cua no nam trong source/view schema *)
         let original_source_view_names = List.map get_schema_name (get_schema_stts prog) in
         let source_view_names = original_source_view_names @ (List.map (fun x -> "!"^x) original_source_view_names) in
-        let buggy_facts = List.filter (fun f -> match f with Fact rt -> (Lib.non is_builtin_fact f) && (not (List.mem (get_rterm_predname rt) source_view_names)) | _ -> false) edb_facts in 
+        let buggy_facts = List.filter (fun f -> match f with Fact rt -> (Lib.non is_builtin_fact f) && (not (List.mem (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt) source_view_names)) | _ -> false) edb_facts in 
         (if List.length buggy_facts > 0 then 
             print_endline ("One of the facts " ^
             String.concat ", " (List.map (fun x -> colored_string "red" (string_of_fact x)) buggy_facts)
@@ -519,12 +519,12 @@ let debug_putget (log:bool) prog =
 let explain_putget (log:bool) prog = 
     let buggy_prog = prog in
     let view_rt = get_view_rterm prog in
-    let buggy_putget_prog = delete_rule_of_predname (get_rterm_predname view_rt) (Expr.view_schema_to_source_schema (Derivation.datalog_of_putget log true buggy_prog)) in
+    let buggy_putget_prog = delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr.view_schema_to_source_schema (Derivation.datalog_of_putget log true buggy_prog)) in
     if log then (print_endline "\n_______putget counterexample full program_____" ;
         print_endline (string_of_prog buggy_putget_prog);
         print_endline "________________");
     let resulted_facts, explanation = Evaluation.eval log [rename_rterm "__dummy_new_" view_rt] buggy_putget_prog in
-    let init_view = extract_facts (get_all_facts buggy_putget_prog) (get_rterm_predname view_rt) in 
+    let init_view = extract_facts (get_all_facts buggy_putget_prog) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) in 
     let updated_view = List.map (rename_fact "__dummy_new_") init_view in
     (* find wrong tuples in new view which is not in updated_view *)
     let wrong_tuples_explanation = List.filter (fun (fact, edb_facts, all_clauses, detail) -> List.length (List.filter (fun x -> string_of_fact x = string_of_fact fact) updated_view) = 0) explanation in

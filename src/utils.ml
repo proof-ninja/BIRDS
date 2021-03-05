@@ -63,7 +63,7 @@ let string_of_symtable (st:symtable) =
 
     a rterm is identified by it predicate name and number of argument (arity)
 *)
-let symtkey_of_rterm rt : symtkey = (get_rterm_predname rt, get_arity rt)
+let symtkey_of_rterm rt : symtkey = (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt, get_arity rt)
 
 (** Receives a rule and generates its hash key for the  symtable
 *)
@@ -269,7 +269,7 @@ let vt_print (vt:vartab) =
 let build_vartab (col_names:colnamtab) rterms =
   let vt:vartab = Hashtbl.create (2*(List.length (get_rtermlst_vars rterms ))) in
   let in_rt n rterm =
-    let pname = get_rterm_predname rterm in
+    let pname = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rterm in
     let vlst = get_rterm_varlist rterm in
     let arity = get_arity rterm in
     let key = symtkey_of_rterm rterm in
@@ -303,7 +303,7 @@ let build_vartab (col_names:colnamtab) rterms =
 let build_num_vartab (col_names:colnamtab) rterms =
   let vt:vartab = Hashtbl.create (2*(List.length (get_rtermlst_vars rterms ))) in
   let in_rt n rterm =
-    let pname = get_rterm_predname rterm in
+    let pname = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rterm in
     let vlst = get_rterm_varlist rterm in
     let arity = get_arity rterm in
     let key = symtkey_of_rterm rterm in
@@ -563,7 +563,7 @@ let is_delta_pair rt1 rt2 = match (rt1, rt2) with
     | _ -> false
 
 let is_delta_or_empty rt = match rt with 
-  Pred (n,vs) -> (String.compare n (get_rterm_predname (get_empty_pred))) == 0
+  Pred (n,vs) -> (String.compare n (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_empty_pred))) == 0
   | Deltadelete _ -> true 
   | Deltainsert _ -> true
 

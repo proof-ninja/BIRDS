@@ -111,7 +111,7 @@ and fol_of_rterm r (idb:symtable) (cnt:colnamtab)=
     fol_of_symtkey idb cnt (symtkey_of_rterm r) 
     else  
     (* if this predicate is of an edb relation, just need to call by its name *)
-    Atom(R(get_rterm_predname r, (List.map (fun x -> Fol.Var x) cols))) in
+    Atom(R(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm r, (List.map (fun x -> Fol.Var x) cols))) in
     let fm2 = itlist mk_exists excols fm in
     subst subfn fm2
 and fol_of_eq eq = match eq with 
@@ -427,7 +427,7 @@ and datalog_of_conj conj_lst freevars (goal_num:int) (last_goal_num:int)=
                         (match t1 with 
                             (Rel predicate)::tail -> 
                                 let newvarlst = List.map (fun x -> if List.mem (string_of_var x) quants then AnonVar else x ) (get_rterm_varlist predicate) in
-                                ((Rel (Pred(get_rterm_predname predicate, newvarlst)))::tail, t2, t3, t4) 
+                                ((Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm predicate, newvarlst)))::tail, t2, t3, t4) 
                             | _ -> failwith ("can not obtain for datalog program of " ^ Fol_ex.string_of_fol_formula subfm )
                         )
                     | And(p,q ) -> 
@@ -440,7 +440,7 @@ and datalog_of_conj conj_lst freevars (goal_num:int) (last_goal_num:int)=
                         let subprog, subgoal_pred, new_local_last_goal_num = ranf2datalog psi (fv psi) local_last_goal_num local_last_goal_num in 
                         let varlst = get_rterm_varlist subgoal_pred in
                         let newvarlst = List.map (fun x -> if List.mem (string_of_var x) quants then AnonVar else x ) varlst in
-                        ((Rel (Pred(get_rterm_predname subgoal_pred, newvarlst)))::rule_termlst, subprog@prog, sub_num+1, new_local_last_goal_num)
+                        ((Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm subgoal_pred, newvarlst)))::rule_termlst, subprog@prog, sub_num+1, new_local_last_goal_num)
                 )
             | Formulas.Not (Exists(x,p)) -> 
                 let quants, psi = extract_ex_quants (Exists(x,p)) in 
@@ -449,7 +449,7 @@ and datalog_of_conj conj_lst freevars (goal_num:int) (last_goal_num:int)=
                         (match t1 with 
                             (Rel predicate)::tail -> 
                                 let newvarlst = List.map (fun x -> if List.mem (string_of_var x) quants then AnonVar else x ) (get_rterm_varlist predicate) in
-                                ((Not (Pred(get_rterm_predname predicate, newvarlst)))::tail, t2, t3, t4) 
+                                ((Not (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm predicate, newvarlst)))::tail, t2, t3, t4) 
                             | _ -> failwith ("can not obtain for datalog program of " ^ Fol_ex.string_of_fol_formula subfm )
                         )
                     | _ -> 
@@ -482,7 +482,7 @@ let view_fol2datalog (debug:bool) schema_stts freevars fm =
     if (debug) then print_endline ("==> generating datalog program of view " ^ string_of_rterm (view_rt)) else ();
     if set_eq (setify freevars) (fv fm) then
         let lst, rt, _ = ranf2datalog (ranf (simplify (normalize_comparison fm))) freevars 0 0 in 
-        Prog (schema_stts@Rule (Pred((get_rterm_predname view_rt), get_rterm_varlist rt ), [Rel rt])::lst)
+        Prog (schema_stts@Rule (Pred((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt), get_rterm_varlist rt ), [Rel rt])::lst)
     else failwith "the list of variables must be exactly the free varilabes in FO formula";;
 
 (** transform a safe range FO fomula of a view to datalog program, we need all schema statements for source and view*)

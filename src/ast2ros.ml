@@ -85,7 +85,7 @@ let get_select_clause (vt:vartab) (eqt:eqtab) rterm =
     if vlst = [] then
         (* select no colum, two choices: raise error or continue with select no column clause*)
         (* raise (SemErr
-            ("Predicate "^(get_rterm_predname rterm)^
+            ("Predicate "^(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rterm)^
             " has arity 0, which is not allowed")) *)
         "map (lambda (tuplelst) '())" 
     else
@@ -197,7 +197,7 @@ let rec non_rec_unfold_racket_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:sy
                 let edb_alias pname arity n = pname
                 in
                 let set_alias rterm (a_lst,n) =
-                    let pname = get_rterm_predname rterm in
+                    let pname = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rterm in
                     let arity = get_arity rterm in
                     let key = symtkey_of_rterm rterm in
                     let alias_f = if Hashtbl.mem idb key then idb_alias else edb_alias in
@@ -236,7 +236,7 @@ let rec non_rec_unfold_racket_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:sy
                     let gen_neg_racket rt =
                         (*get basic info of the rterm*)
                         let key = symtkey_of_rterm rt in
-                        let pname = get_rterm_predname rt in
+                        let pname = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt in
                         let arity = get_arity rt in 
                         let alias = pname^"_a"^(string_of_int arity) in
                         let vlst = get_rterm_varlist rt in
@@ -369,11 +369,11 @@ let view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) (opt
         let view_sch = get_view inc_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) inc_prog in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) inc_prog in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(get_inc_original view_rt,[Rel (view_rt)]));
         (Rule(get_inc_ins view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]));
         (Rule(get_inc_del view_rt,[Rel (get_temp_delta_deletion_rterm view_rt)]))
@@ -400,11 +400,11 @@ let view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) (opt
         let view_sch = get_view clean_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) (delete_rule_of_predname (get_rterm_predname view_rt) clean_prog) in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) (delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) clean_prog) in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(new_view_rt,[Rel (view_rt); Not (get_temp_delta_deletion_rterm view_rt)]));
         (Rule(new_view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]))
         ] subst_prog in
@@ -436,11 +436,11 @@ let non_view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) 
         let view_sch = get_view inc_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) inc_prog in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) inc_prog in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(get_inc_original view_rt,[Rel (view_rt)]));
         (Rule(get_inc_ins view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]));
         (Rule(get_inc_del view_rt,[Rel (get_temp_delta_deletion_rterm view_rt)]))
@@ -467,11 +467,11 @@ let non_view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) 
         let view_sch = get_view clean_prog in
         let view_rt = get_schema_rterm view_sch in
         let new_view_rt = rename_rterm "new_" view_rt in
-        let subst_prog = subst_pred (get_rterm_predname view_rt) (get_rterm_predname new_view_rt) (delete_rule_of_predname (get_rterm_predname view_rt) clean_prog) in
+        let subst_prog = subst_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm new_view_rt) (delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view_rt) clean_prog) in
         let prog2 = add_stts [
-        (Source(get_rterm_predname (view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
-        (Source(get_rterm_predname (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_deletion_rterm view_rt), get_schema_col_typs view_sch ));
+        (Source(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_temp_delta_insertion_rterm view_rt), get_schema_col_typs view_sch ));
         (Rule(new_view_rt,[Rel (view_rt); Not (get_temp_delta_deletion_rterm view_rt)]));
         (Rule(new_view_rt,[Rel (get_temp_delta_insertion_rterm view_rt)]))
         ] subst_prog in
@@ -565,9 +565,9 @@ let ros_getput_of_stt (debug:bool) prog =
     let cnt = build_colnamtab edb idb in
     let delta_definition rel = 
          let delta_ros_code = non_rec_unfold_racket_of_query idb cnt rel in
-         "(define "^ get_rterm_predname rel ^ " (" ^delta_ros_code^ "))" in
+         "(define "^ (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rel) ^ " (" ^delta_ros_code^ "))" in
     let delta_definition_lst = List.map delta_definition dummy_delta_rt_lst in 
-    let emptiness = "(define emptiness (append "^String.concat " " (List.map get_rterm_predname dummy_delta_rt_lst) ^"))" in
+    let emptiness = "(define emptiness (append "^String.concat " " (List.map (fun rterm -> Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rterm) dummy_delta_rt_lst) ^"))" in
     let ros_constraint = "(solve (assert (< 0 (length emptiness))))" in 
      (String.concat "\n\n" delta_definition_lst) ^ "\n\n"^ emptiness ^ "\n\n" ^ ros_constraint
 ;;

@@ -159,7 +159,7 @@ let main () =
     print_symtable idb;
     print_endline "--------------\n";
   ) else ();
-  let has_get = is_defined_pred (get_rterm_predname (get_schema_rterm (get_view ast))) ast in
+  let has_get = is_defined_pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_schema_rterm (get_view ast))) ast in
 
   if !debug then 
     (if !log then print_endline ">> Start debugging";

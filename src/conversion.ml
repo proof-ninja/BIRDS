@@ -117,14 +117,14 @@ let stype2_of_stype = function
   | Expr.Sstring -> Expr2.Sstring
   | Expr.Sbool -> Expr2.Sbool
 
-  let stt2_of_stt = function
-    | Expr.Rule (rterm, terms) -> Expr2.Stt_Rule (rterm2_of_rterm rterm, List.map term2_of_term terms)
-    | Expr.Fact rterm -> Expr2.Stt_Fact (rterm2_of_rterm rterm)
-    | Expr.Query rterm -> Expr2.Stt_Query (rterm2_of_rterm rterm)
-    | Expr.Source (str, stypes) -> Expr2.Stt_Source (str, List.map (fun (str, stype) -> (str, stype2_of_stype stype)) stypes)
-    | Expr.View (str, stypes) -> Expr2.Stt_View (str, List.map (fun (str, stype) -> (str, stype2_of_stype stype)) stypes)
-    | Expr.Constraint (rterm, terms) -> Expr2.Stt_Constraint (rterm2_of_rterm rterm, List.map term2_of_term terms)
-    | Expr.Pk (str, strs) -> Expr2.Stt_Pk (str, strs)
+let stt2_of_stt = function
+  | Expr.Rule (rterm, terms) -> Expr2.Stt_Rule (rterm2_of_rterm rterm, List.map term2_of_term terms)
+  | Expr.Fact rterm -> Expr2.Stt_Fact (rterm2_of_rterm rterm)
+  | Expr.Query rterm -> Expr2.Stt_Query (rterm2_of_rterm rterm)
+  | Expr.Source (str, stypes) -> Expr2.Stt_Source (str, List.map (fun (str, stype) -> (str, stype2_of_stype stype)) stypes)
+  | Expr.View (str, stypes) -> Expr2.Stt_View (str, List.map (fun (str, stype) -> (str, stype2_of_stype stype)) stypes)
+  | Expr.Constraint (rterm, terms) -> Expr2.Stt_Constraint (rterm2_of_rterm rterm, List.map term2_of_term terms)
+  | Expr.Pk (str, strs) -> Expr2.Stt_Pk (str, strs)
 
 let expr2_of_expr = function
   | Expr.Prog stts ->
