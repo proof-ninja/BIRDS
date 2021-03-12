@@ -458,9 +458,9 @@ let small_test() =
 
 (** mainly a call to the above main function *)
 let _ =
-  (* try main () with *)
+  try main () with
   (* try small_test () with *)
-  try test () with
+  (* try test () with *)
   | Error e -> prerr_endline (string_of_error e)
   | SemErr exp -> fprintf stderr "%s\n" ("Semantic error: "^exp); exit 1;
   | Parsing.Parse_error ->  fprintf stderr "%s\n"  "Syntax error"; exit 1;
