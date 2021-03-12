@@ -29,3 +29,5 @@ val stype2_of_stype: Expr.stype -> Expr2.stype
 val expr2_of_expr: Expr.expr -> Expr2.expr
 
 val conj_query2_of_conj_query: Expr.conj_query -> Expr2.conj_query
+
+val get_rule: Expr.stt -> Expr2.rule

@@ -101,3 +101,22 @@ let add_stt stt expr = match stt with
     end
   | Stt_Constraint constraint' -> { expr with constraints= constraint' :: expr.constraints }
   | Stt_Pk primary_key -> { expr with primary_keys= primary_key :: expr.primary_keys }
+
+let get_rterm_predname = function
+  | Pred (x, _) -> x
+  | Deltainsert (x, _) -> "Δ_ins_" ^ x
+  | Deltadelete (x, _) -> "Δ_del_" ^ x
+
+let get_arity = function
+  | Pred (_, vl) -> List.length vl
+  | Deltainsert (_, vl) -> List.length vl
+  | Deltadelete (_, vl) -> List.length vl
+
+let get_rule_arity (head, _) = get_arity head
+
+let get_predname = function
+  | Rel r -> Some (get_rterm_predname r)
+  | Not r -> Some (get_rterm_predname r)
+  | _ -> None
+
+let get_rule_predname (head, _) = get_rterm_predname head

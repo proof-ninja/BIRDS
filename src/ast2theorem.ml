@@ -35,7 +35,7 @@ let rec lambda_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:symtkey)  =
                 "(" ^ lambda_of_symtkey idb cnt (symtkey_of_rterm r) ^") " ^ String.concat "  " (List.map string_of_var var_lst) 
                 else  
                 (* if this predicate is of an edb relation, just need to call by its name *)
-                get_rterm_predname r ^ " " ^ String.concat "  " (List.map string_of_var var_lst) in
+                (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm r) ^ " " ^ String.concat "  " (List.map string_of_var var_lst) in
             let head = rule_head rule in
             let body = rule_body rule in
             let (p_rt,n_rt,all_eqs,all_ineqs) = split_terms body in
@@ -92,7 +92,7 @@ let lambda_of_stt (debug:bool) prog =
 (* transform edb relations to a list of functions from product of n (the arity) types to Prop *)
 let edb_to_func_types edb =
     (* currently just set all the types are int (ℤ) *)
-    let rel_to_function rel = get_rterm_predname rel ^ ": " ^ 
+    let rel_to_function rel = (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rel) ^ ": " ^ 
         String.concat " → " ( List.map (fun x -> "ℤ") (get_rterm_varlist rel)) ^ " → Prop" in 
     let p_el funcs s = (rel_to_function (rule_head s))::funcs in
     let p_lst _ lst funcs = (List.fold_left p_el [] lst)@funcs in

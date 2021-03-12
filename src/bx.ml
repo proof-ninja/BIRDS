@@ -18,7 +18,7 @@ open Utils;;
 (* take a view update put datalog program and generate the FO sentence of checking whether view is unique or not *)
 let view_uniqueness_sentence_of_stt (debug:bool) prog = 
     let fm = sourcestability_sentence_of_stt ( debug) prog in
-    let view_name = Expr.get_rterm_predname (Expr.get_schema_rterm (get_view prog)) in
+    let view_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (Expr.get_schema_rterm (get_view prog)) in
     let view_vars = List.map (fun x -> Expr.string_of_var x) @@ Expr.get_rterm_varlist (Expr.get_schema_rterm (get_view prog)) in
     let phi, lst = ranf2lvnf view_name fm in 
     (* we do not need vars any more because it must be all free variables in vfol and phi_i *)
@@ -80,7 +80,7 @@ let derive_get_datalog (debug:bool) (speedup:bool) timeout inputprog =
             raise (ChkErr ("Deltas in the datalog program are not disjoint" ^ (if (debug) then "\nError messange: "^ disdel_mess else "") ));););
     let fm = Or(sourcestability_sentence_of_stt ( debug) prog, Not ( view_constraint_sentence_of_stt debug prog)) in
     (* let fm = sourcestability_sentence_of_stt ( debug) prog in *)
-    let view_name = Expr.get_rterm_predname (Expr.get_schema_rterm (get_view prog)) in
+    let view_name = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (Expr.get_schema_rterm (get_view prog)) in
     let view_vars = List.map (fun x -> Expr.string_of_var x) @@ Expr.get_rterm_varlist (Expr.get_schema_rterm (get_view prog)) in
     if debug then (
     print_endline "===> solving sourcestability & constraint to check view existence";

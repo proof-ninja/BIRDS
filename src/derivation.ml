@@ -22,8 +22,8 @@ let deltapred_to_pred prefix = function
   | Prog stt_lst -> 
     let rterm_to_pred rt = match rt with
       | Pred (x, vl) -> rt
-      | Deltainsert (x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl)
-      | Deltadelete (x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl) in
+      | Deltainsert (x, vl) -> Pred (prefix ^ Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt, vl)
+      | Deltadelete (x, vl) -> Pred (prefix ^ Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt, vl) in
     let term_map_to_pred tt = match tt with
       | Rel rt -> Rel (rterm_to_pred rt)
       | Equal _ -> tt
@@ -50,7 +50,7 @@ let check_neg_view (view:rterm) rule_body = List.mem view rule_body;;
    *)
 let build_schema_mapping (mapping:vartab) (col_names:colnamtab) (view:rterm) (head:rterm) =
   let vt:vartab = Hashtbl.create 100 in
-  let pname = get_rterm_predname head in
+  let pname = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head in
   let vlst = get_rterm_varlist head in
   let arity = get_arity head in
   let key = symtkey_of_rterm head in
@@ -71,7 +71,7 @@ let build_schema_mapping (mapping:vartab) (col_names:colnamtab) (view:rterm) (he
     | _ -> ()
   in
   List.iter2 in_v cols vlst;
-  let pname = get_rterm_predname view in
+  let pname = Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view in
   let vlst = get_rterm_varlist view in
   let arity = get_arity view in
   let key = symtkey_of_rterm view in
@@ -119,8 +119,8 @@ let rename_view (view:rterm) = match view with
 
 let rename_if_isview (view:rterm) (t:term) =
   match t with 
-    Rel (rt) -> if (key_comp (symtkey_of_rterm view ) (symtkey_of_rterm rt) ==0) then Rel (Pred((get_rterm_predname rt)^"_med",(get_rterm_varlist rt)) ) else t
-  | Not (rt) -> if (key_comp (symtkey_of_rterm view ) (symtkey_of_rterm rt) ==0) then Not (Pred((get_rterm_predname rt)^"_med",(get_rterm_varlist rt)) ) else t
+    Rel (rt) -> if (key_comp (symtkey_of_rterm view ) (symtkey_of_rterm rt) ==0) then Rel (Pred((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt)^"_med",(get_rterm_varlist rt)) ) else t
+  | Not (rt) -> if (key_comp (symtkey_of_rterm view ) (symtkey_of_rterm rt) ==0) then Not (Pred((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt)^"_med",(get_rterm_varlist rt)) ) else t
   | _ -> t;;
 
 (* let get_view_in_rterms (view:rterm) lst =  *)
@@ -162,8 +162,8 @@ let get_neg_term (rt:rterm) = Not rt;;
 
 
 let create_view_definition (view:rterm) (col_names:colnamtab) literals mapping = 
-  let head = Pred(get_rterm_predname view,  varlist_of_symtkey (symtkey_of_rterm view) col_names) in 
-  Rule(head, Rel (Pred(get_rterm_predname (rename_view view),  varlist_of_symtkey (symtkey_of_rterm view) col_names)) :: List.map (fun x -> rename_term "_derived_" (get_neg_term x)) (List.map (mapping_rterm col_names mapping) literals))
+  let head = Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm view,  varlist_of_symtkey (symtkey_of_rterm view) col_names) in 
+  Rule(head, Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (rename_view view),  varlist_of_symtkey (symtkey_of_rterm view) col_names)) :: List.map (fun x -> rename_term "_derived_" (get_neg_term x)) (List.map (mapping_rterm col_names mapping) literals))
 
 (* todo: there is a gap here when the negated literal of view has anonimous variables
     for this case, need to find the view in rule body has anonimous variables and raise a warning
@@ -194,10 +194,10 @@ let transform_rule (view:rterm) (cnt:colnamtab) (rule:stt) lst=
       let literal_without_view = (List.filter (fun t -> match t with Not v ->  (key_comp (symtkey_of_rterm v) (symtkey_of_rterm view) !=0) | _ -> true) body) in
       (* convert a variable to anonimous one if do not find more than two reference for it *)
       let term_to_anonimous term = match term with 
-          Rel rt -> Rel (Pred ((get_rterm_predname rt), List.map to_anonimous (get_rterm_varlist rt)))
-        | Not rt -> Not (Pred ((get_rterm_predname rt),List.map to_anonimous (get_rterm_varlist rt)))
+          Rel rt -> Rel (Pred ((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt), List.map to_anonimous (get_rterm_varlist rt)))
+        | Not rt -> Not (Pred ((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt),List.map to_anonimous (get_rterm_varlist rt)))
         | _ -> term in
-      let r = Rule( Pred (get_rterm_predname (rename_view (get_view_lit negated_view)), get_rterm_varlist (get_view_lit negated_view)), List.map term_to_anonimous literal_without_view ) in 
+      let r = Rule( Pred (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (rename_view (get_view_lit negated_view)), get_rterm_varlist (get_view_lit negated_view)), List.map term_to_anonimous literal_without_view ) in 
       Rule(rule_head r, List.map (rename_if_isview view) (rule_body r)) :: lst
     else
       let pos_views = (List.filter (fun t -> match t with Rel v -> (key_comp (symtkey_of_rterm v) (symtkey_of_rterm view) ==0) | _ -> false) body) in 
@@ -339,7 +339,7 @@ let datalog_of_putget (log:bool) (full_deltas:bool) prog =
     if full_deltas then datalog_of_new_source log prog 
       else datalog_of_delta_appliation log prog in 
   let raw_putget_datalog = add_stts (datalog_of_new_view log prog) (Expr.add_stts delta_application prog) in 
-  let putget_datalog = delete_rule_of_predname (get_rterm_predname (get_view_rterm raw_putget_datalog)) raw_putget_datalog in
+  let putget_datalog = delete_rule_of_predname (Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (get_view_rterm raw_putget_datalog)) raw_putget_datalog in
   if log then (
     print_endline "_____putget datalog program_______"; 
     print_string (Expr.string_of_prog  putget_datalog); 
@@ -480,8 +480,8 @@ let binarize_rules (st:symtable) =
             let new_rt = 
             (* print_string ("==> gen bin "^string_of_int loc_ind);  *)
             Pred("π_bin_"^string_of_int loc_ind, vars ) in
-            let new_rule1 = Rule( new_rt , [Rel (Pred(get_rterm_predname pre_head, vars))]) in 
-            let new_rule2 = Rule( new_rt , [Rel (Pred(get_rterm_predname t, vars))]) in 
+            let new_rule1 = Rule( new_rt , [Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm pre_head, vars))]) in 
+            let new_rule2 = Rule( new_rt , [Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm t, vars))]) in 
             (rulelst@[new_rule1; new_rule2], new_rt, (loc_ind+1)) in
           let rulelst, prehead, new3_ind = List.fold_left pair_heads ([], fst, new_new_ind) tail in 
           (e_lst@new_hrules@rulelst@[Rule( change_vars orginal_rulehead vars, [Rel prehead])], new3_ind)
@@ -506,11 +506,11 @@ let binarize_expr (log:bool) prog =
   Prog(non_rules @ (binarize_rules idb))
 ;;
 
-let get_inc_original rt = Pred("∂_old_" ^ get_rterm_predname rt, get_rterm_varlist rt);;
+let get_inc_original rt = Pred("∂_old_" ^ Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt, get_rterm_varlist rt);;
 
-let get_inc_del rt = Pred("∂_del_" ^ get_rterm_predname rt, get_rterm_varlist rt);;
+let get_inc_del rt = Pred("∂_del_" ^ Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt, get_rterm_varlist rt);;
 
-let get_inc_ins rt = Pred("∂_ins_" ^ get_rterm_predname rt, get_rterm_varlist rt);;
+let get_inc_ins rt = Pred("∂_ins_" ^ Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm rt, get_rterm_varlist rt);;
 
 (** take a valid (satisfy putget and getput) view update datalog program and incrementalize it by the update (delta relations) on view *)
 let incrementalize_by_view (log:bool) prog = 
@@ -573,13 +573,13 @@ let incrementalize_by_view (log:bool) prog =
                 Rule(get_inc_ins head, [Rel (get_inc_ins p_rt); Not(get_inc_original head)]);
 
                 (* the first way using count*)
-                (* Rule(Pred(get_rterm_predname head ^ "__dummy__t1", (get_rterm_varlist head)@[AggVar("COUNT", string_of_var (List.hd drop_vars)) ]), [Rel (get_inc_del p_rt)]);
-                Rule(Pred(get_rterm_predname head ^ "__dummy__t2", (get_rterm_varlist head)@[AggVar("COUNT", string_of_var (List.hd drop_vars)) ]), [Rel (get_inc_original p_rt); Rel( Pred(get_rterm_predname head ^ "__dummy__t1", (get_rterm_varlist head)@[AnonVar])) ]);
-                Rule(get_inc_del head, [Rel (Pred(get_rterm_predname head ^ "__dummy__t1", (get_rterm_varlist head)@[NamedVar "DUMMY__C1"])); Rel (Pred(get_rterm_predname head ^ "__dummy__t2", (get_rterm_varlist head)@[NamedVar "DUMMY__C2"])); Equal(Var (NamedVar "DUMMY__C1"), Var (NamedVar "DUMMY__C2")) ]) *)
+                (* Rule(Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t1", (get_rterm_varlist head)@[AggVar("COUNT", string_of_var (List.hd drop_vars)) ]), [Rel (get_inc_del p_rt)]);
+                Rule(Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t2", (get_rterm_varlist head)@[AggVar("COUNT", string_of_var (List.hd drop_vars)) ]), [Rel (get_inc_original p_rt); Rel( Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t1", (get_rterm_varlist head)@[AnonVar])) ]);
+                Rule(get_inc_del head, [Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t1", (get_rterm_varlist head)@[NamedVar "DUMMY__C1"])); Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t2", (get_rterm_varlist head)@[NamedVar "DUMMY__C2"])); Equal(Var (NamedVar "DUMMY__C1"), Var (NamedVar "DUMMY__C2")) ]) *)
 
                 (* the sencond way not using count*)
-                Rule(Pred(get_rterm_predname head ^ "π_1", (get_rterm_varlist head)), [Rel (p_rt)]);
-                Rule(get_inc_del head, [Rel (get_inc_del p_rt); Not(Pred(get_rterm_predname head ^ "π_1", (get_rterm_varlist head)))])
+                Rule(Pred((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head) ^ "π_1", (get_rterm_varlist head)), [Rel (p_rt)]);
+                Rule(get_inc_del head, [Rel (get_inc_del p_rt); Not(Pred((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head) ^ "π_1", (get_rterm_varlist head)))])
                 ]@
                 if is_delta_or_empty head then
                   [Rule(head,[Rel (get_inc_ins head)]) ]
@@ -840,13 +840,13 @@ let incrementalize_view_definition (log:bool) update_table_rt prog =
                 Rule(get_inc_ins head, [Rel (get_inc_ins p_rt); Not(get_inc_original head)]);
 
                 (* the first way using count*)
-                (* Rule(Pred(get_rterm_predname head ^ "__dummy__t1", (get_rterm_varlist head)@[AggVar("COUNT", string_of_var (List.hd drop_vars)) ]), [Rel (get_inc_del p_rt)]);
-                Rule(Pred(get_rterm_predname head ^ "__dummy__t2", (get_rterm_varlist head)@[AggVar("COUNT", string_of_var (List.hd drop_vars)) ]), [Rel (get_inc_original p_rt); Rel( Pred(get_rterm_predname head ^ "__dummy__t1", (get_rterm_varlist head)@[AnonVar])) ]);
-                Rule(get_inc_del head, [Rel (Pred(get_rterm_predname head ^ "__dummy__t1", (get_rterm_varlist head)@[NamedVar "DUMMY__C1"])); Rel (Pred(get_rterm_predname head ^ "__dummy__t2", (get_rterm_varlist head)@[NamedVar "DUMMY__C2"])); Equal(Var (NamedVar "DUMMY__C1"), Var (NamedVar "DUMMY__C2")) ]) *)
+                (* Rule(Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t1", (get_rterm_varlist head)@[AggVar("COUNT", string_of_var (List.hd drop_vars)) ]), [Rel (get_inc_del p_rt)]);
+                Rule(Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t2", (get_rterm_varlist head)@[AggVar("COUNT", string_of_var (List.hd drop_vars)) ]), [Rel (get_inc_original p_rt); Rel( Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t1", (get_rterm_varlist head)@[AnonVar])) ]);
+                Rule(get_inc_del head, [Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t1", (get_rterm_varlist head)@[NamedVar "DUMMY__C1"])); Rel (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head ^ "__dummy__t2", (get_rterm_varlist head)@[NamedVar "DUMMY__C2"])); Equal(Var (NamedVar "DUMMY__C1"), Var (NamedVar "DUMMY__C2")) ]) *)
 
                 (* the sencond way not using count*)
-                Rule(Pred(get_rterm_predname head ^ "π_1", (get_rterm_varlist head)), [Rel (p_rt)]);
-                Rule(get_inc_del head, [Rel (get_inc_del p_rt); Not(Pred(get_rterm_predname head ^ "π_1", (get_rterm_varlist head)))])
+                Rule(Pred((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head) ^ "π_1", (get_rterm_varlist head)), [Rel (p_rt)]);
+                Rule(get_inc_del head, [Rel (get_inc_del p_rt); Not(Pred((Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm head) ^ "π_1", (get_rterm_varlist head)))])
                 ]@
                 if is_delta_or_empty head then
                   [Rule(head,[Rel (get_inc_ins head)]) ]

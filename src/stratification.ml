@@ -79,7 +79,7 @@ let get_preceding_rules prog query_rt =
 let get_stratified_rules prog =
     let edb = extract_edb prog in
     let idb = extract_idb prog in
-    let get_preds key rules lst = (Pred(get_rterm_predname (rule_head (List.hd rules)), gen_vars 0 (get_symtkey_arity key))) :: lst in
+    let get_preds key rules lst = (Pred(Expr2.get_rterm_predname @@ Conversion.rterm2_of_rterm (rule_head (List.hd rules)), gen_vars 0 (get_symtkey_arity key))) :: lst in
     let all_rels = Hashtbl.fold get_preds idb [] in
     let tmp = Pred("__str_tmp__",[]) in
     symt_insert idb (Rule(tmp, List.map (fun x -> Rel x) all_rels));
