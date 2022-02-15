@@ -3,7 +3,7 @@
 RESULTS=${1:-"results"}
 LOGFILE=benchmarks.log
 
-function print_log() {
+print_log() {
 
 	local message=$1
 
@@ -11,7 +11,7 @@ function print_log() {
 
 }
 
-mkdir -p $RESULTS
+mkdir -p "$RESULTS"
 # rm $RESULTS/$LOGFILE || true
 
 echo "==> verifying datalog programs";
