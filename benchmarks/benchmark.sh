@@ -1,6 +1,6 @@
 #!/bin/sh
 
-RESULTS="results"
+RESULTS=${1:-"results"}
 LOGFILE=benchmarks.log
 
 function print_log() {
@@ -20,5 +20,5 @@ print_log "==> verifying datalog programs";
 # bash putbxdebug.sh $RESULTS
 # bash putbxdebug.inc.sh $RESULTS
 
-bash putbx.sh $RESULTS
-bash putbx.inc.sh $RESULTS
+bash putbx.sh "$RESULTS"
+bash putbx.inc.sh "$RESULTS"
