@@ -12,6 +12,19 @@ open Utils
 open Rule_preprocess
 open Stratification
 
+
+type lambda_variable = string
+
+type lambda_term =
+  | LambdaApply  of lambda_term * lambda_term list
+  | LambdaVar    of lambda_variable
+  | LambdaAbs    of lambda_variable list * lambda_term
+  | LambdaExists of lambda_variable list * lambda_term
+  | LambdaNot    of lambda_term
+  | LambdaConj   of lambda_term list
+  | LambdaDisj   of lambda_term list
+
+
 let rec lambda_of_symtkey (idb : symtable) (cnt : colnamtab) (goal : symtkey) =
   let rule_lst =
     try Hashtbl.find idb goal with
@@ -22,7 +35,7 @@ let rec lambda_of_symtkey (idb : symtable) (cnt : colnamtab) (goal : symtkey) =
   (* disjunction of all rules then we have lambda expression for a idb predicate*)
   let lambda_of_rule_lst (idb : symtable) (cnt : colnamtab) (rules : (rterm * term list) list) =
     let lambda_of_rule (idb : symtable) (cnt : colnamtab) (rule : rterm * term list) =
-      let lambda_of_rterm (r : rterm) =
+      let lambda_of_rterm (r : rterm) : lambda_term =
         let lst = get_rterm_varlist r in
         (* convert anonymous variables to named variable with alias,
            they will be existential variables *)
@@ -37,16 +50,34 @@ let rec lambda_of_symtkey (idb : symtable) (cnt : colnamtab) (goal : symtkey) =
                 (anony_names, v :: vars)
           ) lst ([], [])
         in
-        let existentials =
-          if List.length anony_names > 0 then "∃ " ^ String.concat " " anony_names ^ ", " else ""
+
+        let lambda_body =
+          let lambda_fun =
+            if Hashtbl.mem idb (symtkey_of_rterm r) then
+            (* in the case that the predicate is of idb relation, need to recursive construct lambda expression for it *)
+              lambda_of_symtkey idb cnt (symtkey_of_rterm r)
+            else
+            (* if this predicate is of an edb relation, just need to call by its name *)
+              LambdaVar (get_rterm_predname r)
+          in
+          let lambda_args = var_lst |> List.map (fun var -> LambdaVar (string_of_var var)) in
+          LambdaApply (lambda_fun, lambda_args)
         in
-        existentials ^
+        LambdaExists (anony_names, lambda_body)
+(* ORIGINAL:
+        (if List.length anony_names > 0 then "∃ " ^ String.concat " " anony_names ^ ", " else "") ^
           if Hashtbl.mem idb (symtkey_of_rterm r) then
             (* in the case that the predicate is of idb relation, need to recursive construct lambda expression for it *)
             "(" ^ lambda_of_symtkey idb cnt (symtkey_of_rterm r) ^ ") " ^ String.concat "  " (List.map string_of_var var_lst)
           else
             (* if this predicate is of an edb relation, just need to call by its name *)
             get_rterm_predname r ^ " " ^ String.concat "  " (List.map string_of_var var_lst)
+*)
+      in
+      let lambda_of_term (t : term) : lambda_term =
+        match t with
+        | Rel r -> lambda_of_rterm r
+        | _     -> failwith "TODO: lambda_of_term"
       in
       let head = rule_head rule in
       let body = rule_body rule in
@@ -58,6 +89,19 @@ let rec lambda_of_symtkey (idb : symtable) (cnt : colnamtab) (goal : symtkey) =
           (fun x -> not (is_anon x))
           (VarSet.diff (get_termlst_varset body) (VarSet.of_list (get_rterm_varlist head)))
       in
+      (* positive predicate: *)
+      let lambdas_pos = p_rt |> List.map lambda_of_rterm in
+      (* negative predicate: *)
+      let lambdas_neg = n_rt |> List.map (fun rt -> LambdaNot (lambda_of_rterm rt)) in
+      (* conjunction of all_eqs and all_ineqs: *)
+      let lambdas_eq_and_ineq : lambda_term list =
+        (List.append all_eqs all_ineqs) |> List.map lambda_of_term
+      in
+      LambdaAbs (List.map string_of_var (get_rterm_varlist head),
+        (* for existential variables *)
+        LambdaExists (List.map string_of_var (VarSet.elements exvars),
+          LambdaConj (List.concat [lambdas_pos; lambdas_neg; lambdas_eq_and_ineq])))
+(* ORIGINAL:
       "λ " ^ String.concat " " (List.map string_of_var (get_rterm_varlist head))
         ^ ", "
       (* for existential variables *)
@@ -68,18 +112,24 @@ let rec lambda_of_symtkey (idb : symtable) (cnt : colnamtab) (goal : symtkey) =
         ^ (if List.length n_rt > 0 then " ∧ " else "") ^ String.concat " ∧ " (List.map (fun x -> "¬ (" ^ lambda_of_rterm x^")" ) n_rt)
       (* conjunction of all_eqs and all_ineqs *)
         ^ (if List.length (all_eqs @ all_ineqs) > 0 then " ∧ " else "" ) ^ String.concat " ∧ " (List.map (fun x -> "(" ^ string_of_term x^")" ) (all_eqs @ all_ineqs))
+*)
     in
     let lambda_list = List.map (lambda_of_rule idb cnt) rules in
     let cols = gen_cols 0 (snd goal) in
+    let lambda_args = cols |> List.map (fun col -> LambdaVar col) in
+    LambdaAbs (cols,
+      LambdaDisj (List.map (fun pred -> LambdaApply (pred, lambda_args)) lambda_list))
+(* ORIGINAL:
     "λ " ^ String.concat " " cols ^ ", " ^
       String.concat " ∨ "  (List.map (fun pred -> "(" ^ pred ^ ") " ^ String.concat " " cols) lambda_list)
+*)
   in
   let lambda_expr = lambda_of_rule_lst idb cnt rule_lst in
   lambda_expr
 
 
 (** Take a query term and rules of IDB relations stored in a symtable, generate lambda expression for it. *)
-let lambda_of_query (idb : symtable) (cnt : colnamtab) (query : rterm) =
+let lambda_of_query (idb : symtable) (cnt : colnamtab) (query : rterm) : lambda_term =
   (* query is just a rterm which is a predicate therefore need to create a new temporary rule for this query term
      for example if query is q(X,Y,_,5) we create a rule for it: _dummy_(X,Y) :- q(X,Y,_,Z), Z=5.
      (_dummy_ is a fixed name in the function rule_of_query) *)
@@ -92,7 +142,7 @@ let lambda_of_query (idb : symtable) (cnt : colnamtab) (query : rterm) =
 
 
 (** Generate lambda expression from the ast, the goal is the query predicate of datalog program. *)
-let lambda_of_stt (debug : bool) (prog : expr) =
+let lambda_of_stt (debug : bool) (prog : expr) : lambda_term =
   let edb = extract_edb prog in
   (* todo: need to check if prog is non-recursive *)
   let view_rt = get_schema_rterm (get_view prog) in
@@ -177,7 +227,7 @@ let source_view_to_z3_func_types (prog : expr) =
   in
   List.fold_left p_el [] (get_schema_stts prog)
 
-
+(*
 (* take a view update datalog program and generate the theorem of checking whether all delta relations are disjoint *)
 let lean_theorem_of_disjoint_delta (debug : bool) (prog : expr) =
   (* need to change the view (in query predicate) to a edb relation *)
@@ -199,17 +249,23 @@ let lean_theorem_of_disjoint_delta (debug : bool) (prog : expr) =
   in
 
   (* get the emptiness FO sentence of a relation *)
-  let disjoint_fo_sentence (ins_rel : rterm) (del_rel : rterm) =
+  let disjoint_fo_sentence (ins_rel : rterm) (del_rel : rterm) : lambda_term =
     let cols = gen_cols 0 (get_arity ins_rel) in
+    let lambda_args = cols |> List.map (fun col -> LambdaVar col) in
+    let lambda_ins = LambdaApply (lambda_of_query idb cnt ins_rel, lambda_args) in
+    let lambda_del = LambdaApply (lambda_of_query idb cnt del_rel, lambda_args) in
+    LambdaExists (cols, LambdaConj [lambda_ins; lambda_del])
+(* ORIGINAL:
     "∃ " ^ String.concat " " cols ^ ", (" ^  (lambda_of_query idb cnt ins_rel) ^ ") "
       ^ String.concat " " cols ^ " ∧ " ^ "(" ^  (lambda_of_query idb cnt del_rel) ^ ") "
       ^ String.concat " " cols
+*)
   in
   let disjoint_sen_lst = List.map (fun (r1, r2) -> disjoint_fo_sentence r1 r2) delta_pair_lst in
   "theorem disjoint_deltas "
     ^ String.concat " " (List.map (fun x -> "{" ^ x ^ "}") (source_view_to_lean_func_types prog))
     ^ ": " ^ (String.concat " ∨ " (List.map (fun pred -> "(" ^ pred ^ ")") disjoint_sen_lst)) ^ " → false"
-
+*)
 
 (* take a view update datalog program and generate the theorem of checking whether all delta relations are disjoint *)
 let lean_simp_theorem_of_disjoint_delta (debug : bool) (prog : expr) =
@@ -269,7 +325,7 @@ let z3_assert_of_putget (debug : bool) (prog : expr) =
         (Not (Imp (Ast2fol.constraint_sentence_of_stt debug prog, Ast2fol.putget_sentence_of_stt debug prog))))
     ^ ")\n (check-sat)"
 
-
+(*
 (* (unnecessary now see sourcestability_sentence_of_stt in ast2fol.ml) take a view update datalog program and generate SourceStability constraint (put s v = s) for its view update strategy *)
 let sourcestability_of_stt (debug : bool) (prog : expr) =
   let edb = extract_edb prog in
@@ -290,7 +346,7 @@ let sourcestability_of_stt (debug : bool) (prog : expr) =
     "theorem sourcestability "
       ^ String.concat " " (List.map (fun x -> "{" ^ x ^ "}") (source_view_to_lean_func_types prog)) ^ ": "
       ^ String.concat " ∨ " (List.map (fun pred -> "(" ^ pred ^ ")") delta_lambda_exp_lst) ^ " → false"
-
+*)
 
 let lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) =
   "theorem sourcestability "
