@@ -25,8 +25,7 @@ let rec lambda_of_symtkey (idb : symtable) (cnt : colnamtab) (goal : symtkey) =
       let lambda_of_rterm (r : rterm) =
         let lst = get_rterm_varlist r in
         (* convert anonymous variables to named variable with alias,
-           they will be existential varialbes *)
-        let ind = 0 in
+           they will be existential variables *)
         let (anony_names, var_lst) =
           List.fold_right (fun v (anony_names, vars) ->
             match v with
@@ -73,9 +72,10 @@ let rec lambda_of_symtkey (idb : symtable) (cnt : colnamtab) (goal : symtkey) =
     let lambda_list = List.map (lambda_of_rule idb cnt) rules in
     let cols = gen_cols 0 (snd goal) in
     "λ " ^ String.concat " " cols ^ ", " ^
-      String.concat " ∨ "  (List.map (fun pred -> "(" ^ pred ^ ") " ^ String.concat " " cols) lambda_list) in
-    let lambda_expr = lambda_of_rule_lst idb cnt rule_lst in
-    lambda_expr
+      String.concat " ∨ "  (List.map (fun pred -> "(" ^ pred ^ ") " ^ String.concat " " cols) lambda_list)
+  in
+  let lambda_expr = lambda_of_rule_lst idb cnt rule_lst in
+  lambda_expr
 
 
 (** Take a query term and rules of IDB relations stored in a symtable, generate lambda expression for it. *)
