@@ -496,7 +496,7 @@ let optimize_query_datalog (debug:bool) prog =
     (* let query_rt = get_query_rterm query in *)
     if (debug) then print_endline ("==> optimizing datalog program of query " ^ string_of_query query) else ();
     let freevars, fm = fol_of_program_query ( debug) prog in
-    if (debug) then print_endline ("==> intermediate FOL formula of datalog optimization of query " ^ string_of_query (get_query prog) ^ "is: \n" ^ lean_string_of_fol_formula fm^ "\n________\n") else ();
+    if (debug) then print_endline ("==> intermediate FOL formula of datalog optimization of query " ^ string_of_query (get_query prog) ^ "is: \n" ^ (stringify_lean_formula (lean_formula_of_fol_formula fm)) ^ "\n________\n") else ();
 
     (* fm is already in ranf so we do not need to transform in to ranf more *)
     let refined_fm = remove_trivial fm in

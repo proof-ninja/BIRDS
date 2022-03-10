@@ -16,6 +16,10 @@ open Ast2theorem
 open Utils
 
 
+let lean_string_of_fol_formula (fm : fol formula) : string =
+  stringify_lean_formula (lean_formula_of_fol_formula fm)
+
+
 (* Take a view update put datalog program and derive the corresponding get datalog. *)
 let derive_get_datalog (log : bool) (speedup : bool) (timeout : int) (inputprog : Expr.expr) : Expr.expr =
     (* verifying djsdelta property *)
@@ -36,7 +40,7 @@ let derive_get_datalog (log : bool) (speedup : bool) (timeout : int) (inputprog 
     let view_vars = List.map (fun x -> Expr.string_of_var x) @@ Expr.get_rterm_varlist (Expr.get_schema_rterm (get_view prog)) in
     if log then (
     print_endline "===> solving sourcestability & constraints to check the view existence";
-    print_endline @@ "FO sentence of the original sourcestability & constraints: " ^(lean_string_of_fol_formula fm);
+    print_endline @@ "FO sentence of the original sourcestability & constraints: " ^ (lean_string_of_fol_formula fm);
     );
     let phi, lst = ranf2lvnf view_name fm in
     (* we do not need vars any more because it must be all free variables in vfol and phi_i *)
@@ -48,7 +52,7 @@ let derive_get_datalog (log : bool) (speedup : bool) (timeout : int) (inputprog 
     ) lst in
     if log then (
     print_endline "______constraints from the view-predicate normal form_______";
-    print_endline @@ "phi: " ^(lean_string_of_fol_formula phi);
+    print_endline @@ "phi: " ^ (lean_string_of_fol_formula phi);
     List.iter (fun (vfol, phi_i) ->
     print_endline @@ "false <=> : " ^ (lean_string_of_fol_formula ((vfol))) ;
     print_endline @@ ", " ^ (lean_string_of_fol_formula ((phi_i))) ^"\n";
@@ -92,7 +96,7 @@ let derive_get_datalog (log : bool) (speedup : bool) (timeout : int) (inputprog 
     (* choose the lower bound as a FO formula of the view *)
     let view_fo = view_lower_fol in
     let refined_view_fo = remove_trivial (ranf (Skolem.simplify (normalize_comparison view_fo))) in
-    if log then print_endline @@ "FO formula of the view: " ^ Fol_ex.lean_string_of_fol_formula refined_view_fo ;
+    if log then print_endline @@ "FO formula of the view: " ^ lean_string_of_fol_formula refined_view_fo ;
     if (refined_view_fo = False) then raise (ChkErr "Fail to construct the view definition, be sure there is no self-join or projection on the view in the Datalog program");
     let raw_get_ast = view_fol2datalog log (get_view prog) prog.sources view_vars (refined_view_fo ) in
     let get_ast = Ast2fol.optimize_query_datalog log {raw_get_ast with query = Some (Expr.get_schema_rterm (get_view prog))} in

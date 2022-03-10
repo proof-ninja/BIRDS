@@ -290,13 +290,11 @@ let lean_theorem_of_disjoint_delta (debug : bool) (prog : expr) =
     ^ ": " ^ (String.concat " ∨ " (List.map (fun pred -> "(" ^ pred ^ ")") disjoint_sen_lst)) ^ " → false"
 *)
 
-type lean_formula = string (* TODO: fix this *)
-
 type lean_theorem =
   | LeanTheorem of {
       name      : string;
       parameter : (string * lean_type) list;
-      statement : lean_formula;
+      statement : Fol_ex.lean_formula;
     }
 
 
@@ -304,7 +302,7 @@ type lean_theorem =
 let lean_simp_theorem_of_disjoint_delta (debug : bool) (prog : expr) : lean_theorem =
   if debug then print_endline "==> generating theorem for disjoint deltas" else ();
   let statement =
-    Fol_ex.lean_string_of_fol_formula
+    Fol_ex.lean_formula_of_fol_formula
       (Imp (Ast2fol.constraint_sentence_of_stt debug prog,
         (Imp (Ast2fol.disjoint_delta_sentence_of_stt debug prog, False))))
   in
@@ -324,7 +322,7 @@ let lean_simp_theorem_of_disjoint_delta (debug : bool) (prog : expr) : lean_theo
 let lean_simp_theorem_of_getput (debug : bool) (prog : expr) : lean_theorem =
   if debug then print_endline "==> generating theorem of getput property" else ();
   let statement =
-    Fol_ex.lean_string_of_fol_formula
+    Fol_ex.lean_formula_of_fol_formula
       (Imp (Ast2fol.non_view_constraint_sentence_of_stt debug prog,
         (Imp (Ast2fol.getput_sentence_of_stt debug prog, False))))
   in
@@ -343,7 +341,7 @@ let lean_simp_theorem_of_getput (debug : bool) (prog : expr) : lean_theorem =
 let lean_simp_theorem_of_putget (debug : bool) (prog : expr) : lean_theorem =
   if debug then print_endline "==> generating theorem of putget property" else ();
   let statement =
-    Fol_ex.lean_string_of_fol_formula
+    Fol_ex.lean_formula_of_fol_formula
       (Imp (Ast2fol.constraint_sentence_of_stt debug prog, Ast2fol.putget_sentence_of_stt debug prog))
   in
   LeanTheorem {
@@ -380,7 +378,7 @@ let z3_assert_of_getput (debug : bool) (prog : expr) =
 let z3_assert_of_putget (debug : bool) (prog : expr) =
   if debug then print_endline "==> generating z3 assert of putget property" else ();
   String.concat " " (source_view_to_z3_func_types prog) ^ "\n (assert "
-    ^ (Fol_ex.lean_string_of_fol_formula
+    ^ (Fol_ex.z3_string_of_fol_formula
         (Not (Imp (Ast2fol.constraint_sentence_of_stt debug prog, Ast2fol.putget_sentence_of_stt debug prog))))
     ^ ")\n (check-sat)"
 
@@ -409,7 +407,7 @@ let sourcestability_of_stt (debug : bool) (prog : expr) =
 
 let lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) : lean_theorem =
   let statement =
-    Fol_ex.lean_string_of_fol_formula
+    Fol_ex.lean_formula_of_fol_formula
       (Imp (Ast2fol.sourcestability_sentence_of_stt debug prog, False))
   in
   LeanTheorem {
@@ -426,7 +424,7 @@ let lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) : lean
 
 let lean_theorem_of_view_existence (log : bool) (prog : expr) (sentence_of_view_existence : Fol.fol Formulas.formula) (phi : Fol.fol Formulas.formula) : lean_theorem =
   let statement =
-    Fol_ex.lean_string_of_fol_formula
+    Fol_ex.lean_formula_of_fol_formula
       (Imp (Ast2fol.non_view_constraint_sentence_of_stt log prog,
         And (sentence_of_view_existence, Fol.generalize (Imp (phi, False)))))
   in
@@ -467,10 +465,10 @@ let view_uniqueness_sentence_of_stt (log : bool) (prog : Expr.expr) =
   if log then begin
     print_endline "===> solving sourcestability constraint to check view uniqueness";
     print_endline "______constraints from view-predicate normal form_______";
-    print_endline @@ "phi: " ^(lean_string_of_fol_formula phi);
+    print_endline @@ "phi: " ^ (stringify_lean_formula (lean_formula_of_fol_formula phi));
     List.iter (fun (vfol, phi_i) ->
-      print_endline @@ "false <=> : " ^ (lean_string_of_fol_formula ((vfol))) ;
-      print_endline @@ ", " ^ (lean_string_of_fol_formula ((phi_i))) ^"\n";
+      print_endline @@ "false <=> : " ^ (stringify_lean_formula (lean_formula_of_fol_formula vfol)) ;
+      print_endline @@ ", " ^ (stringify_lean_formula (lean_formula_of_fol_formula phi_i)) ^ "\n";
     ) lst2;
   end;
 
@@ -486,7 +484,7 @@ let view_uniqueness_sentence_of_stt (log : bool) (prog : Expr.expr) =
           fm
     ) False lst2
   in
-  if log then print_endline @@ "upper bound of view: "^ (lean_string_of_fol_formula ((view_upper_fol)));
+  if log then print_endline @@ "upper bound of view: "^ (stringify_lean_formula (lean_formula_of_fol_formula view_upper_fol));
 
   (* contruct a lower bound FO formula of view *)
   let view_lower_fol =
@@ -500,11 +498,11 @@ let view_uniqueness_sentence_of_stt (log : bool) (prog : Expr.expr) =
           fm
     ) False lst2
   in
-  if log then print_endline @@ "lower bound of view: " ^ (lean_string_of_fol_formula ((view_lower_fol)));
+  if log then print_endline @@ "lower bound of view: " ^ (stringify_lean_formula (lean_formula_of_fol_formula view_lower_fol));
 
   (* make the equivalence sentence of checking whether upper FOL and lower FOL of view are equvalent *)
   let sentence_of_view_uniqueness = generalize (Iff (view_upper_fol, view_lower_fol)) in
-  if log then (print_endline @@ "FO sentence of view uniqueness : " ^ (lean_string_of_fol_formula ((sentence_of_view_uniqueness)));
+  if log then (print_endline @@ "FO sentence of view uniqueness : " ^ (stringify_lean_formula (lean_formula_of_fol_formula sentence_of_view_uniqueness));
   print_endline "_______________________________________\n");
   sentence_of_view_uniqueness
 
@@ -513,7 +511,7 @@ let view_uniqueness_sentence_of_stt (log : bool) (prog : Expr.expr) =
 let lean_simp_theorem_of_view_uniqueness (log : bool) (prog : expr) : lean_theorem =
   if log then print_endline "==> generating theorem for view uniqueness" else ();
   let statement =
-    Fol_ex.lean_string_of_fol_formula
+    Fol_ex.lean_formula_of_fol_formula
       (Imp (Ast2fol.constraint_sentence_of_stt log prog, view_uniqueness_sentence_of_stt log prog))
   in
   LeanTheorem {
