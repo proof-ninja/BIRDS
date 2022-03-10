@@ -12,6 +12,7 @@ open Formulas
 open Fol
 open Fol_ex
 open Ast2fol
+open Ast2theorem
 open Utils
 
 
@@ -19,10 +20,10 @@ open Utils
 let derive_get_datalog (log : bool) (speedup : bool) (timeout : int) (inputprog : Expr.expr) : Expr.expr =
     (* verifying djsdelta property *)
     let prog = constraint2rule inputprog in
-    let disdelta_thm = Ast2theorem.lean_simp_theorem_of_disjoint_delta (log) prog in
+    let disdelta_thm = lean_simp_theorem_of_disjoint_delta (log) prog in
     if (not speedup) then
         (if log then print_endline "==> verifying the delta disjointness property";
-        let exitcode, disdel_mess =  verify_fo_lean (log) timeout (Ast2theorem.gen_lean_code_for_theorems [disdelta_thm]) in
+        let exitcode, disdel_mess =  verify_fo_lean (log) timeout (gen_lean_code_for_theorems [disdelta_thm]) in
         if not (exitcode=0) then
             (if (exitcode = 124) then (
                 if log then print_endline "Stop verifying the delta disjointness property: Timeout";
@@ -103,8 +104,8 @@ let derive_get_datalog (log : bool) (speedup : bool) (timeout : int) (inputprog 
     (* verify the putget property *)
     (* let get_rules exp = fst (Rule_preprocess.seperate_rules exp) in  *)
     let bi_prog = Expr.add_rules get_ast.rules inputprog in
-    let putget_thm = (Ast2theorem.lean_simp_theorem_of_putget (log) (constraint2rule bi_prog)) in
-    let lean_code_putget = Ast2theorem.gen_lean_code_for_theorems [ putget_thm ] in
+    let putget_thm = (lean_simp_theorem_of_putget (log) (constraint2rule bi_prog)) in
+    let lean_code_putget = gen_lean_code_for_theorems [ putget_thm ] in
 
     if (not speedup) then (
         if log then print_endline "==> Verifying the putget property";
@@ -120,7 +121,7 @@ let derive_get_datalog (log : bool) (speedup : bool) (timeout : int) (inputprog 
 
     if speedup then (
         if log then print_endline "==> Verifying all properties of a putback program";
-        let lean_code_all = Ast2theorem.gen_lean_code_for_theorems [ disdelta_thm; theorem_of_view_existence; putget_thm ] in
+        let lean_code_all = gen_lean_code_for_theorems [ disdelta_thm; theorem_of_view_existence; putget_thm ] in
         let exitcode, message = verify_fo_lean (log) (timeout) lean_code_all in
         if not (exitcode=0) then
             if (exitcode = 124) then (
