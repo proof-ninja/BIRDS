@@ -14,59 +14,9 @@ open Fol_ex
 open Ast2fol
 open Utils
 
-(** Take a put datalog program and generate the FO sentence of checking whether the view is unique or not. *)
-let view_uniqueness_sentence_of_stt (log:bool) prog =
-    let fm = sourcestability_sentence_of_stt ( log) prog in
-    let view_name = Expr.get_rterm_predname (Expr.get_schema_rterm (get_view prog)) in
-    let view_vars = List.map (fun x -> Expr.string_of_var x) @@ Expr.get_rterm_varlist (Expr.get_schema_rterm (get_view prog)) in
-    let phi, lst = ranf2lvnf view_name fm in
-    (* we do not need vars any more because it must be all free variables in vfol and phi_i *)
-    let lst2 = List.map (fun (vars, vfol, phi_i) ->
-    match vfol with
-        Atom(R(view_name,lst)) | Not(Atom(R(view_name,lst))) -> let subfn = fpf (List.map (fun x -> Fol_ex.string_of_term 0 x) lst) (List.map (fun x -> Fol.Var x) view_vars) in
-        (subst subfn vfol, subst subfn phi_i)
-        | _ -> (vfol, phi_i)
-    ) lst in
-    if log then (
-    print_endline "===> solving sourcestability constraint to check view uniqueness";
-    print_endline "______constraints from view-predicate normal form_______";
-    print_endline @@ "phi: " ^(lean_string_of_fol_formula phi);
-    List.iter (fun (vfol, phi_i) ->
-    print_endline @@ "false <=> : " ^ (lean_string_of_fol_formula ((vfol))) ;
-    print_endline @@ ", " ^ (lean_string_of_fol_formula ((phi_i))) ^"\n";
-    ) lst2;
-    );
-
-    (* contruct a upper bound FO formula of view *)
-    let view_upper_fol = List.fold_left (fun fm (vfol, phi_i) ->
-    match vfol with
-        Formulas.Not(Formulas.Atom(R(view_name,lst))) -> let ex_vars = subtract (fv phi_i) view_vars in Or(fm, itlist mk_exists ex_vars phi_i )
-        | _ -> fm
-    ) False lst2 in
-    if log then print_endline @@ "upper bound of view: "^ (lean_string_of_fol_formula ((view_upper_fol)));
-    (* contruct a lower bound FO formula of view *)
-    let view_lower_fol = List.fold_left (fun fm (vfol, phi_i) ->
-    match vfol with
-        | Formulas.Atom(R(view_name,lst)) -> let ex_vars = subtract (fv phi_i) view_vars in Or(fm, Not(itlist mk_exists ex_vars phi_i) )
-        | _ -> fm
-    ) False lst2 in
-    if log then print_endline @@ "lower bound of view: " ^ (lean_string_of_fol_formula ((view_lower_fol)));
-
-    (* make the equivalence sentence of checking whether upper FOL and lower FOL of view are equvalent *)
-    let sentence_of_view_uniqueness = generalize (Iff(view_upper_fol, view_lower_fol)) in
-    if log then (print_endline @@ "FO sentence of view uniqueness : " ^ (lean_string_of_fol_formula ((sentence_of_view_uniqueness)));
-    print_endline "_______________________________________\n");
-    sentence_of_view_uniqueness
-
-(* Take a view update put datalog program and generate the theorem of checking view uniqueness. *)
-let lean_simp_theorem_of_view_uniqueness (log:bool) prog =
-    if log then (print_endline "==> generating theorem for view uniqueness";) else ();
-    "theorem view_uniqueness " ^ String.concat " " (List.map (fun x -> "{"^x^"}") (Ast2theorem.source_to_lean_func_types prog)) ^
-     ": " ^ (Fol_ex.lean_string_of_fol_formula (Imp (Ast2fol.constraint_sentence_of_stt log prog,
-     view_uniqueness_sentence_of_stt log prog)))
 
 (* Take a view update put datalog program and derive the corresponding get datalog. *)
-let derive_get_datalog (log:bool) (speedup:bool) timeout inputprog =
+let derive_get_datalog (log : bool) (speedup : bool) (timeout : int) (inputprog : Expr.expr) : Expr.expr =
     (* verifying djsdelta property *)
     let prog = constraint2rule inputprog in
     let disdelta_thm = Ast2theorem.lean_simp_theorem_of_disjoint_delta (log) prog in
@@ -126,9 +76,7 @@ let derive_get_datalog (log:bool) (speedup:bool) timeout inputprog =
     if log then (print_endline "==> generating a theorem for the view existence property";) else ();
 
     (* checking the FO sentence of the existence of a view *)
-    let theorem_of_view_existence =  "theorem view_existence " ^ String.concat " " (List.map (fun x -> "{"^x^"}") (Ast2theorem.source_to_lean_func_types prog)) ^
-     ": " ^ (Fol_ex.lean_string_of_fol_formula (Imp (non_view_constraint_sentence_of_stt log prog,
-     And(sentence_of_view_existence, generalize (Imp (phi, False)))))) in
+    let theorem_of_view_existence = Ast2theorem.lean_theorem_of_view_existence log prog sentence_of_view_existence phi in
     let lean_code_view_existence = Ast2theorem.gen_lean_code_for_theorems [theorem_of_view_existence] in
 
     if (not speedup) then

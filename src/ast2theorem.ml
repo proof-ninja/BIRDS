@@ -12,7 +12,12 @@ open Utils
 open Rule_preprocess
 open Stratification
 
+open Lib
+open Formulas
+open Fol
+open Fol_ex
 
+(*
 type lambda_variable = string
 
 type lambda_term =
@@ -167,6 +172,7 @@ let edb_to_func_types edb =
   let p_el funcs s = (rel_to_function (rule_head s)) :: funcs in
   let p_lst _ lst funcs = (List.fold_left p_el [] lst) @ funcs in
   Hashtbl.fold p_lst edb []
+*)
 
 
 let stype_to_lean_type (st : stype) =
@@ -190,11 +196,22 @@ let stype_to_z3_type (st : stype) =
   | Sstring -> "String"
 
 
+type lean_type =
+  | LeanBaseType of stype
+  | LeanFuncType of lean_type * lean_type
+
+
 (* transform source relations in program to a list of functions from product of n (the arity) types to Prop *)
-let source_to_lean_func_types (prog : expr) =
+let source_to_lean_func_types (prog : expr) : (string * lean_type) list =
   (* currently just set all the types are int (ℤ) *)
-  let p_el funcs (name, lst) =
+  let p_el (funcs : (string * lean_type) list) ((name, lst) : source) =
+    let ltyp =
+      List.fold_right (fun (_col, styp) ltyp -> LeanFuncType (LeanBaseType styp, ltyp)) lst (LeanBaseType Sbool)
+    in
+    (name, ltyp) :: funcs
+(* ORIGINAL:
     (name ^ ": " ^ String.concat " → " (List.map (fun (col, typ) -> stype_to_lean_type typ) lst) ^ " → Prop") :: funcs
+*)
   in
   List.fold_left p_el [] prog.sources
 
@@ -210,10 +227,16 @@ let source_to_z3_func_types (prog : expr) =
 
 
 (* transform source and view relations in program to a list of functions from product of n (the arity) types to Prop *)
-let source_view_to_lean_func_types (prog : expr) =
+let source_view_to_lean_func_types (prog : expr) : (string * lean_type) list =
   (* currently just set all the types are int (ℤ) *)
-  let p_el funcs (name, lst) =
+  let p_el (funcs : (string * lean_type) list) ((name, lst) : source) =
+    let ltyp =
+      List.fold_right (fun (_col, styp) ltyp -> LeanFuncType (LeanBaseType styp, ltyp)) lst (LeanBaseType Sbool)
+    in
+    (name, ltyp) :: funcs
+(* ORIGINAL:
     (name ^ ": " ^ String.concat " → " ( List.map (fun (col, typ) -> stype_to_lean_type typ) lst) ^ " → Prop" ) :: funcs
+*)
   in
   List.fold_left p_el [] (get_schema_stts prog)
 
@@ -267,37 +290,73 @@ let lean_theorem_of_disjoint_delta (debug : bool) (prog : expr) =
     ^ ": " ^ (String.concat " ∨ " (List.map (fun pred -> "(" ^ pred ^ ")") disjoint_sen_lst)) ^ " → false"
 *)
 
+type lean_formula = string (* TODO: fix this *)
+
+type lean_theorem =
+  | LeanTheorem of {
+      name      : string;
+      parameter : (string * lean_type) list;
+      statement : lean_formula;
+    }
+
+
 (* take a view update datalog program and generate the theorem of checking whether all delta relations are disjoint *)
-let lean_simp_theorem_of_disjoint_delta (debug : bool) (prog : expr) =
-  if debug then
-    print_endline "==> generating theorem for disjoint deltas"
-  else
-    ();
+let lean_simp_theorem_of_disjoint_delta (debug : bool) (prog : expr) : lean_theorem =
+  if debug then print_endline "==> generating theorem for disjoint deltas" else ();
+  let statement =
+    Fol_ex.lean_string_of_fol_formula
+      (Imp (Ast2fol.constraint_sentence_of_stt debug prog,
+        (Imp (Ast2fol.disjoint_delta_sentence_of_stt debug prog, False))))
+  in
+  LeanTheorem {
+    name      = "disjoint_deltas";
+    parameter = source_view_to_lean_func_types prog;
+    statement = statement;
+  }
+(* ORIGINAL:
   "theorem disjoint_deltas "
     ^ String.concat " " (List.map (fun x -> "{" ^ x ^"}") (source_view_to_lean_func_types prog)) ^ ": "
     ^ (Fol_ex.lean_string_of_fol_formula
         (Imp (Ast2fol.constraint_sentence_of_stt debug prog,
           (Imp (Ast2fol.disjoint_delta_sentence_of_stt debug prog, False)))))
+*)
 
-
-let lean_simp_theorem_of_getput (debug : bool) (prog : expr) =
-  if debug then
-    print_endline "==> generating theorem of getput property"
-  else
-    ();
+let lean_simp_theorem_of_getput (debug : bool) (prog : expr) : lean_theorem =
+  if debug then print_endline "==> generating theorem of getput property" else ();
+  let statement =
+    Fol_ex.lean_string_of_fol_formula
+      (Imp (Ast2fol.non_view_constraint_sentence_of_stt debug prog,
+        (Imp (Ast2fol.getput_sentence_of_stt debug prog, False))))
+  in
+  LeanTheorem {
+    name      = "getput";
+    parameter = source_to_lean_func_types prog;
+    statement = statement;
+  }
+(* ORIGINAL:
   "theorem getput " ^ String.concat " " (List.map (fun x -> "{"^x^"}") (source_to_lean_func_types prog)) ^ ": "
     ^ (Fol_ex.lean_string_of_fol_formula
          (Imp (Ast2fol.non_view_constraint_sentence_of_stt debug prog,
            (Imp (Ast2fol.getput_sentence_of_stt debug prog, False)))))
+*)
 
-
-let lean_simp_theorem_of_putget (debug : bool) (prog : expr) =
+let lean_simp_theorem_of_putget (debug : bool) (prog : expr) : lean_theorem =
   if debug then print_endline "==> generating theorem of putget property" else ();
+  let statement =
+    Fol_ex.lean_string_of_fol_formula
+      (Imp (Ast2fol.constraint_sentence_of_stt debug prog, Ast2fol.putget_sentence_of_stt debug prog))
+  in
+  LeanTheorem {
+    name      = "putget";
+    parameter = source_view_to_lean_func_types prog;
+    statement = statement;
+  }
+(* ORIGINAL:
   "theorem putget "
     ^ String.concat " " (List.map (fun x -> "{" ^ x ^ "}") (source_view_to_lean_func_types prog)) ^ ": "
     ^ (Fol_ex.lean_string_of_fol_formula
         (Imp (Ast2fol.constraint_sentence_of_stt debug prog, Ast2fol.putget_sentence_of_stt debug prog)))
-
+*)
 
 (* take a view update datalog program and generate the theorem of checking whether all delta relations are disjoint *)
 let z3_assert_of_disjoint_delta (debug : bool) (prog : expr) =
@@ -348,25 +407,143 @@ let sourcestability_of_stt (debug : bool) (prog : expr) =
       ^ String.concat " ∨ " (List.map (fun pred -> "(" ^ pred ^ ")") delta_lambda_exp_lst) ^ " → false"
 *)
 
-let lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) =
+let lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) : lean_theorem =
+  let statement =
+    Fol_ex.lean_string_of_fol_formula
+      (Imp (Ast2fol.sourcestability_sentence_of_stt debug prog, False))
+  in
+  LeanTheorem {
+    name      = "sourcestability";
+    parameter = source_to_lean_func_types prog;
+    statement = statement;
+  }
+(* ORIGINAL:
   "theorem sourcestability "
     ^ String.concat " " (List.map (fun x -> "{" ^ x ^ "}") (source_to_lean_func_types prog)) ^ ": "
     ^ (Fol_ex.lean_string_of_fol_formula (Imp (Ast2fol.sourcestability_sentence_of_stt debug prog, False)))
+*)
 
 
-let gen_lean_code_for_theorems thms =
+let lean_theorem_of_view_existence (log : bool) (prog : expr) (sentence_of_view_existence : Fol.fol Formulas.formula) (phi : Fol.fol Formulas.formula) : lean_theorem =
+  let statement =
+    Fol_ex.lean_string_of_fol_formula
+      (Imp (Ast2fol.non_view_constraint_sentence_of_stt log prog,
+        And (sentence_of_view_existence, Fol.generalize (Imp (phi, False)))))
+  in
+  LeanTheorem {
+    name      = "view_existence";
+    parameter = source_to_lean_func_types prog;
+    statement = statement;
+  }
+(* ORIGINAL:
+  "theorem view_existence " ^ String.concat " " (List.map (fun x -> "{"^x^"}") (Ast2theorem.source_to_lean_func_types prog)) ^
+       ": " ^ (Fol_ex.lean_string_of_fol_formula (Imp (non_view_constraint_sentence_of_stt log prog,
+       And(sentence_of_view_existence, generalize (Imp (phi, False))))))
+*)
+
+
+(** Take a put datalog program and generate the FO sentence of checking whether the view is unique or not. *)
+let view_uniqueness_sentence_of_stt (log : bool) (prog : Expr.expr) =
+  let fm = Ast2fol.sourcestability_sentence_of_stt log prog in
+  let view_name = Expr.get_rterm_predname (Expr.get_schema_rterm (get_view prog)) in
+  let view_vars =
+    List.map (fun x -> Expr.string_of_var x) @@ Expr.get_rterm_varlist (Expr.get_schema_rterm (get_view prog))
+  in
+  let (phi, lst) = Fol_ex.ranf2lvnf view_name fm in
+  (* we do not need vars any more because it must be all free variables in vfol and phi_i *)
+  let lst2 =
+    List.map (fun (vars, vfol, phi_i) ->
+      match vfol with
+      | Atom (R (view_name, lst)) | Not (Atom (R (view_name, lst))) ->
+          let subfn =
+            fpf (List.map (fun x -> Fol_ex.string_of_term 0 x) lst) (List.map (fun x -> Fol.Var x) view_vars)
+          in
+          (subst subfn vfol, subst subfn phi_i)
+
+      | _ ->
+          (vfol, phi_i)
+    ) lst
+  in
+  if log then begin
+    print_endline "===> solving sourcestability constraint to check view uniqueness";
+    print_endline "______constraints from view-predicate normal form_______";
+    print_endline @@ "phi: " ^(lean_string_of_fol_formula phi);
+    List.iter (fun (vfol, phi_i) ->
+      print_endline @@ "false <=> : " ^ (lean_string_of_fol_formula ((vfol))) ;
+      print_endline @@ ", " ^ (lean_string_of_fol_formula ((phi_i))) ^"\n";
+    ) lst2;
+  end;
+
+  (* contruct a upper bound FO formula of view *)
+  let view_upper_fol =
+    List.fold_left (fun fm (vfol, phi_i) ->
+      match vfol with
+      | Not (Atom (R (view_name, lst))) ->
+          let ex_vars = subtract (fv phi_i) view_vars in
+          Or(fm, itlist mk_exists ex_vars phi_i)
+
+      | _ ->
+          fm
+    ) False lst2
+  in
+  if log then print_endline @@ "upper bound of view: "^ (lean_string_of_fol_formula ((view_upper_fol)));
+
+  (* contruct a lower bound FO formula of view *)
+  let view_lower_fol =
+    List.fold_left (fun fm (vfol, phi_i) ->
+      match vfol with
+      | Atom (R (view_name, lst)) ->
+          let ex_vars = subtract (fv phi_i) view_vars in
+          Or (fm, Not (itlist mk_exists ex_vars phi_i))
+
+      | _ ->
+          fm
+    ) False lst2
+  in
+  if log then print_endline @@ "lower bound of view: " ^ (lean_string_of_fol_formula ((view_lower_fol)));
+
+  (* make the equivalence sentence of checking whether upper FOL and lower FOL of view are equvalent *)
+  let sentence_of_view_uniqueness = generalize (Iff (view_upper_fol, view_lower_fol)) in
+  if log then (print_endline @@ "FO sentence of view uniqueness : " ^ (lean_string_of_fol_formula ((sentence_of_view_uniqueness)));
+  print_endline "_______________________________________\n");
+  sentence_of_view_uniqueness
+
+
+(* Take a view update put datalog program and generate the theorem of checking view uniqueness. *)
+let lean_simp_theorem_of_view_uniqueness (log : bool) (prog : expr) : lean_theorem =
+  if log then print_endline "==> generating theorem for view uniqueness" else ();
+  let statement =
+    Fol_ex.lean_string_of_fol_formula
+      (Imp (Ast2fol.constraint_sentence_of_stt log prog, view_uniqueness_sentence_of_stt log prog))
+  in
+  LeanTheorem {
+    name = "view_uniqueness";
+    parameter = source_to_lean_func_types prog;
+    statement = statement;
+  }
+(* ORIGINAL:
+  "theorem view_uniqueness " ^ String.concat " " (List.map (fun x -> "{"^x^"}") (Ast2theorem.source_to_lean_func_types prog)) ^
+   ": " ^ (Fol_ex.lean_string_of_fol_formula (Imp (Ast2fol.constraint_sentence_of_stt log prog,
+   view_uniqueness_sentence_of_stt log prog)))
+*)
+
+let stringify_lean_theorem (thm : lean_theorem) : string =
+  failwith "TODO: stringify_lean_theorem"
+
+
+let gen_lean_code_for_theorems (thms : lean_theorem list) : string =
     "import bx
 
 local attribute [instance] classical.prop_decidable
 
-" ^ String.concat "\n\n" (List.map (fun x ->  x ^ ":=
+" ^ String.concat "\n\n" (List.map (fun x ->  (stringify_lean_theorem x) ^ ":=
     begin
     z3_smt
     end") thms)
     (* try{super {max_iters := 200, timeout := 200000}} *)
 
 
-let validity_lean_code_of_bidirectional_datalog (debug : bool) (prog : expr) =
+let validity_lean_code_of_bidirectional_datalog (debug : bool) (prog : expr) : string =
   gen_lean_code_for_theorems [
     lean_simp_theorem_of_disjoint_delta debug prog;
     lean_simp_theorem_of_getput debug prog;

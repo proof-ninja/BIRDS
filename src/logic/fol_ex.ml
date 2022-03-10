@@ -1,10 +1,10 @@
 (*******************************************************)
-(**  
+(**
 Functions on first-order logic formulas
  *)
 (********************************************************)
 
-(* 
+(*
 author: Vandang Tran
 *)
 
@@ -20,7 +20,7 @@ open Prop;;
 
 let rec normalize_comparison fm =
   match fm with
-  Atom(R(r,args)) -> (match r with 
+  Atom(R(r,args)) -> (match r with
     | "<>" -> Not(Atom(R("=",args)))
     | "<=" -> Not(Atom(R(">",args)))
     | ">=" -> Not(Atom(R("<",args)))
@@ -35,7 +35,7 @@ let rec normalize_comparison fm =
   | Exists(x,p) -> (Exists(x,normalize_comparison p))
   | _ -> fm;;
 
-let normal_logic_character name = match name with 
+let normal_logic_character name = match name with
     | "false" -> "false"
     | "true" -> "true"
     | "not" -> "~"
@@ -127,7 +127,7 @@ let string_of_fol_formula = string_of_qformula string_of_atom;;
 (* Printing of formulas in lean.                                             *)
 (* ------------------------------------------------------------------------- *)
 
-let lean_logic_character name = match name with 
+let lean_logic_character name = match name with
     | "false" -> "false"
     | "true" -> "true"
     | "not" -> "¬"
@@ -140,32 +140,32 @@ let lean_logic_character name = match name with
     | "quantifer_sep" -> ","
     | _ -> failwith "unkown symbol of "^name
 
-let lean_character_of_operator o = match o with 
+let lean_character_of_operator o = match o with
   | "<>" -> "≠"
   | ">=" -> "≥"
   | "<=" -> "≤"
   | "=" | "<"| ">" -> o
   | _ -> failwith "unkown symbol of "^o
 
-let lean_stype_of_string str = 
+let lean_stype_of_string str =
   try  (ignore(int_of_string str); "int") with
     (* try test () with *)
-    | Failure e -> 
+    | Failure e ->
         try  (ignore(float_of_string str); "rat") with
         (* try test () with *)
-        | Failure e -> 
+        | Failure e ->
             try  ( ignore(bool_of_string str); "Prop") with
             | Failure e | Invalid_argument e ->  if (str = "null") then  "int" else  "string"
 
-let lean_string_of_string str = 
+let lean_string_of_string str =
   try  (ignore(int_of_string str); str) with
     (* try test () with *)
-    | Failure e -> 
+    | Failure e ->
         try  (ignore(float_of_string str); str) with
         (* try test () with *)
-        | Failure e -> 
+        | Failure e ->
             try  ( ignore(bool_of_string str); str) with
-            | Failure e | Invalid_argument e ->  
+            | Failure e | Invalid_argument e ->
             if (str = "null") then  str else "\""^(String.sub str 1 (String.length str -2))^"\""
 
 
@@ -218,22 +218,22 @@ let lean_string_of_fol_formula = lean_string_of_qformula lean_string_of_atom;;
 (* Printing of formulas in z3.                                             *)
 (* ------------------------------------------------------------------------- *)
 
-(** get a type of a free variable in the formula 
+(** get a type of a free variable in the formula
 (not completed yet) *)
-let rec type_of_var varname fm = 
+let rec type_of_var varname fm =
   match fm with
     False -> []
   | True -> []
-  | Atom(R(r,args)) -> 
+  | Atom(R(r,args)) ->
     if r = "=" then (
-      let v, o = List.partition (fun x -> x = varname) (List.map (string_of_term 0) args) in 
+      let v, o = List.partition (fun x -> x = varname) (List.map (string_of_term 0) args) in
       [(r^ hd o, 0)]
     )
     else
     (let lst,_ = List.fold_left
       (fun (lst, index) str -> if (string_of_term 0 str) = varname then (lst@[index], index+1) else (lst, index+1))
       ([],0)
-      args in 
+      args in
     List.map (fun x -> (r,x)) lst)
   | Not(p) -> type_of_var varname p
   | And(p,q) -> union (type_of_var varname p)  (type_of_var varname q)
@@ -243,7 +243,7 @@ let rec type_of_var varname fm =
   | Forall(x,p) -> type_of_var varname (let newx = variant x (varname::(fv fm)) in subst (x |=> Var newx) p)
   | Exists(x,p) -> type_of_var varname (let newx = variant x (varname::(fv fm)) in subst (x |=> Var newx) p)
 
-let z3_logic_character name = match name with 
+let z3_logic_character name = match name with
     | "false" -> "false"
     | "true" -> "true"
     | "not" -> "not"
@@ -256,25 +256,25 @@ let z3_logic_character name = match name with
     | "quantifer_sep" -> failwith "unkown symbol of "^name
     | _ -> failwith "unkown symbol of "^name
 
-let z3_character_of_operator o = match o with 
+let z3_character_of_operator o = match o with
   | "<>" -> failwith "unkown symbol of "^o
   | ">="
   | "<="
   | "=" | "<"| ">" -> o
   | _ -> failwith "unkown symbol of "^o
 
-let z3_string_of_string str = 
+let z3_string_of_string str =
   try  (ignore(int_of_string str); str) with
     (* try test () with *)
-    | Failure e -> 
+    | Failure e ->
         try  (ignore(float_of_string str); str) with
         (* try test () with *)
-        | Failure e -> 
+        | Failure e ->
             try  ( ignore(bool_of_string str); str) with
-            | Failure e | Invalid_argument e ->  
+            | Failure e | Invalid_argument e ->
             if (str = "null") then  str else "\""^(String.sub str 1 (String.length str -2))^"\""
 
-let z3_normalize_string str = 
+let z3_normalize_string str =
   Str.global_replace (Str.regexp  "\'") "_prime" str;;
 
 let rec z3_string_of_term fm =
@@ -296,14 +296,14 @@ let rec z3_string_of_qformula fm =
     | And(p,q) -> "( and " ^ z3_string_of_qformula p ^" " ^z3_string_of_qformula q ^ " )"
     | Or(p,q) ->  "( or " ^ z3_string_of_qformula p ^" " ^z3_string_of_qformula q ^ " )"
     | Imp(p,q) ->  "( => " ^ z3_string_of_qformula p ^" " ^z3_string_of_qformula q ^ " )"
-    | Iff(p,q) ->  "( = " ^ z3_string_of_qformula p ^" " ^z3_string_of_qformula q ^ " )"  
+    | Iff(p,q) ->  "( = " ^ z3_string_of_qformula p ^" " ^z3_string_of_qformula q ^ " )"
     (* todo: need to add a type after the x *)
-    | Forall(x,p) -> 
-      let rname, pos = hd (type_of_var x p) in 
+    | Forall(x,p) ->
+      let rname, pos = hd (type_of_var x p) in
       "( forall ((" ^z3_normalize_string x^ " " ^rname ^string_of_int pos ^")) " ^ z3_string_of_qformula p ^ " )"
-    | Exists(x,p) -> let rname, pos = hd (type_of_var x p) in 
+    | Exists(x,p) -> let rname, pos = hd (type_of_var x p) in
       "( exists ((" ^z3_normalize_string x^ " " ^rname ^string_of_int pos ^")) " ^ z3_string_of_qformula p ^ " )"
-    
+
 let z3_string_of_fol_formula = z3_string_of_qformula;;
 
 (* ------------------------------------------------------------------------- *)
@@ -312,7 +312,7 @@ let z3_string_of_fol_formula = z3_string_of_qformula;;
 
 let rec extract_ex_quants fm =
   match fm with
-    Exists(x,p) -> let quants, body = extract_ex_quants p in 
+    Exists(x,p) -> let quants, body = extract_ex_quants p in
       x::quants, body
   | _ -> [],fm;;
 
@@ -320,15 +320,15 @@ let rec extract_ex_quants fm =
 (* Tranformation on formulas.                                                     *)
 (* ------------------------------------------------------------------------- *)
 
-let rec pnf_dnf fm = dnf_of_pnf (Skolem.pnf fm) 
-and dnf_of_pnf fm = 
-  match fm with 
+let rec pnf_dnf fm = dnf_of_pnf (Skolem.pnf fm)
+and dnf_of_pnf fm =
+  match fm with
     Forall(x,p) -> Forall(x, dnf_of_pnf p)
   | Exists(x,p) -> Exists(x, dnf_of_pnf p)
   | _ -> Prop.dnf fm;;
 
 (** take a FO formula and return its safe-range normal form *)
-let rec srnf fm = 
+let rec srnf fm =
   match fm with
       And(p,q) -> And(srnf p,srnf q)
     | Or(p,q) -> Or(srnf p,srnf q)
@@ -345,12 +345,12 @@ let rec srnf fm =
     | Not(Exists(x,p)) -> Not (Exists(x,srnf p))
     | _ -> fm;;
 
-let is_relation_symbol str = 
+let is_relation_symbol str =
   let idregex = Str.regexp "_*[A-Za-z][A-Za-z0-9_]*" in
     Str.string_match idregex str 0;;
 
 (** take a SRNF formula and return the set of its range-restricted variables*)
-let rec rr fm = 
+let rec rr fm =
   match fm with
     | True -> (true,[])
     | False -> (true,[])
@@ -360,115 +360,115 @@ let rec rr fm =
     | And(p,Atom(R("=",[Var x; Var y])))
     | And(Atom(R("=",[Var x; Var y])), p) -> let is_safe, rr_vars = rr p in if (intersect rr_vars [x;y]) = [] then (is_safe, rr_vars) else
      (is_safe, union rr_vars [x;y])
-    | And(p,q) -> let is_safe1, rr_vars1 = rr p in 
+    | And(p,q) -> let is_safe1, rr_vars1 = rr p in
       let is_safe2, rr_vars2 = rr q in
       (is_safe1 && is_safe2, union rr_vars1 rr_vars2)
-    | Or(p,q) -> let is_safe1, rr_vars1 = rr p in 
+    | Or(p,q) -> let is_safe1, rr_vars1 = rr p in
       let is_safe2, rr_vars2 = rr q in
       (is_safe1 && is_safe2, intersect rr_vars1 rr_vars2)
     | Not(p) -> (fst (rr p),[])
-    | Exists(x,p) -> let is_safe, rr_vars = rr p in 
+    | Exists(x,p) -> let is_safe, rr_vars = rr p in
       if mem x rr_vars then (is_safe, subtract rr_vars [x]) else (false, [])
     | _ -> (false,[]);;
 
-let is_safe_range fm = 
-  let is_safe, rr_vars = rr(srnf fm) in 
+let is_safe_range fm =
+  let is_safe, rr_vars = rr(srnf fm) in
   is_safe && (set_eq rr_vars (fv fm));;
 
-let rec to_dis_lst fm = 
+let rec to_dis_lst fm =
   match fm with
     Or(p,q) -> union (to_dis_lst p) (to_dis_lst q)
   | _ -> [fm];;
 
-let rec to_conj_lst fm = 
+let rec to_conj_lst fm =
   match fm with
     And(p,q) -> union (to_conj_lst p) (to_conj_lst q)
   | _ -> [fm];;
 
-let is_of_three_cases subfm = match subfm with 
+let is_of_three_cases subfm = match subfm with
   Or(_,_) -> if is_safe_range subfm then false else true
-  | Exists(_, _) -> 
-    let quants, xi = extract_ex_quants subfm in 
+  | Exists(_, _) ->
+    let quants, xi = extract_ex_quants subfm in
     if is_safe_range xi then false else true
-  | Not(Exists(x, fm)) ->   
-    let quants, xi = extract_ex_quants (Exists(x, fm)) in 
+  | Not(Exists(x, fm)) ->
+    let quants, xi = extract_ex_quants (Exists(x, fm)) in
     if is_safe_range xi then false else true
   | _ -> false;;
 
 (** apply three push-into procedures on a SRNF formula *)
-let rec push_into_subfm conj subfm = 
+let rec push_into_subfm conj subfm =
   match subfm with
   (* Push-into-or *)
-    Or(_,_) -> 
-      let powerset = allnonemptysubsets conj in 
-      let is_right_candiate cand = 
+    Or(_,_) ->
+      let powerset = allnonemptysubsets conj in
+      let is_right_candiate cand =
         let psi = Prop.list_conj cand in
-        let xi' = Prop.list_disj (List.map (fun x ->  And(psi, x)) (to_dis_lst subfm)) in 
-        is_safe_range xi' in 
+        let xi' = Prop.list_disj (List.map (fun x ->  And(psi, x)) (to_dis_lst subfm)) in
+        is_safe_range xi' in
       let right_candidates = List.filter is_right_candiate powerset in
       let sorted_candiates = Lib.sort (fun a b -> List.length a < List.length b) right_candidates in
-      let final_cand = List.hd sorted_candiates in 
-      let remain = subtract conj final_cand in 
+      let final_cand = List.hd sorted_candiates in
+      let remain = subtract conj final_cand in
       let phi_remain = Prop.list_conj remain in
       let psi = Prop.list_conj final_cand in
-      let xi' = Prop.list_disj (List.map (fun x ->  And(psi, x)) (to_dis_lst subfm)) in 
+      let xi' = Prop.list_disj (List.map (fun x ->  And(psi, x)) (to_dis_lst subfm)) in
       And(phi_remain, xi')
 
   (* Push-into-quantifier *)
   | Exists(_, _) ->
-    let powerset = allnonemptysubsets conj in 
-    let is_right_candiate cand = 
+    let powerset = allnonemptysubsets conj in
+    let is_right_candiate cand =
       let psi = Prop.list_conj cand in
       let quants, xi = extract_ex_quants subfm in
       let quants' = List.map (fun x -> variant x (fv psi)) quants in
       let subfn = fpf quants (List.map (fun x -> Fol.Var x) quants') in
-      let xi' = ( And(psi, subst subfn xi)) in 
-      is_safe_range xi' in 
+      let xi' = ( And(psi, subst subfn xi)) in
+      is_safe_range xi' in
     let right_candidates = List.filter is_right_candiate powerset in
     let sorted_candiates = Lib.sort (fun a b -> List.length a < List.length b) right_candidates in
-    let final_cand = List.hd sorted_candiates in 
-    let remain = subtract conj final_cand in 
+    let final_cand = List.hd sorted_candiates in
+    let remain = subtract conj final_cand in
     let phi_remain = Prop.list_conj remain in
     let psi = Prop.list_conj final_cand in
     let quants, xi = extract_ex_quants subfm in
     let quants' = List.map (fun x -> variant x (fv psi)) quants in
     let subfn = fpf quants (List.map (fun x -> Fol.Var x) quants') in
-    let xi' = And(psi, subst subfn xi) in 
+    let xi' = And(psi, subst subfn xi) in
     And(phi_remain, itlist mk_exists quants' xi')
   (* Push-into-negated-quantifier *)
   | Not(Exists(x, fm)) ->
-    let powerset = allnonemptysubsets conj in 
-    let is_right_candiate cand = 
+    let powerset = allnonemptysubsets conj in
+    let is_right_candiate cand =
       let psi = Prop.list_conj cand in
       let quants, xi = extract_ex_quants (Exists(x, fm)) in
       let quants' = List.map (fun x -> variant x (fv psi)) quants in
       let subfn = fpf quants (List.map (fun x -> Fol.Var x) quants') in
-      let xi' = ( And(psi, subst subfn xi)) in 
-      is_safe_range xi' in 
+      let xi' = ( And(psi, subst subfn xi)) in
+      is_safe_range xi' in
     let right_candidates = List.filter is_right_candiate powerset in
     let sorted_candiates = Lib.sort (fun a b -> List.length a < List.length b) right_candidates in
-    let final_cand = List.hd sorted_candiates in 
+    let final_cand = List.hd sorted_candiates in
     let phi = Prop.list_conj conj in
     let psi = Prop.list_conj final_cand in
     let quants, xi = extract_ex_quants (Exists(x, fm)) in
     let quants' = List.map (fun x -> variant x (fv psi)) quants in
     let subfn = fpf quants (List.map (fun x -> Fol.Var x) quants') in
-    let xi' = And(psi, subst subfn xi) in 
+    let xi' = And(psi, subst subfn xi) in
     And(phi, Not (itlist mk_exists quants' xi'))
       (* And(Prop.list_conj conj, Not(push_into_subfm conj (Exists(x, fm)))) *)
   | _ -> And(Prop.list_conj conj, subfm)
   ;;
 
 (** take a SRNF formula and return it in RANF  *)
-let rec srnf2ranf fm = 
+let rec srnf2ranf fm =
   match fm with
-    And(_,_) -> let conj_lst = to_conj_lst fm in 
+    And(_,_) -> let conj_lst = to_conj_lst fm in
         let not_self_contained_lst = List.filter is_of_three_cases conj_lst in
-        if (List.length not_self_contained_lst > 0) then 
+        if (List.length not_self_contained_lst > 0) then
           let h = List.hd not_self_contained_lst in
             srnf2ranf (push_into_subfm (subtract conj_lst [h]) h)
-        else Prop.list_conj (List.map srnf2ranf conj_lst) 
-    | Or(p, q) -> Or(srnf2ranf p, srnf2ranf q) 
+        else Prop.list_conj (List.map srnf2ranf conj_lst)
+    | Or(p, q) -> Or(srnf2ranf p, srnf2ranf q)
     | Exists(x, p) ->  Exists(x, srnf2ranf p)
     | Not(Exists(x, p)) -> Not (Exists(x, srnf2ranf p))
     | _ -> fm;;
@@ -477,7 +477,7 @@ let ranf fm = if (is_safe_range fm) then srnf2ranf (srnf fm) else failwith "the 
 
 (** take a FO formula in nnf and return its dnf *)
 (* todo: this function can not go to the lower level of quantifier *)
-let rec pure_dnf fm = 
+let rec pure_dnf fm =
   match fm with
     Forall(x,p) -> Forall(x,pure_dnf p)
   | Exists(x,p) -> Exists(x,pure_dnf p)
@@ -487,14 +487,14 @@ let rec pure_dnf fm =
 let dnf fm = pure_dnf (Skolem.nnf(Skolem.simplify fm));;
 
 (* note that in order to preserve certain order and also show the conciseness of the implementation, no tail-recursive is used *)
-let ins_all_positions x l =  
+let ins_all_positions x l =
   let rec aux prev acc = function
     | [] -> (prev @ [x]) :: acc |> List.rev
     | hd::tl as l -> aux (prev @ [hd]) ((prev @ [x] @ l) :: acc) tl
   in
   aux [] [] l
 
-let rec permutations = function  
+let rec permutations = function
   | [] -> []
   | x::[] -> [[x]] (* we must specify this edge case *)
   | x::xs -> List.fold_left (fun acc p -> acc @ ins_all_positions x p ) [] (permutations xs)
@@ -515,13 +515,13 @@ let disj_trivial lits =
 
 let remove_trivial1 fm =
   match fm with
-   And(p,q) -> 
-    let conj = (to_conj_lst fm) in  
+   And(p,q) ->
+    let conj = (to_conj_lst fm) in
     (* print_endline "checking conj :"; *)
     (* List.iter (fun x -> print_endline (lean_string_of_fol_formula x)) conj; *)
     if (conj_trivial conj) then False else simplify (list_conj conj)
-  | Or(p,q) -> 
-    let disj = (to_dis_lst fm) in 
+  | Or(p,q) ->
+    let disj = (to_dis_lst fm) in
     if (disj_trivial disj) then True else simplify (list_disj disj)
   | _ -> simplify fm;;
 
@@ -537,7 +537,7 @@ let rec remove_trivial fm =
   | _ -> fm;;
 
 (** take a FOL formula and return whether it contains view predicate or not  *)
-let rec is_superformula_of_view view fm = match fm with 
+let rec is_superformula_of_view view fm = match fm with
     False -> false
   | True -> false
   | Atom(R(r,args)) -> if r = view then true else false
@@ -549,7 +549,7 @@ let rec is_superformula_of_view view fm = match fm with
   | Forall(x,p) -> is_superformula_of_view view p
   | Exists(x,p) -> is_superformula_of_view view p
 
-(** take a RANF formula and view name to return the it in view-predicate normal form 
+(** take a RANF formula and view name to return the it in view-predicate normal form
 view-predicate normal form is represented in the form:
 (phi, a list of (a list of quantifier vars, a fol of (¬)V(vi1)∧...∧(¬)V(vimi), phi_i ) )
 *)
@@ -557,25 +557,25 @@ view-predicate normal form is represented in the form:
 let rec ranf2lvnf view fm = if not (is_superformula_of_view view fm) then (fm, []) else
     match fm with
         | Atom(R(r,lst)) -> if r = view then (False, [([],fm, True)]) else (fm, [])
-        | Or(p, q) -> 
-            let phi1, lst1 = ranf2lvnf view p in 
-            let phi2, lst2 = ranf2lvnf view q in 
-            (remove_trivial(Or(phi1, phi2)), lst1@lst2)
-        | Exists(x, p) ->  
-            let phi1, lst1 = ranf2lvnf view p in 
-            let add_exist var (varlst, vfol, phi_i) = 
-                if List.mem var varlst then (varlst, vfol, phi_i) 
-                else if List.mem var (fv vfol) then (union [var] varlst, vfol, phi_i) 
-                else (varlst, vfol, remove_trivial (mk_exists var phi_i)) in
-            let newlst = List.map (add_exist x) lst1 in 
-            (remove_trivial (mk_exists x phi1), newlst)
-        | And(_,_) -> let conj_lst = to_conj_lst fm in 
-            lvnf_of_conj (List.map (ranf2lvnf view) conj_lst)
-        | Not(p) -> 
+        | Or(p, q) ->
             let phi1, lst1 = ranf2lvnf view p in
-            let negate_e (varlst, vfol, phi_i) = 
+            let phi2, lst2 = ranf2lvnf view q in
+            (remove_trivial(Or(phi1, phi2)), lst1@lst2)
+        | Exists(x, p) ->
+            let phi1, lst1 = ranf2lvnf view p in
+            let add_exist var (varlst, vfol, phi_i) =
+                if List.mem var varlst then (varlst, vfol, phi_i)
+                else if List.mem var (fv vfol) then (union [var] varlst, vfol, phi_i)
+                else (varlst, vfol, remove_trivial (mk_exists var phi_i)) in
+            let newlst = List.map (add_exist x) lst1 in
+            (remove_trivial (mk_exists x phi1), newlst)
+        | And(_,_) -> let conj_lst = to_conj_lst fm in
+            lvnf_of_conj (List.map (ranf2lvnf view) conj_lst)
+        | Not(p) ->
+            let phi1, lst1 = ranf2lvnf view p in
+            let negate_e (varlst, vfol, phi_i) =
                 (* negate_e return a fol in linear-view normal form *)
-                if (List.length varlst) = 0 then 
+                if (List.length varlst) = 0 then
                 (* no quantifiers  *)
                 let dis_lst_of_v = disjuncts (nnf (Formulas.Not(vfol))) in
                 let lstfol = List.map (fun x -> ([],x,True)) dis_lst_of_v in
@@ -587,47 +587,47 @@ let rec ranf2lvnf view fm = if not (is_superformula_of_view view fm) then (fm, [
                 the we can pull it out
                 *)
                 else (remove_trivial(Formulas.Not(itlist mk_exists varlst ((Formulas.And (vfol, phi_i))))), [] ) in
-            let conjlst = List.map negate_e lst1 in 
+            let conjlst = List.map negate_e lst1 in
             lvnf_of_conj ((remove_trivial(Formulas.Not(phi1)), [])::conjlst)
-        
+
         | _ -> (fm, [])
 
-and and_of_two_lvnf (phi1, lst1) (phi2, lst2) = 
-    let newlst1 = ([],True,phi1)::lst1 in 
-    let newlst2 = ([],True,phi2)::lst2 in 
-    let and_two_e (vars1, vfol1, phi_i1) (vars2, vfol2, phi_i2) = 
+and and_of_two_lvnf (phi1, lst1) (phi2, lst2) =
+    let newlst1 = ([],True,phi1)::lst1 in
+    let newlst2 = ([],True,phi2)::lst2 in
+    let and_two_e (vars1, vfol1, phi_i1) (vars2, vfol2, phi_i2) =
         (* (exists vars1, vfol1 and phi_i1) and (exists vars2, vfol2 and phi_i2) *)
-        let intro_var freevars v (newvs, subfn) = 
-            let z = variant v freevars in 
-            (newvs@[v], (v |-> Fol.Var z) subfn) in 
-        let freevars1 = subtract ((union (fv (And(vfol1, phi_i1))) (fv (And(vfol2, phi_i2))))) (union vars1 vars2) in 
-        let newvars1, subfn1 = itlist (intro_var freevars1) vars1 ([],undefined) in 
-        let newvfol1 = subst subfn1 vfol1 in 
+        let intro_var freevars v (newvs, subfn) =
+            let z = variant v freevars in
+            (newvs@[v], (v |-> Fol.Var z) subfn) in
+        let freevars1 = subtract ((union (fv (And(vfol1, phi_i1))) (fv (And(vfol2, phi_i2))))) (union vars1 vars2) in
+        let newvars1, subfn1 = itlist (intro_var freevars1) vars1 ([],undefined) in
+        let newvfol1 = subst subfn1 vfol1 in
         let newphi_i1 = subst subfn1 phi_i1 in
-        (* now we get 
+        (* now we get
         exists newvars1, (newvfol1 and newphi_i1) and (exists vars2, vfol2 and phi_i2)
-        we continue to pull the vars2 in the formula 
+        we continue to pull the vars2 in the formula
         (newvfol1 and newphi_i1) and (exists vars2, vfol2 and phi_i2)
          *)
-        let freevars2 = subtract ((union (fv (And(newvfol1, newphi_i1))) (fv (And(vfol2, phi_i2))))) vars2 in 
+        let freevars2 = subtract ((union (fv (And(newvfol1, newphi_i1))) (fv (And(vfol2, phi_i2))))) vars2 in
         let newvars2, subfn2 = itlist (intro_var freevars2) vars2 ([],undefined) in
-        let newvfol2 = subst subfn2 vfol2 in 
-        let newphi_i2 = subst subfn2 phi_i2 in 
-        (* now we get 
+        let newvfol2 = subst subfn2 vfol2 in
+        let newphi_i2 = subst subfn2 phi_i2 in
+        (* now we get
         exists newvars1, exists newvars2, (newvfol1 and newphi_i1) and (newvfol2 and newvphi_i2)
          *)
-        (newvars1@newvars2, remove_trivial (And(newvfol1, newvfol2)), remove_trivial(And(newphi_i1, newphi_i2))) in 
-    let dis_law_result = allpairs and_two_e newlst1 newlst2 in 
+        (newvars1@newvars2, remove_trivial (And(newvfol1, newvfol2)), remove_trivial(And(newphi_i1, newphi_i2))) in
+    let dis_law_result = allpairs and_two_e newlst1 newlst2 in
     (* we can find the phi in this list result which is from phi1 and phi2 *)
     let phis, others = List.partition (fun x -> match x with ([], True, _) -> true | _ -> false) dis_law_result in
     let filtered_others = List.filter (fun x -> match x with (_, _, False) -> false | _ -> true) others in
-    let flattedphis = List.map (fun (_,_,x) -> x) phis in 
+    let flattedphis = List.map (fun (_,_,x) -> x) phis in
     (Prop.list_disj flattedphis, filtered_others)
 
-and lvnf_of_conj conj_lst = 
-    match conj_lst with 
+and lvnf_of_conj conj_lst =
+    match conj_lst with
     hd::tl ->
-    List.fold_left (fun x y -> and_of_two_lvnf x y) hd tl 
+    List.fold_left (fun x y -> and_of_two_lvnf x y) hd tl
     | _ -> invalid_arg "function lvnf_of_conj called with a empty list";;
 
 let ranf2lvnf view fm = ranf2lvnf view (remove_trivial fm);;
