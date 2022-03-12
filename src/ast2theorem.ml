@@ -525,8 +525,25 @@ let lean_simp_theorem_of_view_uniqueness (log : bool) (prog : expr) : lean_theor
    view_uniqueness_sentence_of_stt log prog)))
 *)
 
+
+let stringify_lean_type (ltyp : lean_type) : string =
+  let rec aux (ltyp : lean_type) : string =
+    match ltyp with
+    | LeanBaseType styp           -> stype_to_lean_type styp
+    | LeanFuncType (ltyp1, ltyp2) -> Printf.sprintf "(%s -> %s)" (aux ltyp1) (aux ltyp2)
+  in
+  aux ltyp
+
+
 let stringify_lean_theorem (thm : lean_theorem) : string =
-  failwith "TODO: stringify_lean_theorem"
+  let LeanTheorem { name; parameter; statement } = thm in
+  let s_parameter =
+    parameter |> List.map (fun (x, ltyp) ->
+      Printf.sprintf " {%s: %s}" x (stringify_lean_type ltyp)
+    ) |> String.concat ""
+  in
+  let s_statement = stringify_lean_formula statement in
+  Printf.sprintf "theorem %s%s: %s" name s_parameter s_statement
 
 
 let gen_lean_code_for_theorems (thms : lean_theorem list) : string =

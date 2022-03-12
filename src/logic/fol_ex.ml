@@ -139,10 +139,10 @@ type lean_infix_operator =
   | LeanInfixNotEqual (* ≠ *)
   | LeanInfixLeq      (* ≤ *)
   | LeanInfixGeq      (* ≥ *)
-  | LeanInfixAnd
-  | LeanInfixOr
-  | LeanInfixImp
-  | LeanInfixIff
+  | LeanInfixAnd      (* ∧ *)
+  | LeanInfixOr       (* ∨ *)
+  | LeanInfixImp      (* → *)
+  | LeanInfixIff      (* ↔ *)
   | LeanInfixConcat   (* ++ *)
   | LeanInfixDiv      (* / *)
   | LeanInfixMult     (* * *)
