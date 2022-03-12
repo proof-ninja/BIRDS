@@ -150,6 +150,13 @@ type lean_infix_operator =
   | LeanInfixAdd      (* + *)
   | LeanInfixCons     (* :: *)
 
+(* isomorphic to `Expr.stype` *)
+type lean_annot =
+  | LeanAnnotInt
+  | LeanAnnotRat
+  | LeanAnnotString
+  | LeanAnnotProp
+
 type lean_formula =
   | LeanNull
   | LeanBool   of bool
@@ -162,6 +169,7 @@ type lean_formula =
   | LeanApp    of string * lean_formula list
   | LeanForall of lean_variable * lean_formula
   | LeanExists of lean_variable * lean_formula
+  | LeanAnnot  of lean_formula * lean_annot
 
 
 let stringify_lean_infix_operator = function
@@ -207,6 +215,16 @@ let stringify_lean_formula (lfm : lean_formula) : string =
 
     | LeanForall (x, lfm0) -> Printf.sprintf "(∀%s, %s)" x (aux lfm0)
     | LeanExists (x, lfm0) -> Printf.sprintf "(∃%s, %s)" x (aux lfm0)
+
+    | LeanAnnot (lfm0, styp) ->
+        let annot =
+          match styp with
+          | LeanAnnotInt    -> "int"
+          | LeanAnnotRat    -> "rat"
+          | LeanAnnotProp   -> "Prop"
+          | LeanAnnotString -> "string"
+        in
+        Printf.sprintf "(%s: %s)" (aux lfm0) annot
   in
   aux lfm
 
@@ -253,25 +271,25 @@ let lean_string_of_string (str : string) =
             if (str = "null") then  str else "\""^(String.sub str 1 (String.length str -2))^"\""
 *)
 
-let lean_formula_of_literal_string (str : string) : lean_formula =
+let lean_formula_of_literal (str : string) : lean_formula * lean_annot =
   try
     let n = int_of_string str in
-    LeanInt n
+    (LeanInt n, LeanAnnotInt)
   with
   | _ ->
       try
         let r = float_of_string str in
-        LeanFloat r
+        (LeanFloat r, LeanAnnotRat)
       with
       | _ ->
           try
             let b = bool_of_string str in
-            LeanBool b
+            (LeanBool b, LeanAnnotProp)
           with
           | _ ->
               match str with
-              | "null" -> LeanNull
-              | _      -> LeanString (String.sub str 1 (String.length str - 2))
+              | "null" -> (LeanNull, LeanAnnotInt)
+              | _      -> (LeanString (String.sub str 1 (String.length str - 2)), LeanAnnotString)
 
 
 let rec lean_formula_of_term (fm : term) : lean_formula =
@@ -284,7 +302,7 @@ let rec lean_formula_of_term (fm : term) : lean_formula =
   | Fn ("-", [tm1; tm2])       -> LeanInfix (LeanInfixSubtr, iter tm1, iter tm2)
   | Fn ("+", [tm1; tm2])       -> LeanInfix (LeanInfixAdd, iter tm1, iter tm2)
   | Fn ("::", [tm1; tm2])      -> LeanInfix (LeanInfixCons, iter tm1, iter tm2)
-  | Fn (literal, [])           -> lean_formula_of_literal_string literal
+  | Fn (literal, [])           -> let (lfm, styp) = lean_formula_of_literal literal in LeanAnnot (lfm, styp)
   | Fn (f, ((_ :: _) as args)) -> LeanApp (f, List.map iter args)
 (* ORIGINAL:
   match fm with

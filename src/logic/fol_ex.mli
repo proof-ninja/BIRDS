@@ -31,6 +31,13 @@ type lean_infix_operator =
   | LeanInfixAdd      (* + *)
   | LeanInfixCons     (* :: *)
 
+(* isomorphic to `Expr.stype` *)
+type lean_annot =
+  | LeanAnnotInt
+  | LeanAnnotRat
+  | LeanAnnotString
+  | LeanAnnotProp
+
 type lean_formula =
   | LeanNull
   | LeanBool   of bool
@@ -43,6 +50,7 @@ type lean_formula =
   | LeanApp    of string * lean_formula list
   | LeanForall of lean_variable * lean_formula
   | LeanExists of lean_variable * lean_formula
+  | LeanAnnot  of lean_formula * lean_annot
 
 val stringify_lean_formula : lean_formula -> string
 
