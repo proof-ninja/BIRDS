@@ -164,8 +164,51 @@ type lean_formula =
   | LeanExists of lean_variable * lean_formula
 
 
-let stringify_lean_formula (lp : lean_formula) : string =
-  failwith "TODO: stringify_lean_formula"
+let stringify_lean_infix_operator = function
+  | LeanInfixEqual    -> "="
+  | LeanInfixLt       -> "<"
+  | LeanInfixGt       -> ">"
+  | LeanInfixNotEqual -> "≠"
+  | LeanInfixLeq      -> "≤"
+  | LeanInfixGeq      -> "≥"
+  | LeanInfixAnd      -> "∧"
+  | LeanInfixOr       -> "∨"
+  | LeanInfixImp      -> "→"
+  | LeanInfixIff      -> "↔"
+  | LeanInfixConcat   -> "++"
+  | LeanInfixDiv      -> "/"
+  | LeanInfixMult     -> "*"
+  | LeanInfixSubtr    -> "-"
+  | LeanInfixAdd      -> "+"
+  | LeanInfixCons     -> "::"
+
+
+let stringify_lean_formula (lfm : lean_formula) : string =
+  let rec aux (lfm : lean_formula) =
+    match lfm with
+    | LeanNull       -> "null"
+    | LeanBool true  -> "true"
+    | LeanBool false -> "false"
+    | LeanInt n      -> string_of_int n
+    | LeanFloat r    -> string_of_float r
+    | LeanString s   -> Printf.sprintf "\"%s\"" s
+    | LeanVar x      -> x
+    | LeanNot lfm0   -> Printf.sprintf "(¬ %s)" (aux lfm0)
+
+    | LeanInfix (op, lfm1, lfm2) ->
+        let s_op = stringify_lean_infix_operator op in
+        let s1 = aux lfm1 in
+        let s2 = aux lfm2 in
+        Printf.sprintf "(%s %s %s)" s1 s_op s2
+
+    | LeanApp (f, lfms) ->
+        let ss = lfms |> List.map aux in
+        Printf.sprintf "(%s %s)" f (String.concat " " ss)
+
+    | LeanForall (x, lfm0) -> Printf.sprintf "(∀%s, %s)" x (aux lfm0)
+    | LeanExists (x, lfm0) -> Printf.sprintf "(∃%s, %s)" x (aux lfm0)
+  in
+  aux lfm
 
 (*
 let lean_logic_character name = match name with
