@@ -32,7 +32,7 @@ case $CMD in
         for FILE in "$LEFT"/compile/*/*.log; do
             RELPATH="${FILE##"$LEFT/"}"
             echo "=======<$RELPATH>======="
-            diff "$LEFT/$RELPATH" "$RIGHT/$RELPATH"
+            diff -u "$LEFT/$RELPATH" "$RIGHT/$RELPATH"
         done
         ;;
     diff_err)
@@ -41,7 +41,7 @@ case $CMD in
         for FILE in "$LEFT"/compile/*/*.err; do
             RELPATH="${FILE##"$LEFT/"}"
             echo "=======<$RELPATH>======="
-            diff "$LEFT/$RELPATH" "$RIGHT/$RELPATH"
+            diff -u "$LEFT/$RELPATH" "$RIGHT/$RELPATH"
         done
         ;;
     *)
