@@ -2230,7 +2230,7 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
           return @@ Some {
             current_target      = delta_key;
             current_accumulated = [ intermediate ];
-            already_handled     = state.already_handled |> DeltaKeySet.add delta_key;
+            already_handled     = state.already_handled |> DeltaKeySet.add state.current_target;
             accumulated         = group :: state.accumulated;
           }
   ) (return None) >>= fun state_opt ->
@@ -2245,6 +2245,7 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
 
 
 let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, error) result =
+  Printf.printf "EXPR:\n%s\n" (Expr.to_string expr);
   let open ResultMonad in
   let table_env =
     expr.sources |> List.fold_left (fun table_env (table, col_and_type_pairs) ->
@@ -2252,7 +2253,8 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
       table_env |> TableEnv.add table cols
     ) TableEnv.empty
   in
-  divide_rules_into_groups table_env expr.rules >>= fun rule_groups ->
+  let rules = List.rev expr.rules in
+  divide_rules_into_groups table_env rules >>= fun rule_groups ->
   rule_groups |> List.fold_left (fun res rule_group ->
     res >>= fun (i, creation_acc, update_acc, delta_env) ->
     let temporary_table = Printf.sprintf "temp%d" i in
