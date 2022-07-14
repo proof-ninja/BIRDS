@@ -62,9 +62,13 @@ type sql_group_by =
 type sql_having =
   | SqlHaving of sql_comp_const list
 
+type sql_union_operation =
+  | SqlUnionOp
+  | SqlUnionAllOp
+
 type sql_from_target =
   | SqlFromTable of sql_schema_name option * sql_table_name
-  | SqlFromOther of sql_union
+  | SqlFromOther of sql_query
 
 and sql_from_clause_entry =
   sql_from_target * sql_instance_name
@@ -91,12 +95,6 @@ and sql_query =
       agg    : sql_aggregation_clause;
     }
   | SqlQuerySelectWhereFalse
-
-and sql_union_operation =
-  | SqlUnionOp
-  | SqlUnionAllOp
-
-and sql_union =
   | SqlUnion of sql_union_operation * sql_query list
 
 type sql_operation =
@@ -173,7 +171,7 @@ let rec stringify_sql_from_target (target : sql_from_target) : string =
   match target with
   | SqlFromTable (None, table)        -> table
   | SqlFromTable (Some schema, table) -> Printf.sprintf "%s.%s" schema table
-  | SqlFromOther sql_union            -> Printf.sprintf "(%s)" (stringify_sql_union sql_union)
+  | SqlFromOther sql_query            -> Printf.sprintf "(%s)" (stringify_sql_query sql_query)
 
 
 and stringify_sql_from_clause (SqlFrom froms : sql_from_clause) : string =
@@ -252,14 +250,13 @@ and stringify_sql_query (sql : sql_query) : string =
       let s_agg = stringify_sql_aggregation_clause agg in
       Printf.sprintf "%s%s%s%s" s_select s_from s_where s_agg
 
-
-and stringify_sql_union (SqlUnion (union_op, queries) : sql_union) : string =
-  let sep =
-    match union_op with
-    | SqlUnionOp    -> " UNION "
-    | SqlUnionAllOp -> " UNION ALL "
-  in
-  queries |> List.map stringify_sql_query |> String.concat sep
+  | SqlUnion (union_op, queries) ->
+      let sep =
+        match union_op with
+        | SqlUnionOp    -> " UNION "
+        | SqlUnionAllOp -> " UNION ALL "
+      in
+      queries |> List.map stringify_sql_query |> String.concat sep
 
 
 let stringify_sql_operation (sql_op : sql_operation) : string =
@@ -458,7 +455,7 @@ let get_aggregation_sql (vt : vartab) (cnt : colnamtab) (head : rterm) (agg_eqs 
     (group_by_sql, having_sql)
 
 
-let rec non_rec_unfold_sql_of_symtkey (dbschema : string) (idb : symtable) (cnt : colnamtab) (goal : symtkey) : sql_union =
+let rec non_rec_unfold_sql_of_symtkey (dbschema : string) (idb : symtable) (cnt : colnamtab) (goal : symtkey) : sql_query =
   (* get all the rule having this query in head *)
   (* print_endline ("Reach " ^ (string_of_symtkey goal)); *)
   if not (Hashtbl.mem idb goal) then
@@ -945,7 +942,7 @@ let non_rec_unfold_sql_of_update (dbschema : string) (log : bool) (optimize : bo
             SELECT array_agg(tbl) INTO array_"^ (get_rterm_predname delta)^" FROM ("^
             "SELECT "^"(ROW("^(String.concat "," (Hashtbl.find cnt (symtkey_of_rterm delta))) ^") :: "^dbschema^"."^ pname ^").*
             FROM ("^
-            (stringify_sql_union (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule)))) ^") AS "^(get_rterm_predname delta)^"_extra_alias) AS tbl"
+            (stringify_sql_query (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule)))) ^") AS "^(get_rterm_predname delta)^"_extra_alias) AS tbl"
             (* ^"
             EXCEPT
             SELECT * FROM  "^dbschema^"."^ pname  *)
@@ -981,7 +978,7 @@ let non_rec_unfold_sql_of_update (dbschema : string) (log : bool) (optimize : bo
             SELECT array_agg(tbl) INTO array_"^ (get_rterm_predname delta)^" FROM (" ^
             "SELECT "^"(ROW("^(String.concat "," (Hashtbl.find cnt (symtkey_of_rterm delta))) ^") :: "^dbschema^"."^ pname ^").*
             FROM ("^
-            (stringify_sql_union (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule))))^") AS "^(get_rterm_predname delta)^"_extra_alias) AS tbl;",
+            (stringify_sql_query (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule))))^") AS "^(get_rterm_predname delta)^"_extra_alias) AS tbl;",
             (* delete each tuple *)
             "
             IF array_"^ (get_rterm_predname delta)^" IS DISTINCT FROM NULL THEN
@@ -1653,11 +1650,19 @@ type argument =
   | ArgNamedVar of named_var
   | ArgConst    of const
 
+type delta_kind =
+  | Insert
+  | Delete
+
+type delta_key = delta_kind * table_name
+
 type positive_predicate =
-  | Positive of table_name * argument list
+  | PositivePred  of table_name * argument list
+  | PositiveDelta of delta_key * argument list
 
 type negative_predicate =
-  | Negative of table_name * argument list
+  | NegativePred  of table_name * argument list
+  | NegativeDelta of delta_key * argument list
 
 type comparison_operator =
   | EqualTo
@@ -1670,9 +1675,9 @@ type comparison_operator =
 type comparison =
   | Comparison of comparison_operator * vterm * vterm
 
-type delta_kind =
-  | Insert
-  | Delete
+module TableEnv = Map.Make(String)
+
+type table_environment = (column_name list) TableEnv.t
 
 type error =
   | InvalidArgInHead of var
@@ -1680,14 +1685,15 @@ type error =
   | ArityMismatch of { expected : int; got : int }
   | UnknownComparisonOperator of string
   | PredOccursInRuleHead of rterm
-  | DeltaOccursInRuleBody of rterm
   | EqualToMoreThanOneConstant of { variable : named_var; const1 : const; const2 : const }
   | HeadVariableDoesNotOccurInBody of named_var
   | UnexpectedNamedVar of named_var
   | UnexpectedVarForm of var
   | UnknownBinaryOperator of string
   | UnknownUnaryOperator of string
-  | UnknownTable of { table : table_name; arity : int }
+  | UnknownTable of table_name
+  | HasMoreThanOneRuleGroup of delta_key
+  | DeltaNotFound of delta_key
 
 
 let show_error = function
@@ -1701,8 +1707,6 @@ let show_error = function
       Printf.sprintf "unknown comparison operator %s" op
   | PredOccursInRuleHead rterm ->
       Printf.sprintf "a predicate occurs in a rule head: %s" (string_of_rterm rterm)
-  | DeltaOccursInRuleBody rterm ->
-      Printf.sprintf "a delta predicate occurs in a rule body: %s" (string_of_rterm rterm)
   | EqualToMoreThanOneConstant r ->
       Printf.sprintf "variable %s are required to be equal to more than one constants; %s and %s"
         r.variable (string_of_const r.const1) (string_of_const r.const2)
@@ -1716,35 +1720,42 @@ let show_error = function
       Printf.sprintf "unknown binary operator %s" op
   | UnknownUnaryOperator op ->
       Printf.sprintf "unknown unary operator %s" op
-  | UnknownTable r ->
-      Printf.sprintf "unknown table %s of arity %d" r.table r.arity
+  | UnknownTable table ->
+      Printf.sprintf "unknown table %s" table
+  | HasMoreThanOneRuleGroup (Insert, table) ->
+      Printf.sprintf "+%s has more than one rule group" table
+  | HasMoreThanOneRuleGroup (Delete, table) ->
+      Printf.sprintf "-%s has more than one rule group" table
+  | DeltaNotFound (Insert, table) ->
+      Printf.sprintf "no rule has already been defined for +%s" table
+  | DeltaNotFound (Delete, table) ->
+      Printf.sprintf "no rule has already been defined for -%s" table
 
 
-let get_column_names_from_table (colnamtab : colnamtab) (table : table_name) (arity : int) : (column_name list, error) result =
+let get_column_names_from_table (table_env : table_environment) (table : table_name) : (column_name list, error) result =
   let open ResultMonad in
-  match Hashtbl.find_opt colnamtab (table, arity) with
-  | None      -> err @@ UnknownTable { table; arity }
+  match table_env |> TableEnv.find_opt table with
+  | None      -> err @@ UnknownTable table
   | Some cols -> return cols
 
 
 (* Gets the list `cols` of column names of table named `table` and zips it with `xs`.
    Returns `Error _` when the length of `xs` is different from that of `cols`. *)
-let combine_column_names (colnamtab : colnamtab) (table : table_name) (xs : 'a list) : ((column_name * 'a) list, error) result =
+let combine_column_names (table_env : table_environment) (table : table_name) (xs : 'a list) : ((column_name * 'a) list, error) result =
   let open ResultMonad in
-  let arity = List.length xs in
-  get_column_names_from_table colnamtab table arity >>= fun columns ->
+  get_column_names_from_table table_env table >>= fun columns ->
   try
     return (List.combine columns xs)
   with
   | _ ->
       err @@ ArityMismatch {
         expected = List.length columns;
-        got = List.length xs;
+        got      = List.length xs;
       }
 
 
 (* Returns `(table_name, column_and_var_pairs)`. *)
-let get_spec_from_head (colnamtab : colnamtab) (head : rterm) : (delta_kind * table_name * (column_name * named_var) list, error) result =
+let get_spec_from_head (table_env : table_environment) (head : rterm) : (delta_kind * table_name * (column_name * named_var) list, error) result =
   let open ResultMonad in
   begin
     match head with
@@ -1761,7 +1772,7 @@ let get_spec_from_head (colnamtab : colnamtab) (head : rterm) : (delta_kind * ta
     ) (return []) >>= fun x_acc ->
     return (table, List.rev x_acc)
   end >>= fun (table, vars) ->
-  combine_column_names colnamtab table vars >>= fun column_and_var_pairs ->
+  combine_column_names table_env table vars >>= fun column_and_var_pairs ->
   return (delta_kind, table, column_and_var_pairs)
 
 
@@ -1806,17 +1817,31 @@ let decompose_body (body : term list) : (positive_predicate list * negative_pred
     match term with
     | Rel (Pred (table, vars)) ->
         validate_args_in_body vars >>= fun args ->
-        return (Positive (table, args) :: pos_acc, neg_acc, comp_acc)
+        return (PositivePred (table, args) :: pos_acc, neg_acc, comp_acc)
 
-    | Rel rt ->
-        err @@ DeltaOccursInRuleBody rt
+    | Rel (Deltainsert (table, vars)) ->
+        validate_args_in_body vars >>= fun args ->
+        let delta_key = (Insert, table) in
+        return (PositiveDelta (delta_key, args) :: pos_acc, neg_acc, comp_acc)
+
+    | Rel (Deltadelete (table, vars)) ->
+        validate_args_in_body vars >>= fun args ->
+        let delta_key = (Delete, table) in
+        return (PositiveDelta (delta_key, args) :: pos_acc, neg_acc, comp_acc)
 
     | Not (Pred (table, vars)) ->
         validate_args_in_body vars >>= fun args ->
-        return (pos_acc, Negative (table, args) :: neg_acc, comp_acc)
+        return (pos_acc, NegativePred (table, args) :: neg_acc, comp_acc)
 
-    | Not rt ->
-        err @@ DeltaOccursInRuleBody rt
+    | Not (Deltainsert (table, vars)) ->
+        validate_args_in_body vars >>= fun args ->
+        let delta_key = (Insert, table) in
+        return (pos_acc, NegativeDelta (delta_key, args) :: neg_acc, comp_acc)
+
+    | Not (Deltadelete (table, vars)) ->
+        validate_args_in_body vars >>= fun args ->
+        let delta_key = (Delete, table) in
+        return (pos_acc, NegativeDelta (delta_key, args) :: neg_acc, comp_acc)
 
     | Equat (Equation (op_str, t1, t2)) ->
         get_comparison_operator op_str >>= fun op ->
@@ -1831,12 +1856,35 @@ let decompose_body (body : term list) : (positive_predicate list * negative_pred
   return (List.rev pos_acc, List.rev neg_acc, List.rev comp_acc)
 
 
-let assign_instance_names (poss : positive_predicate list) : (positive_predicate * instance_name) list =
-  poss |> List.mapi (fun index pos ->
-    let Positive (table, _args) = pos in
-    let instance_name = Printf.sprintf "%s%d" table index in
-    (pos, instance_name)
-  )
+module DeltaKey = struct
+  type t = delta_key
+
+  let compare = Stdlib.compare
+end
+
+module DeltaEnv = Map.Make(DeltaKey)
+
+type delta_environment = (instance_name * column_name list) DeltaEnv.t
+
+
+let assign_or_find_instance_names (delta_env : delta_environment) (poss : positive_predicate list) : ((positive_predicate * instance_name) list, error) result =
+  let open ResultMonad in
+  poss |> List.fold_left (fun res pos ->
+    res >>= fun (index, acc) ->
+    match pos with
+    | PositivePred (table, _args) ->
+        let instance = Printf.sprintf "%s%d" table index in
+        return (index + 1, (pos, instance) :: acc)
+
+    | PositiveDelta (delta_key, _args) ->
+        begin
+          match delta_env |> DeltaEnv.find_opt delta_key with
+          | None                   -> err @@ DeltaNotFound delta_key
+          | Some (instance, _cols) -> return (index, (pos, instance) :: acc)
+        end
+
+  ) (return (0, [])) >>= fun (_, acc) ->
+  return @@ List.rev acc
 
 
 type as_const_or_var =
@@ -1925,12 +1973,32 @@ let sql_vterm_of_arg (varmap : Subst.entry VarMap.t) (arg : argument) : (sql_vte
       return @@ SqlConst c
 
 
-(* Extends `subst` by traversing occurrence of variables in positive predicates. *)
-let extend_substitution_by_traversing_positives (colnamtab : colnamtab) (named_poss : (positive_predicate * instance_name) list) (subst : Subst.t) : (Subst.t, error) result =
+let combine_delta_column_names (delta_env : delta_environment) (delta_key : delta_key) (args : argument list) =
   let open ResultMonad in
-  named_poss |> List.fold_left (fun res (Positive (table, args), instance) ->
+  match delta_env |> DeltaEnv.find_opt delta_key with
+  | None ->
+      err @@ DeltaNotFound delta_key
+
+  | Some (_instance, cols) ->
+      begin
+        try
+          return @@ List.combine cols args
+        with
+        | _ ->
+            err @@ ArityMismatch { expected = List.length cols; got = List.length args }
+      end
+
+
+(* Extends `subst` by traversing occurrence of variables in positive predicates. *)
+let extend_substitution_by_traversing_positives (table_env : table_environment) (delta_env : delta_environment) (named_poss : (positive_predicate * instance_name) list) (subst : Subst.t) : (Subst.t, error) result =
+  let open ResultMonad in
+  named_poss |> List.fold_left (fun res (pos, instance) ->
     res >>= fun subst ->
-    combine_column_names colnamtab table args >>= fun column_and_arg_pairs ->
+    begin
+      match pos with
+      | PositivePred (table, args)      -> combine_column_names table_env table args
+      | PositiveDelta (delta_key, args) -> combine_delta_column_names delta_env delta_key args
+    end >>= fun column_and_arg_pairs ->
     let subst =
       column_and_arg_pairs |> List.fold_left (fun subst (column, arg) ->
         match arg with
@@ -1977,15 +2045,24 @@ let partition_map f xs =
   (List.rev acc1, List.rev acc2)
 
 
-let convert_rule_to_operation_based_sql (colnamtab : colnamtab) (rule : rule) : (delta_kind * sql_query, error) result =
+(* The type for representing a rule without its head predicate,
+   i.e., the part `(X_1, ..., X_m) :- C_1, ..., C_n` of
+   a rule `±r(X_1, ..., X_m) :- C_1, ..., C_n`. *)
+type headless_rule = {
+  columns_and_vars : (column_name * named_var) list;
+  body             : term list;
+}
+
+
+let convert_rule_to_operation_based_sql (table_env : table_environment) (delta_env : delta_environment) (headless_rule : headless_rule) : (sql_query, error) result =
   let open ResultMonad in
-  let (head, body) = rule in
-  get_spec_from_head colnamtab head >>= fun (delta_kind, table, column_and_var_pairs) ->
+  let column_and_var_pairs = headless_rule.columns_and_vars in
+  let body = headless_rule.body in
   decompose_body body >>= fun (poss, negs, comps) ->
 
-  let named_poss = assign_instance_names poss in
+  assign_or_find_instance_names delta_env poss >>= fun named_poss ->
   let subst = Subst.empty in
-  extend_substitution_by_traversing_positives colnamtab named_poss subst >>= fun subst ->
+  extend_substitution_by_traversing_positives table_env delta_env named_poss subst >>= fun subst ->
   let (comps, subst) = extend_substitution_by_traversing_conparisons comps subst in
 
   (* Converts `subst` into SQL constraints and `varmap`: *)
@@ -2047,11 +2124,22 @@ let convert_rule_to_operation_based_sql (colnamtab : colnamtab) (rule : rule) : 
   ) (return sql_constraint_acc) >>= fun sql_constraint_acc ->
 
   (* Adds constraints that stem from negative predicates: *)
-  negs |> List.fold_left (fun res (Negative (table, args)) ->
+  negs |> List.fold_left (fun res neg ->
     res >>= fun sql_constraint_acc ->
+    begin
+      match neg with
+      | NegativePred (table, args) ->
+          combine_column_names table_env table args >>= fun column_and_arg_pairs ->
+          return (table, column_and_arg_pairs)
+
+      | NegativeDelta (delta_key, args) ->
+          combine_delta_column_names delta_env delta_key args >>= fun column_and_arg_pairs ->
+          let (_, table) = delta_key in
+          return (table, column_and_arg_pairs)
+
+    end >>= fun (table, column_and_arg_pairs) ->
     let instance = "t" in
     let sql_from = SqlFrom [ (SqlFromTable (None, table), instance) ] in
-    combine_column_names colnamtab table args >>= fun column_and_arg_pairs ->
     column_and_arg_pairs |> List.fold_left (fun res (column, arg) ->
       res >>= fun acc ->
       sql_vterm_of_arg varmap arg >>= fun sql_vt ->
@@ -2079,42 +2167,111 @@ let convert_rule_to_operation_based_sql (colnamtab : colnamtab) (rule : rule) : 
 
   (* Builds the FROM clause: *)
   let from_clause_entries =
-    named_poss |> List.map (fun (Positive (table, _args), instance) -> (SqlFromTable (None, table), instance))
+    named_poss |> List.map (fun (pos, instance) ->
+      match pos with
+      | PositivePred (table, _args) ->
+          [ (SqlFromTable (None, table), instance) ]
+
+      | _ ->
+          []
+    ) |> List.concat
   in
   let sql_from = SqlFrom from_clause_entries in
 
   (* Builds the WHERE clause: *)
   let sql_where = SqlWhere (List.rev sql_constraint_acc) in
 
-  let sql_query =
-    SqlQuery {
-      select = sql_select;
-      from   = sql_from;
-      where  = sql_where;
-      agg    = (SqlGroupBy [], SqlHaving []);
-    }
-  in
-  return (delta_kind, sql_query)
+  return @@ SqlQuery {
+    select = sql_select;
+    from   = sql_from;
+    where  = sql_where;
+    agg    = (SqlGroupBy [], SqlHaving []);
+  }
+
+
+module DeltaKeySet = Set.Make(DeltaKey)
+
+type rule_group = delta_key * headless_rule list
+
+type grouping_state = {
+  current_target      : delta_key;
+  current_accumulated : headless_rule list;
+  already_handled     : DeltaKeySet.t;
+  accumulated         : rule_group list;
+}
+
+
+let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule list) : (rule_group list, error) result =
+  let open ResultMonad in
+  rules |> List.fold_left (fun res rule ->
+    res >>= fun state_opt ->
+    let (head, body) = rule in
+    get_spec_from_head table_env head >>= fun (delta_kind, table, columns_and_vars) ->
+    let delta_key = (delta_kind, table) in
+    let intermediate = { columns_and_vars; body } in
+    match state_opt with
+    | None ->
+        return @@ Some {
+          current_target      = delta_key;
+          current_accumulated = [ intermediate ];
+          already_handled     = DeltaKeySet.empty;
+          accumulated         = [];
+        }
+
+    | Some state ->
+        if state.already_handled |> DeltaKeySet.mem delta_key then
+          err @@ HasMoreThanOneRuleGroup delta_key
+        else if delta_key = state.current_target then
+          return @@ Some { state with
+            current_accumulated = intermediate :: state.current_accumulated;
+          }
+        else
+          let group = (state.current_target, List.rev state.current_accumulated) in
+          return @@ Some {
+            current_target      = delta_key;
+            current_accumulated = [ intermediate ];
+            already_handled     = state.already_handled |> DeltaKeySet.add delta_key;
+            accumulated         = group :: state.accumulated;
+          }
+  ) (return None) >>= fun state_opt ->
+  match state_opt with
+  | None ->
+      return []
+
+  | Some state ->
+      let group_last = (state.current_target, List.rev state.current_accumulated) in
+      let groups = List.rev (group_last :: state.accumulated) in
+      return groups
 
 
 let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, error) result =
   let open ResultMonad in
-  let colnamtab =
-    let colnamtab = Hashtbl.create 32 in
-    expr.sources |> List.iter (fun (table, col_and_type_pairs) ->
-      let arity = List.length col_and_type_pairs in
+  let table_env =
+    expr.sources |> List.fold_left (fun table_env (table, col_and_type_pairs) ->
       let cols = col_and_type_pairs |> List.map fst in
-      Hashtbl.add colnamtab (table, arity) cols
-    );
-    colnamtab
+      table_env |> TableEnv.add table cols
+    ) TableEnv.empty
   in
-  expr.rules |> List.fold_left (fun res rule ->
-    res >>= fun (i, creation_acc, update_acc) ->
-    convert_rule_to_operation_based_sql colnamtab rule >>= fun (delta_kind, sql_query) ->
+  divide_rules_into_groups table_env expr.rules >>= fun rule_groups ->
+  rule_groups |> List.fold_left (fun res rule_group ->
+    res >>= fun (i, creation_acc, update_acc, delta_env) ->
     let temporary_table = Printf.sprintf "temp%d" i in
-    let instance_name = "inst" in
+    let (delta_key, headless_rules) = rule_group in
+    headless_rules |> List.fold_left (fun res_acc headless_rule ->
+      res_acc >>= fun sql_query_acc ->
+      convert_rule_to_operation_based_sql table_env delta_env headless_rule >>= fun sql_query ->
+      return @@ sql_query :: sql_query_acc
+    ) (return []) >>= fun sql_query_acc ->
+    let sql_query =
+      let sql_queries = List.rev sql_query_acc in
+      SqlUnion (SqlUnionOp, sql_queries)
+    in
+    let (delta_kind, table) = delta_key in
+    get_column_names_from_table table_env table >>= fun cols ->
+    let delta_env = delta_env |> DeltaEnv.add delta_key (temporary_table, cols) in
     let creation = SqlCreateTemporaryTable (temporary_table, sql_query) in
     let update =
+      let instance_name = "inst" in
       match delta_kind with
       | Insert ->
           SqlInsertInto
@@ -2127,8 +2284,8 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
               SqlWhere [
                 SqlExist (SqlFrom [ (SqlFromTable (None, temporary_table), instance_name) ], SqlWhere []) ])
     in
-    return (i + 1, creation :: creation_acc, update :: update_acc)
-  ) (return (0, [], [])) >>= fun (_, creation_acc, update_acc) ->
+    return (i + 1, creation :: creation_acc, update :: update_acc, delta_env)
+  ) (return (0, [], [], DeltaEnv.empty)) >>= fun (_, creation_acc, update_acc, _) ->
   return @@ List.concat [
     List.rev creation_acc;
     List.rev update_acc;
