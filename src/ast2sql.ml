@@ -99,6 +99,7 @@ and sql_query =
 
 type sql_operation =
   | SqlCreateTemporaryTable of table_name * sql_query
+  | SqlCreateView           of table_name * sql_query
   | SqlInsertInto           of table_name * sql_from_clause
   | SqlDeleteFrom           of table_name * sql_where_clause
 
@@ -263,6 +264,9 @@ let stringify_sql_operation (sql_op : sql_operation) : string =
   match sql_op with
   | SqlCreateTemporaryTable (table, sql_query) ->
       Printf.sprintf "CREATE TEMPORARY TABLE %s AS %s;" table (stringify_sql_query sql_query)
+
+  | SqlCreateView (table, sql_query) ->
+      Printf.sprintf "CREATE VIEW %s AS %s;" table (stringify_sql_query sql_query)
 
   | SqlInsertInto (table, sql_from_clause) ->
       Printf.sprintf "INSERT INTO %s SELECT *%s;" table (stringify_sql_from_clause sql_from_clause)
@@ -1684,7 +1688,6 @@ type error =
   | InvalidArgInBody of var
   | ArityMismatch of { expected : int; got : int }
   | UnknownComparisonOperator of string
-  | PredOccursInRuleHead of rterm
   | EqualToMoreThanOneConstant of { variable : named_var; const1 : const; const2 : const }
   | HeadVariableDoesNotOccurInBody of named_var
   | UnexpectedNamedVar of named_var
@@ -1705,8 +1708,6 @@ let show_error = function
       Printf.sprintf "arity mismatch (expected: %d, got: %d)" r.expected r.got
   | UnknownComparisonOperator op ->
       Printf.sprintf "unknown comparison operator %s" op
-  | PredOccursInRuleHead rterm ->
-      Printf.sprintf "a predicate occurs in a rule head: %s" (string_of_rterm rterm)
   | EqualToMoreThanOneConstant r ->
       Printf.sprintf "variable %s are required to be equal to more than one constants; %s and %s"
         r.variable (string_of_const r.const1) (string_of_const r.const2)
@@ -1754,26 +1755,37 @@ let combine_column_names (table_env : table_environment) (table : table_name) (x
       }
 
 
-(* Returns `(table_name, column_and_var_pairs)`. *)
-let get_spec_from_head (table_env : table_environment) (head : rterm) : (delta_kind * table_name * (column_name * named_var) list, error) result =
+let validate_args_in_head (table_env : table_environment) (table : table_name) (args : var list) =
   let open ResultMonad in
-  begin
-    match head with
-    | Pred (table, args)        -> err @@ PredOccursInRuleHead head
-    | Deltainsert (table, args) -> return (Insert, table, args)
-    | Deltadelete (table, args) -> return (Delete, table, args)
-  end >>= fun (delta_kind, table, args) ->
-  begin
-    args |> List.fold_left (fun res arg ->
-      res >>= fun x_acc ->
-      match arg with
-      | NamedVar x -> return @@ x :: x_acc
-      | _          -> err @@ InvalidArgInHead arg
-    ) (return []) >>= fun x_acc ->
-    return (table, List.rev x_acc)
-  end >>= fun (table, vars) ->
-  combine_column_names table_env table vars >>= fun column_and_var_pairs ->
-  return (delta_kind, table, column_and_var_pairs)
+  args |> List.fold_left (fun res arg ->
+    res >>= fun x_acc ->
+    match arg with
+    | NamedVar x -> return @@ x :: x_acc
+    | _          -> err @@ InvalidArgInHead arg
+  ) (return []) >>= fun x_acc ->
+  let vars = List.rev x_acc in
+  combine_column_names table_env table vars
+
+
+type head_spec =
+  | PredHead  of table_name * (column_name * named_var) list
+  | DeltaHead of delta_kind * table_name * (column_name * named_var) list
+
+
+let get_spec_from_head (table_env : table_environment) (head : rterm) : (head_spec, error) result =
+  let open ResultMonad in
+  match head with
+  | Pred (table, args) ->
+      validate_args_in_head table_env table args >>= fun columns_and_vars ->
+      return @@ PredHead(table, columns_and_vars)
+
+  | Deltainsert (table, args) ->
+      validate_args_in_head table_env table args >>= fun columns_and_vars ->
+      return @@ DeltaHead(Insert, table, columns_and_vars)
+
+  | Deltadelete (table, args) ->
+      validate_args_in_head table_env table args >>= fun columns_and_vars ->
+      return @@ DeltaHead(Delete, table, columns_and_vars)
 
 
 let get_comparison_operator (op_str : string) : (comparison_operator, error) result =
@@ -2056,7 +2068,7 @@ type headless_rule = {
 
 let convert_rule_to_operation_based_sql (table_env : table_environment) (delta_env : delta_environment) (headless_rule : headless_rule) : (sql_query, error) result =
   let open ResultMonad in
-  let column_and_var_pairs = headless_rule.columns_and_vars in
+  let columns_and_vars = headless_rule.columns_and_vars in
   let body = headless_rule.body in
   decompose_body body >>= fun (poss, negs, comps) ->
 
@@ -2150,7 +2162,7 @@ let convert_rule_to_operation_based_sql (table_env : table_environment) (delta_e
   ) (return sql_constraint_acc) >>= fun sql_constraint_acc ->
 
   (* Builds the SELECT clause: *)
-  column_and_var_pairs |> List.fold_left (fun res (column0, x0) ->
+  columns_and_vars |> List.fold_left (fun res (column0, x0) ->
     res >>= fun selected_acc ->
     match varmap |> VarMap.find_opt x0 with
     | None ->
@@ -2191,56 +2203,71 @@ let convert_rule_to_operation_based_sql (table_env : table_environment) (delta_e
 
 module DeltaKeySet = Set.Make(DeltaKey)
 
-type rule_group = delta_key * headless_rule list
+type rule_group =
+  | PredGroup  of table_name * headless_rule
+  | DeltaGroup of delta_key * headless_rule list
 
-type grouping_state = {
+type delta_grouping_state = {
   current_target      : delta_key;
   current_accumulated : headless_rule list;
   already_handled     : DeltaKeySet.t;
-  accumulated         : rule_group list;
 }
 
 
 let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule list) : (rule_group list, error) result =
   let open ResultMonad in
   rules |> List.fold_left (fun res rule ->
-    res >>= fun state_opt ->
+    res >>= fun (state_opt, group_acc) ->
     let (head, body) = rule in
-    get_spec_from_head table_env head >>= fun (delta_kind, table, columns_and_vars) ->
-    let delta_key = (delta_kind, table) in
-    let intermediate = { columns_and_vars; body } in
-    match state_opt with
-    | None ->
-        return @@ Some {
-          current_target      = delta_key;
-          current_accumulated = [ intermediate ];
-          already_handled     = DeltaKeySet.empty;
-          accumulated         = [];
-        }
+    get_spec_from_head table_env head >>= function
+    | PredHead(table, columns_and_vars) ->
+        let group = PredGroup(table, { columns_and_vars; body }) in
+        begin
+          match state_opt with
+          | None ->
+              return (None, group :: group_acc)
 
-    | Some state ->
-        if state.already_handled |> DeltaKeySet.mem delta_key then
-          err @@ HasMoreThanOneRuleGroup delta_key
-        else if delta_key = state.current_target then
-          return @@ Some { state with
-            current_accumulated = intermediate :: state.current_accumulated;
-          }
-        else
-          let group = (state.current_target, List.rev state.current_accumulated) in
-          return @@ Some {
-            current_target      = delta_key;
-            current_accumulated = [ intermediate ];
-            already_handled     = state.already_handled |> DeltaKeySet.add state.current_target;
-            accumulated         = group :: state.accumulated;
-          }
-  ) (return None) >>= fun state_opt ->
+          | Some state ->
+              let group_prev = DeltaGroup(state.current_target, List.rev state.current_accumulated) in
+              return (None, group :: group_prev :: group_acc)
+        end
+
+    | DeltaHead(delta_kind, table, columns_and_vars) ->
+        let delta_key = (delta_kind, table) in
+        let intermediate = { columns_and_vars; body } in
+        begin
+          match state_opt with
+          | None ->
+              return (Some {
+                current_target      = delta_key;
+                current_accumulated = [ intermediate ];
+                already_handled     = DeltaKeySet.empty;
+              }, group_acc)
+
+          | Some state ->
+              if state.already_handled |> DeltaKeySet.mem delta_key then
+                err @@ HasMoreThanOneRuleGroup delta_key
+              else if delta_key = state.current_target then
+                return (Some { state with
+                  current_accumulated = intermediate :: state.current_accumulated;
+                }, group_acc)
+              else
+                let group = DeltaGroup(state.current_target, List.rev state.current_accumulated) in
+                return @@ (Some {
+                  current_target      = delta_key;
+                  current_accumulated = [ intermediate ];
+                  already_handled     = state.already_handled |> DeltaKeySet.add state.current_target;
+                }, group :: group_acc)
+        end
+
+  ) (return (None, [])) >>= fun (state_opt, group_acc) ->
   match state_opt with
   | None ->
-      return []
+      return (List.rev group_acc)
 
   | Some state ->
-      let group_last = (state.current_target, List.rev state.current_accumulated) in
-      let groups = List.rev (group_last :: state.accumulated) in
+      let group_last = DeltaGroup(state.current_target, List.rev state.current_accumulated) in
+      let groups = List.rev (group_last :: group_acc) in
       return groups
 
 
@@ -2258,35 +2285,42 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
   rule_groups |> List.fold_left (fun res rule_group ->
     res >>= fun (i, creation_acc, update_acc, delta_env) ->
     let temporary_table = Printf.sprintf "temp%d" i in
-    let (delta_key, headless_rules) = rule_group in
-    headless_rules |> List.fold_left (fun res_acc headless_rule ->
-      res_acc >>= fun sql_query_acc ->
-      convert_rule_to_operation_based_sql table_env delta_env headless_rule >>= fun sql_query ->
-      return @@ sql_query :: sql_query_acc
-    ) (return []) >>= fun sql_query_acc ->
-    let sql_query =
-      let sql_queries = List.rev sql_query_acc in
-      SqlUnion (SqlUnionOp, sql_queries)
-    in
-    let (delta_kind, table) = delta_key in
-    get_column_names_from_table table_env table >>= fun cols ->
-    let delta_env = delta_env |> DeltaEnv.add delta_key (temporary_table, cols) in
-    let creation = SqlCreateTemporaryTable (temporary_table, sql_query) in
-    let update =
-      let instance_name = "inst" in
-      match delta_kind with
-      | Insert ->
-          SqlInsertInto
-            (temporary_table,
-              SqlFrom [ (SqlFromTable (None, temporary_table), instance_name) ])
+    match rule_group with
+    | PredGroup(table, headless_rule) ->
+        convert_rule_to_operation_based_sql table_env DeltaEnv.empty headless_rule >>= fun sql_query ->
+        let creation = SqlCreateView (table, sql_query) in
+        return (i + 1, creation :: creation_acc, update_acc, delta_env)
 
-      | Delete ->
-          SqlDeleteFrom
-            (temporary_table,
-              SqlWhere [
-                SqlExist (SqlFrom [ (SqlFromTable (None, temporary_table), instance_name) ], SqlWhere []) ])
-    in
-    return (i + 1, creation :: creation_acc, update :: update_acc, delta_env)
+    | DeltaGroup(delta_key, headless_rules) ->
+        headless_rules |> List.fold_left (fun res_acc headless_rule ->
+          res_acc >>= fun sql_query_acc ->
+          convert_rule_to_operation_based_sql table_env delta_env headless_rule >>= fun sql_query ->
+          return @@ sql_query :: sql_query_acc
+        ) (return []) >>= fun sql_query_acc ->
+        let sql_query =
+          let sql_queries = List.rev sql_query_acc in
+          SqlUnion (SqlUnionOp, sql_queries)
+        in
+        let (delta_kind, table) = delta_key in
+        get_column_names_from_table table_env table >>= fun cols ->
+        let delta_env = delta_env |> DeltaEnv.add delta_key (temporary_table, cols) in
+        let creation = SqlCreateTemporaryTable (temporary_table, sql_query) in
+        let update =
+          let instance_name = "inst" in
+          match delta_kind with
+          | Insert ->
+              SqlInsertInto
+                (temporary_table,
+                  SqlFrom [ (SqlFromTable (None, temporary_table), instance_name) ])
+
+          | Delete ->
+              SqlDeleteFrom
+                (temporary_table,
+                  SqlWhere [
+                    SqlExist (SqlFrom [ (SqlFromTable (None, temporary_table), instance_name) ], SqlWhere []) ])
+        in
+        return (i + 1, creation :: creation_acc, update :: update_acc, delta_env)
+
   ) (return (0, [], [], DeltaEnv.empty)) >>= fun (_, creation_acc, update_acc, _) ->
   return @@ List.concat [
     List.rev creation_acc;
