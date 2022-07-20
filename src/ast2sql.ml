@@ -1676,6 +1676,14 @@ type comparison_operator =
   | LessThanOrEqualTo
   | GreaterThanOrEqualTo
 
+let show_comparison_operator = function
+  | EqualTo -> "=="
+  | NotEqualTo -> "<>"
+  | LessThan -> "<"
+  | GreaterThan -> ">"
+  | LessThanOrEqualTo -> "<="
+  | GreaterThanOrEqualTo -> ">="
+
 type comparison =
   | Comparison of comparison_operator * vterm * vterm
 
@@ -1683,9 +1691,10 @@ module TableEnv = Map.Make(String)
 
 type table_environment = (column_name list) TableEnv.t
 
-type error_detail = {
-  in_rule : rule option;
-}
+type error_detail =
+  | InRule       of rule
+  | InComparison of comparison
+  | InGroup      of delta_key
 
 type error =
   | InvalidArgInHead of var
@@ -1694,7 +1703,7 @@ type error =
   | UnknownComparisonOperator of string
   | EqualToMoreThanOneConstant of { variable : named_var; const1 : const; const2 : const }
   | HeadVariableDoesNotOccurInBody of named_var
-  | UnexpectedNamedVar of named_var
+  | UnexpectedNamedVar of { named_var : named_var; error_detail : error_detail }
   | UnexpectedVarForm of var
   | UnknownBinaryOperator of string
   | UnknownUnaryOperator of string
@@ -1704,9 +1713,16 @@ type error =
 
 
 let show_error_detail (error_detail : error_detail) =
-  match error_detail.in_rule with
-  | None      -> ""
-  | Some rule -> Printf.sprintf "(in %s)" (string_of_rule rule)
+  match error_detail with
+  | InRule rule ->
+      Printf.sprintf "in rule %s" (string_of_rule rule)
+  | InComparison (Comparison (op, vt1, vt2)) ->
+      Printf.sprintf "in comparison %s %s %s"
+        (string_of_vterm vt1) (show_comparison_operator op) (string_of_vterm vt2)
+  | InGroup (Insert, table) ->
+      Printf.sprintf "in group +%s" table
+  | InGroup (Delete, table) ->
+      Printf.sprintf "in group -%s" table
 
 
 let show_error = function
@@ -1723,8 +1739,8 @@ let show_error = function
         r.variable (string_of_const r.const1) (string_of_const r.const2)
   | HeadVariableDoesNotOccurInBody named_var ->
       Printf.sprintf "variable %s in a rule head does not occur in the rule body" named_var
-  | UnexpectedNamedVar named_var ->
-      Printf.sprintf "unexpected named variable %s" named_var
+  | UnexpectedNamedVar { named_var; error_detail } ->
+      Printf.sprintf "unexpected named variable %s; %s" named_var (show_error_detail error_detail)
   | UnexpectedVarForm var ->
       Printf.sprintf "unexpected variable form: %s" (string_of_var var)
   | UnknownBinaryOperator op ->
@@ -1732,7 +1748,7 @@ let show_error = function
   | UnknownUnaryOperator op ->
       Printf.sprintf "unknown unary operator %s" op
   | UnknownTable { table; error_detail } ->
-      Printf.sprintf "unknown table %s %s" table (show_error_detail error_detail)
+      Printf.sprintf "unknown table %s; %s" table (show_error_detail error_detail)
   | HasMoreThanOneRuleGroup (Insert, table) ->
       Printf.sprintf "+%s has more than one rule group" table
   | HasMoreThanOneRuleGroup (Delete, table) ->
@@ -1949,7 +1965,7 @@ let get_named_var (varmap : Subst.entry VarMap.t) (x : named_var) : sql_vterm op
   | Some (Subst.EqualToConst c)                -> Some (SqlConst c)
 
 
-let sql_of_vterm_new (varmap : Subst.entry VarMap.t) (vt : vterm) : (sql_vterm, error) result =
+let sql_of_vterm_new ~(error_detail : error_detail) (varmap : Subst.entry VarMap.t) (vt : vterm) : (sql_vterm, error) result =
   let open ResultMonad in
   let rec aux (vt : vterm) =
     match vt with
@@ -1960,7 +1976,7 @@ let sql_of_vterm_new (varmap : Subst.entry VarMap.t) (vt : vterm) : (sql_vterm, 
     | Var (NamedVar x) ->
         begin
           match get_named_var varmap x with
-          | None        -> err @@ UnexpectedNamedVar x
+          | None        -> err @@ UnexpectedNamedVar { named_var = x; error_detail }
           | Some sql_vt -> return sql_vt
         end
 
@@ -1981,13 +1997,13 @@ let sql_of_vterm_new (varmap : Subst.entry VarMap.t) (vt : vterm) : (sql_vterm, 
   aux vt
 
 
-let sql_vterm_of_arg (varmap : Subst.entry VarMap.t) (arg : argument) : (sql_vterm, error) result =
+let sql_vterm_of_arg ~(error_detail : error_detail) (varmap : Subst.entry VarMap.t) (arg : argument) : (sql_vterm, error) result =
   let open ResultMonad in
   match arg with
   | ArgNamedVar x ->
         begin
           match get_named_var varmap x with
-          | None        -> err @@ UnexpectedNamedVar x
+          | None        -> err @@ UnexpectedNamedVar { named_var = x; error_detail }
           | Some sql_vt -> return sql_vt
         end
 
@@ -2129,10 +2145,12 @@ let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_en
   ) subst (return ([], VarMap.empty)) >>= fun (sql_constraint_acc, varmap) ->
 
   (* Adds comparison constraints to SQL constraints: *)
-  comps |> List.fold_left (fun res (Comparison (op, vt1, vt2)) ->
+  comps |> List.fold_left (fun res comp ->
+    let Comparison (op, vt1, vt2) = comp in
+    let error_detail = InComparison comp in
     res >>= fun sql_constraint_acc ->
-    sql_of_vterm_new varmap vt1 >>= fun sql_vt1 ->
-    sql_of_vterm_new varmap vt2 >>= fun sql_vt2 ->
+    sql_of_vterm_new ~error_detail varmap vt1 >>= fun sql_vt1 ->
+    sql_of_vterm_new ~error_detail varmap vt2 >>= fun sql_vt2 ->
     let sql_op =
       match op with
       | EqualTo              -> SqlRelEqual
@@ -2164,7 +2182,7 @@ let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_en
     let sql_from = SqlFrom [ (SqlFromTable (None, table), instance) ] in
     column_and_arg_pairs |> List.fold_left (fun res (column, arg) ->
       res >>= fun acc ->
-      sql_vterm_of_arg varmap arg >>= fun sql_vt ->
+      sql_vterm_of_arg ~error_detail varmap arg >>= fun sql_vt ->
       return @@ SqlConstraint (SqlColumn (Some instance, column), SqlRelEqual, sql_vt) :: acc
     ) (return []) >>= fun acc ->
     let sql_where = SqlWhere (List.rev acc) in
@@ -2229,7 +2247,7 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
   rules |> List.fold_left (fun res rule ->
     res >>= fun (state_opt, group_acc) ->
     let (head, body) = rule in
-    let error_detail = { in_rule = Some rule } in
+    let error_detail = InRule rule in
     get_spec_from_head ~error_detail table_env head >>= function
     | PredHead(table, columns_and_vars) ->
         let group = PredGroup(table, { columns_and_vars; body }) in
@@ -2286,7 +2304,12 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
   Printf.printf "EXPR:\n%s\n" (Expr.to_string expr);
   let open ResultMonad in
   let table_env =
-    expr.sources |> List.fold_left (fun table_env (table, col_and_type_pairs) ->
+    let defs =
+      match expr.view with
+      | None      -> expr.sources
+      | Some view -> view :: expr.sources
+    in
+    defs |> List.fold_left (fun table_env (table, col_and_type_pairs) ->
       let cols = col_and_type_pairs |> List.map fst in
       table_env |> TableEnv.add table cols
     ) TableEnv.empty
@@ -2303,7 +2326,7 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
             let head = Pred (table, headless_rule.columns_and_vars |> List.map (fun (_, x) -> NamedVar x)) in
             (head, headless_rule.body)
           in
-          { in_rule = Some rule }
+          InRule rule
         in
         convert_rule_to_operation_based_sql ~error_detail table_env DeltaEnv.empty headless_rule >>= fun sql_query ->
         let creation = SqlCreateView (table, sql_query) in
@@ -2319,7 +2342,7 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
               | (Insert, table) -> (Deltainsert (table, vars), headless_rule.body)
               | (Delete, table) -> (Deltadelete (table, vars), headless_rule.body)
             in
-            { in_rule = Some rule }
+            InRule rule
           in
           convert_rule_to_operation_based_sql ~error_detail table_env delta_env headless_rule >>= fun sql_query ->
           return @@ sql_query :: sql_query_acc
@@ -2329,7 +2352,7 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
           SqlUnion (SqlUnionOp, sql_queries)
         in
         let (delta_kind, table) = delta_key in
-        let error_detail = { in_rule = None } in
+        let error_detail = InGroup delta_key in
         get_column_names_from_table ~error_detail table_env table >>= fun cols ->
         let delta_env = delta_env |> DeltaEnv.add delta_key (temporary_table, cols) in
         let creation = SqlCreateTemporaryTable (temporary_table, sql_query) in
