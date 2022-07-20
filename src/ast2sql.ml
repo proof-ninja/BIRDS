@@ -1698,16 +1698,16 @@ type error_detail =
   | InGroup      of delta_key
 
 type error =
-  | InvalidArgInHead of var
-  | InvalidArgInBody of var
+  | InvalidArgInHead of { var : var; error_detail : error_detail }
+  | InvalidArgInBody of { var : var; error_detail : error_detail }
   | ArityMismatch of { expected : int; got : int }
   | UnknownComparisonOperator of string
   | EqualToMoreThanOneConstant of { variable : named_var; const1 : const; const2 : const }
   | HeadVariableDoesNotOccurInBody of named_var
   | UnexpectedNamedVar of { named_var : named_var; error_detail : error_detail }
-  | UnexpectedVarForm of var
-  | UnknownBinaryOperator of string
-  | UnknownUnaryOperator of string
+  | UnexpectedVarForm of { var : var; error_detail : error_detail }
+  | UnknownBinaryOperator of { op : string; error_detail : error_detail }
+  | UnknownUnaryOperator of { op : string; error_detail : error_detail }
   | UnknownTable of { table : table_name; error_detail : error_detail }
   | HasMoreThanOneRuleGroup of delta_key
   | DeltaNotFound of delta_key
@@ -1727,10 +1727,10 @@ let show_error_detail (error_detail : error_detail) =
 
 
 let show_error = function
-  | InvalidArgInHead var ->
-      Printf.sprintf "invalid arg %s in a rule head" (string_of_var var)
-  | InvalidArgInBody var ->
-      Printf.sprintf "invalid arg %s in a rule body" (string_of_var var)
+  | InvalidArgInHead { var; error_detail } ->
+      Printf.sprintf "invalid arg %s in the rule head; %s" (string_of_var var) (show_error_detail error_detail)
+  | InvalidArgInBody { var; error_detail } ->
+      Printf.sprintf "invalid arg %s in the rule body; %s" (string_of_var var) (show_error_detail error_detail)
   | ArityMismatch r ->
       Printf.sprintf "arity mismatch (expected: %d, got: %d)" r.expected r.got
   | UnknownComparisonOperator op ->
@@ -1742,12 +1742,12 @@ let show_error = function
       Printf.sprintf "variable %s in a rule head does not occur in the rule body" named_var
   | UnexpectedNamedVar { named_var; error_detail } ->
       Printf.sprintf "unexpected named variable %s; %s" named_var (show_error_detail error_detail)
-  | UnexpectedVarForm var ->
-      Printf.sprintf "unexpected variable form: %s" (string_of_var var)
-  | UnknownBinaryOperator op ->
-      Printf.sprintf "unknown binary operator %s" op
-  | UnknownUnaryOperator op ->
-      Printf.sprintf "unknown unary operator %s" op
+  | UnexpectedVarForm { var; error_detail } ->
+      Printf.sprintf "unexpected variable form: %s; %s" (string_of_var var) (show_error_detail error_detail)
+  | UnknownBinaryOperator { op; error_detail } ->
+      Printf.sprintf "unknown binary operator %s; %s" op (show_error_detail error_detail)
+  | UnknownUnaryOperator { op; error_detail } ->
+      Printf.sprintf "unknown unary operator %s; %s" op (show_error_detail error_detail)
   | UnknownTable { table; error_detail } ->
       Printf.sprintf "unknown table %s; %s" table (show_error_detail error_detail)
   | HasMoreThanOneRuleGroup (Insert, table) ->
@@ -1788,7 +1788,7 @@ let validate_args_in_head ~(error_detail : error_detail) (table_env : table_envi
     res >>= fun x_acc ->
     match arg with
     | NamedVar x -> return @@ x :: x_acc
-    | _          -> err @@ InvalidArgInHead arg
+    | _          -> err @@ InvalidArgInHead { var = arg; error_detail }
   ) (return []) >>= fun x_acc ->
   let vars = List.rev x_acc in
   combine_column_names ~error_detail table_env table vars
@@ -1836,7 +1836,7 @@ let negate_comparison_operator = function
   | GreaterThanOrEqualTo -> LessThan
 
 
-let validate_args_in_body (vars : var list) : (argument list, error) result =
+let validate_args_in_body ~(error_detail : error_detail) (vars : var list) : (argument list, error) result =
   let open ResultMonad in
   vars |> List.fold_left (fun res var ->
     res >>= fun arg_acc ->
@@ -1844,42 +1844,42 @@ let validate_args_in_body (vars : var list) : (argument list, error) result =
     | NamedVar x -> return @@ ArgNamedVar x :: arg_acc
     | ConstVar c -> return @@ ArgConst c :: arg_acc
     | AnonVar    -> return @@ ArgAnon :: arg_acc
-    | _          -> err @@ InvalidArgInBody var
+    | _          -> err @@ InvalidArgInBody { var; error_detail }
   ) (return []) >>= fun arg_acc ->
   return @@ List.rev arg_acc
 
 
 (* Separate predicates in a given rule body into positive ones, negative ones, and comparisons. *)
-let decompose_body (body : term list) : (positive_predicate list * negative_predicate list * comparison list, error) result =
+let decompose_body ~(error_detail : error_detail) (body : term list) : (positive_predicate list * negative_predicate list * comparison list, error) result =
   let open ResultMonad in
   body |> List.fold_left (fun res term ->
     res >>= fun (pos_acc, neg_acc, comp_acc) ->
     match term with
     | Rel (Pred (table, vars)) ->
-        validate_args_in_body vars >>= fun args ->
+        validate_args_in_body ~error_detail vars >>= fun args ->
         return (PositivePred (table, args) :: pos_acc, neg_acc, comp_acc)
 
     | Rel (Deltainsert (table, vars)) ->
-        validate_args_in_body vars >>= fun args ->
+        validate_args_in_body ~error_detail vars >>= fun args ->
         let delta_key = (Insert, table) in
         return (PositiveDelta (delta_key, args) :: pos_acc, neg_acc, comp_acc)
 
     | Rel (Deltadelete (table, vars)) ->
-        validate_args_in_body vars >>= fun args ->
+        validate_args_in_body ~error_detail vars >>= fun args ->
         let delta_key = (Delete, table) in
         return (PositiveDelta (delta_key, args) :: pos_acc, neg_acc, comp_acc)
 
     | Not (Pred (table, vars)) ->
-        validate_args_in_body vars >>= fun args ->
+        validate_args_in_body ~error_detail vars >>= fun args ->
         return (pos_acc, NegativePred (table, args) :: neg_acc, comp_acc)
 
     | Not (Deltainsert (table, vars)) ->
-        validate_args_in_body vars >>= fun args ->
+        validate_args_in_body ~error_detail vars >>= fun args ->
         let delta_key = (Insert, table) in
         return (pos_acc, NegativeDelta (delta_key, args) :: neg_acc, comp_acc)
 
     | Not (Deltadelete (table, vars)) ->
-        validate_args_in_body vars >>= fun args ->
+        validate_args_in_body ~error_detail vars >>= fun args ->
         let delta_key = (Delete, table) in
         return (pos_acc, NegativeDelta (delta_key, args) :: neg_acc, comp_acc)
 
@@ -1941,7 +1941,7 @@ let as_const_or_var (vt : vterm) : as_const_or_var =
   | _                -> NotConstOrNamedVar
 
 
-let get_sql_binary_operation (bin_op_str : string) : (sql_binary_operator, error) result =
+let get_sql_binary_operation  ~(error_detail : error_detail) (bin_op_str : string) : (sql_binary_operator, error) result =
   let open ResultMonad in
   match bin_op_str with
   | "+" -> return SqlPlus
@@ -1949,14 +1949,14 @@ let get_sql_binary_operation (bin_op_str : string) : (sql_binary_operator, error
   | "*" -> return SqlTimes
   | "/" -> return SqlDivides
   | "^" -> return SqlLor
-  | _   -> err @@ UnknownBinaryOperator bin_op_str
+  | _   -> err @@ UnknownBinaryOperator { op = bin_op_str; error_detail }
 
 
-let get_sql_unary_operation (un_op_str : string) : (sql_unary_operator, error) result =
+let get_sql_unary_operation ~(error_detail : error_detail) (un_op_str : string) : (sql_unary_operator, error) result =
   let open ResultMonad in
   match un_op_str with
   | "-" -> return SqlNegate
-  | _   -> err @@ UnknownUnaryOperator un_op_str
+  | _   -> err @@ UnknownUnaryOperator { op = un_op_str; error_detail }
 
 
 let get_named_var (varmap : Subst.entry VarMap.t) (x : named_var) : sql_vterm option =
@@ -1983,16 +1983,16 @@ let sql_of_vterm_new ~(error_detail : error_detail) (varmap : Subst.entry VarMap
         end
 
     | Var var ->
-        err @@ UnexpectedVarForm var
+        err @@ UnexpectedVarForm { var; error_detail }
 
     | BinaryOp (bin_op_str, vt1, vt2) ->
-        get_sql_binary_operation bin_op_str >>= fun sql_bin_op ->
+        get_sql_binary_operation ~error_detail bin_op_str >>= fun sql_bin_op ->
         aux vt1 >>= fun sql_vt1 ->
         aux vt2 >>= fun sql_vt2 ->
         return @@ SqlBinaryOp (sql_bin_op, sql_vt1, sql_vt2)
 
     | UnaryOp (un_op_str, vt1) ->
-        get_sql_unary_operation un_op_str >>= fun sql_un_op ->
+        get_sql_unary_operation ~error_detail un_op_str >>= fun sql_un_op ->
         aux vt1 >>= fun sql_vt1 ->
         return @@ SqlUnaryOp (sql_un_op, sql_vt1)
   in
@@ -2102,7 +2102,7 @@ let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_en
   let open ResultMonad in
   let columns_and_vars = headless_rule.columns_and_vars in
   let body = headless_rule.body in
-  decompose_body body >>= fun (poss, negs, comps) ->
+  decompose_body ~error_detail body >>= fun (poss, negs, comps) ->
 
   assign_or_find_instance_names delta_env poss >>= fun named_poss ->
   let subst = Subst.empty in
