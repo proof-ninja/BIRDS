@@ -390,13 +390,12 @@ let main () =
     if (!verification) then print_endline @@ "-- Program is validated --";
     let oc =if !outputf = "" then stdout else open_out !outputf  in
     if (not has_get) then fprintf oc "\n/*view definition (get):\n%s*/\n\n" view_rules_string;
-
+(*
     let sql = Ast2sql.unfold_view_sql (!dbschema) (!log) ast2 in
     fprintf oc "%s\n" sql;
     let trigger_sql = Ast2sql.unfold_delta_trigger_stt (!dbschema) (!log) (!dejima_ud) shell_script (!dejima_user) (!inc) (!optimize) (constraint2rule ast2) in
     fprintf oc "%s\n" trigger_sql;
-
-(*
+*)
     let sql =
       match Ast2sql.convert_expr_to_operation_based_sql ast2 with
       | Error e ->
@@ -406,7 +405,7 @@ let main () =
     in
     let trigger_sql = "" in
     fprintf oc "%s" sql;
-*)
+
     if (!connectdb) then
       let c = new connection ~conninfo () in
       if !log then (

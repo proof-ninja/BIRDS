@@ -1683,6 +1683,10 @@ module TableEnv = Map.Make(String)
 
 type table_environment = (column_name list) TableEnv.t
 
+type error_detail = {
+  in_rule : rule option;
+}
+
 type error =
   | InvalidArgInHead of var
   | InvalidArgInBody of var
@@ -1694,9 +1698,15 @@ type error =
   | UnexpectedVarForm of var
   | UnknownBinaryOperator of string
   | UnknownUnaryOperator of string
-  | UnknownTable of table_name
+  | UnknownTable of { table : table_name; error_detail : error_detail }
   | HasMoreThanOneRuleGroup of delta_key
   | DeltaNotFound of delta_key
+
+
+let show_error_detail (error_detail : error_detail) =
+  match error_detail.in_rule with
+  | None      -> ""
+  | Some rule -> Printf.sprintf "(in %s)" (string_of_rule rule)
 
 
 let show_error = function
@@ -1721,8 +1731,8 @@ let show_error = function
       Printf.sprintf "unknown binary operator %s" op
   | UnknownUnaryOperator op ->
       Printf.sprintf "unknown unary operator %s" op
-  | UnknownTable table ->
-      Printf.sprintf "unknown table %s" table
+  | UnknownTable { table; error_detail } ->
+      Printf.sprintf "unknown table %s %s" table (show_error_detail error_detail)
   | HasMoreThanOneRuleGroup (Insert, table) ->
       Printf.sprintf "+%s has more than one rule group" table
   | HasMoreThanOneRuleGroup (Delete, table) ->
@@ -1733,18 +1743,18 @@ let show_error = function
       Printf.sprintf "no rule has already been defined for -%s" table
 
 
-let get_column_names_from_table (table_env : table_environment) (table : table_name) : (column_name list, error) result =
+let get_column_names_from_table ~(error_detail : error_detail) (table_env : table_environment) (table : table_name) : (column_name list, error) result =
   let open ResultMonad in
   match table_env |> TableEnv.find_opt table with
-  | None      -> err @@ UnknownTable table
+  | None      -> err @@ UnknownTable { table; error_detail }
   | Some cols -> return cols
 
 
 (* Gets the list `cols` of column names of table named `table` and zips it with `xs`.
    Returns `Error _` when the length of `xs` is different from that of `cols`. *)
-let combine_column_names (table_env : table_environment) (table : table_name) (xs : 'a list) : ((column_name * 'a) list, error) result =
+let combine_column_names ~(error_detail : error_detail) (table_env : table_environment) (table : table_name) (xs : 'a list) : ((column_name * 'a) list, error) result =
   let open ResultMonad in
-  get_column_names_from_table table_env table >>= fun columns ->
+  get_column_names_from_table ~error_detail table_env table >>= fun columns ->
   try
     return (List.combine columns xs)
   with
@@ -1755,7 +1765,7 @@ let combine_column_names (table_env : table_environment) (table : table_name) (x
       }
 
 
-let validate_args_in_head (table_env : table_environment) (table : table_name) (args : var list) =
+let validate_args_in_head ~(error_detail : error_detail) (table_env : table_environment) (table : table_name) (args : var list) =
   let open ResultMonad in
   args |> List.fold_left (fun res arg ->
     res >>= fun x_acc ->
@@ -1764,7 +1774,7 @@ let validate_args_in_head (table_env : table_environment) (table : table_name) (
     | _          -> err @@ InvalidArgInHead arg
   ) (return []) >>= fun x_acc ->
   let vars = List.rev x_acc in
-  combine_column_names table_env table vars
+  combine_column_names ~error_detail table_env table vars
 
 
 type head_spec =
@@ -1772,19 +1782,19 @@ type head_spec =
   | DeltaHead of delta_kind * table_name * (column_name * named_var) list
 
 
-let get_spec_from_head (table_env : table_environment) (head : rterm) : (head_spec, error) result =
+let get_spec_from_head ~(error_detail : error_detail) (table_env : table_environment) (head : rterm) : (head_spec, error) result =
   let open ResultMonad in
   match head with
   | Pred (table, args) ->
-      validate_args_in_head table_env table args >>= fun columns_and_vars ->
+      validate_args_in_head ~error_detail table_env table args >>= fun columns_and_vars ->
       return @@ PredHead(table, columns_and_vars)
 
   | Deltainsert (table, args) ->
-      validate_args_in_head table_env table args >>= fun columns_and_vars ->
+      validate_args_in_head ~error_detail table_env table args >>= fun columns_and_vars ->
       return @@ DeltaHead(Insert, table, columns_and_vars)
 
   | Deltadelete (table, args) ->
-      validate_args_in_head table_env table args >>= fun columns_and_vars ->
+      validate_args_in_head ~error_detail table_env table args >>= fun columns_and_vars ->
       return @@ DeltaHead(Delete, table, columns_and_vars)
 
 
@@ -2002,13 +2012,13 @@ let combine_delta_column_names (delta_env : delta_environment) (delta_key : delt
 
 
 (* Extends `subst` by traversing occurrence of variables in positive predicates. *)
-let extend_substitution_by_traversing_positives (table_env : table_environment) (delta_env : delta_environment) (named_poss : (positive_predicate * instance_name) list) (subst : Subst.t) : (Subst.t, error) result =
+let extend_substitution_by_traversing_positives ~(error_detail : error_detail) (table_env : table_environment) (delta_env : delta_environment) (named_poss : (positive_predicate * instance_name) list) (subst : Subst.t) : (Subst.t, error) result =
   let open ResultMonad in
   named_poss |> List.fold_left (fun res (pos, instance) ->
     res >>= fun subst ->
     begin
       match pos with
-      | PositivePred (table, args)      -> combine_column_names table_env table args
+      | PositivePred (table, args)      -> combine_column_names ~error_detail table_env table args
       | PositiveDelta (delta_key, args) -> combine_delta_column_names delta_env delta_key args
     end >>= fun column_and_arg_pairs ->
     let subst =
@@ -2066,7 +2076,7 @@ type headless_rule = {
 }
 
 
-let convert_rule_to_operation_based_sql (table_env : table_environment) (delta_env : delta_environment) (headless_rule : headless_rule) : (sql_query, error) result =
+let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_env : table_environment) (delta_env : delta_environment) (headless_rule : headless_rule) : (sql_query, error) result =
   let open ResultMonad in
   let columns_and_vars = headless_rule.columns_and_vars in
   let body = headless_rule.body in
@@ -2074,7 +2084,7 @@ let convert_rule_to_operation_based_sql (table_env : table_environment) (delta_e
 
   assign_or_find_instance_names delta_env poss >>= fun named_poss ->
   let subst = Subst.empty in
-  extend_substitution_by_traversing_positives table_env delta_env named_poss subst >>= fun subst ->
+  extend_substitution_by_traversing_positives ~error_detail table_env delta_env named_poss subst >>= fun subst ->
   let (comps, subst) = extend_substitution_by_traversing_conparisons comps subst in
 
   (* Converts `subst` into SQL constraints and `varmap`: *)
@@ -2141,7 +2151,7 @@ let convert_rule_to_operation_based_sql (table_env : table_environment) (delta_e
     begin
       match neg with
       | NegativePred (table, args) ->
-          combine_column_names table_env table args >>= fun column_and_arg_pairs ->
+          combine_column_names ~error_detail table_env table args >>= fun column_and_arg_pairs ->
           return (table, column_and_arg_pairs)
 
       | NegativeDelta (delta_key, args) ->
@@ -2219,7 +2229,8 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
   rules |> List.fold_left (fun res rule ->
     res >>= fun (state_opt, group_acc) ->
     let (head, body) = rule in
-    get_spec_from_head table_env head >>= function
+    let error_detail = { in_rule = Some rule } in
+    get_spec_from_head ~error_detail table_env head >>= function
     | PredHead(table, columns_and_vars) ->
         let group = PredGroup(table, { columns_and_vars; body }) in
         begin
@@ -2287,14 +2298,30 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
     let temporary_table = Printf.sprintf "temp%d" i in
     match rule_group with
     | PredGroup(table, headless_rule) ->
-        convert_rule_to_operation_based_sql table_env DeltaEnv.empty headless_rule >>= fun sql_query ->
+        let error_detail =
+          let rule =
+            let head = Pred (table, headless_rule.columns_and_vars |> List.map (fun (_, x) -> NamedVar x)) in
+            (head, headless_rule.body)
+          in
+          { in_rule = Some rule }
+        in
+        convert_rule_to_operation_based_sql ~error_detail table_env DeltaEnv.empty headless_rule >>= fun sql_query ->
         let creation = SqlCreateView (table, sql_query) in
         return (i + 1, creation :: creation_acc, update_acc, delta_env)
 
     | DeltaGroup(delta_key, headless_rules) ->
         headless_rules |> List.fold_left (fun res_acc headless_rule ->
           res_acc >>= fun sql_query_acc ->
-          convert_rule_to_operation_based_sql table_env delta_env headless_rule >>= fun sql_query ->
+          let error_detail =
+            let rule =
+              let vars = headless_rule.columns_and_vars |> List.map (fun (_, x) -> NamedVar x) in
+              match delta_key with
+              | (Insert, table) -> (Deltainsert (table, vars), headless_rule.body)
+              | (Delete, table) -> (Deltadelete (table, vars), headless_rule.body)
+            in
+            { in_rule = Some rule }
+          in
+          convert_rule_to_operation_based_sql ~error_detail table_env delta_env headless_rule >>= fun sql_query ->
           return @@ sql_query :: sql_query_acc
         ) (return []) >>= fun sql_query_acc ->
         let sql_query =
@@ -2302,7 +2329,8 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
           SqlUnion (SqlUnionOp, sql_queries)
         in
         let (delta_kind, table) = delta_key in
-        get_column_names_from_table table_env table >>= fun cols ->
+        let error_detail = { in_rule = None } in
+        get_column_names_from_table ~error_detail table_env table >>= fun cols ->
         let delta_env = delta_env |> DeltaEnv.add delta_key (temporary_table, cols) in
         let creation = SqlCreateTemporaryTable (temporary_table, sql_query) in
         let update =
