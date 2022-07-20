@@ -1653,6 +1653,7 @@ end
 type argument =
   | ArgNamedVar of named_var
   | ArgConst    of const
+  | ArgAnon
 
 type delta_kind =
   | Insert
@@ -1842,6 +1843,7 @@ let validate_args_in_body (vars : var list) : (argument list, error) result =
     match var with
     | NamedVar x -> return @@ ArgNamedVar x :: arg_acc
     | ConstVar c -> return @@ ArgConst c :: arg_acc
+    | AnonVar    -> return @@ ArgAnon :: arg_acc
     | _          -> err @@ InvalidArgInBody var
   ) (return []) >>= fun arg_acc ->
   return @@ List.rev arg_acc
@@ -1997,18 +1999,21 @@ let sql_of_vterm_new ~(error_detail : error_detail) (varmap : Subst.entry VarMap
   aux vt
 
 
-let sql_vterm_of_arg ~(error_detail : error_detail) (varmap : Subst.entry VarMap.t) (arg : argument) : (sql_vterm, error) result =
+let sql_vterm_of_arg ~(error_detail : error_detail) (varmap : Subst.entry VarMap.t) (arg : argument) : (sql_vterm option, error) result =
   let open ResultMonad in
   match arg with
   | ArgNamedVar x ->
         begin
           match get_named_var varmap x with
           | None        -> err @@ UnexpectedNamedVar { named_var = x; error_detail }
-          | Some sql_vt -> return sql_vt
+          | Some sql_vt -> return @@ Some sql_vt
         end
 
   | ArgConst c ->
-      return @@ SqlConst c
+      return @@ Some (SqlConst c)
+
+  | ArgAnon ->
+      return None
 
 
 let combine_delta_column_names (delta_env : delta_environment) (delta_key : delta_key) (args : argument list) =
@@ -2042,6 +2047,7 @@ let extend_substitution_by_traversing_positives ~(error_detail : error_detail) (
         match arg with
         | ArgNamedVar x -> subst |> Subst.add x (Subst.Occurrence (instance, column))
         | ArgConst _    -> subst
+        | ArgAnon       -> subst
       ) subst
     in
     return subst
@@ -2182,8 +2188,13 @@ let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_en
     let sql_from = SqlFrom [ (SqlFromTable (None, table), instance) ] in
     column_and_arg_pairs |> List.fold_left (fun res (column, arg) ->
       res >>= fun acc ->
-      sql_vterm_of_arg ~error_detail varmap arg >>= fun sql_vt ->
-      return @@ SqlConstraint (SqlColumn (Some instance, column), SqlRelEqual, sql_vt) :: acc
+      sql_vterm_of_arg ~error_detail varmap arg >>= function
+      | None -> (* corresponds to underscore *)
+          return @@ acc
+
+      | Some sql_vt ->
+          return @@ SqlConstraint (SqlColumn (Some instance, column), SqlRelEqual, sql_vt) :: acc
+
     ) (return []) >>= fun acc ->
     let sql_where = SqlWhere (List.rev acc) in
     return @@ SqlNotExist (sql_from, sql_where) :: sql_constraint_acc
