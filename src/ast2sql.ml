@@ -2320,7 +2320,6 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
 
 
 let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, error) result =
-  Printf.printf "EXPR:\n%s\n" (Expr.to_string expr);
   let open ResultMonad in
   let table_env =
     let defs =
@@ -2328,8 +2327,8 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
       | None      -> expr.sources
       | Some view -> view :: expr.sources
     in
-    defs |> List.fold_left (fun table_env (table, col_and_type_pairs) ->
-      let cols = col_and_type_pairs |> List.map fst in
+    defs |> List.fold_left (fun table_env (table, cols_and_types) ->
+      let cols = cols_and_types |> List.map (fun (col, _) -> col) in
       table_env |> TableEnv.add table cols
     ) TableEnv.empty
   in
