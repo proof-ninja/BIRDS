@@ -1,0 +1,64 @@
+vu
+
+(h,bs)
++ed(E, D) :- +ced(E, D) , not ed(E, D).
+vd
++ced(E, D) :- D = 'R&D' , ed(E, V1) , not eed(E, V1) , V1 = 'Dev.'.
+
+repTerm
+t
++ced(E, D)
+(h,bs)
++ced(E, D) :- D = 'R&D' , ed(E, V1) , not eed(E, V1) , V1 = 'Dev.'.
+
+repVbyBody
+vs
+(E;D)
+vd
++ced(E, D) :- D = 'R&D' , ed(E, V1) , not eed(E, V1) , V1 = 'Dev.'.
+
+vars1=
+var_resolv (E;D) (E;D)
+[(E,E);(D,D);(_,_)]
+
+resolvAno 
+vars
+[(E,E);(D,D);(_,_)]
+ts
+D = 'R&D' , ed(E, V1) , not eed(E, V1) , V1 = 'Dev.'.
+
+
+
+
+
++ed(E, D) :- +ced(E, D) , not ed(E, D).
+-eed(E, D) :- +ced(E, D) , eed(E, D).
++ced(E, D) :- D = 'R&D' , ed(E, V1) , not eed(E, V1) , V1 = 'Dev.'.
+
+
+
+
+
+-ced(E, D) :- ed(E, D) , not eed(E, D) , D = 'Dev.'.
++eed(E, D) :- ed(E, D) , -ced(E, D) , not eed(E, D).
+
+
+
+
+-ced(E, D) :- ced(E, D) , E = 'Joe'.    vd
++ced(E, D) :- D = 'R&D' , -ced(E, V1).  (h,ts)
+
+repTerm
+-ced(E,V1) t
+-ced(E, D) :- ced(E, D) , E = 'Joe'.  (h,bs)
+
+repVbyBody
+vs1=[E,V1]
+-ced(E, D) :- ced(E, D) , E = 'Joe'.  (h,bs)
+vs=[E,D]
+
+var_resolv 
+vs  [E,D]
+vs1 [
+
+vars=[()

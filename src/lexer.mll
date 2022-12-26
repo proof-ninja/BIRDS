@@ -47,6 +47,29 @@
         "PK", PK;
         "pK", PK;
         "primarykey", PK;
+<<<<<<< HEAD
+=======
+        "SELECT", SELECT;
+        "select", SELECT;
+        "FROM", FROM;
+        "from", FROM;
+        "WHERE", WHERE;
+        "where", WHERE;
+        "INSERT", INSERT;
+        "insert", INSERT;
+        "DELETE", DELETE;
+        "delete", DELETE;
+        "UPDATE", UPDATE;
+        "update", UPDATE;
+        "SET", SET;
+        "set", SET;
+        "INTO", INTO;
+        "into", INTO;
+        "VALUES", VALUES;
+        "values", VALUES;
+        "EXISTS", EXISTS;
+        "exists", EXISTS;
+>>>>>>> d96beeb (introduce files)
         ]
 (*		exception Eof
 *)
@@ -63,7 +86,11 @@
     | ['0'-'9']+ as lxm 			{ INT (int_of_string lxm) }
     | ['0'-'9']*'.'?['0'-'9']+(['e''E']['-''+']?['0'-'9']+)?  as lxm  { FLOAT (float_of_string (lxm)) }
     | '\''(('\'''\'')|[^'\n''\''])*'\'' as lxm  { STRING(lxm) }
+<<<<<<< HEAD
     | '_'*['a'-'z']['a'-'z''0'-'9''_']* as lxm 	{ 
+=======
+    | '_'*['a'-'z''*']['a'-'z''0'-'9''_']* as lxm 	{ 
+>>>>>>> d96beeb (introduce files)
         try
             Hashtbl.find keyword_table lxm
         with Not_found -> RELNAME(lxm) }

@@ -1,0 +1,364 @@
+
+================================= demo 1 ===================================
+***************************
+****** original data ******
+select * from tracks limit 10;
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+(6 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+(5 rows)
+
+select * from tracks1 limit 10;
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lovesong | 1989 |      5 | Galore |        1
+ Lullaby  | 1989 |      3 | Galore |        1
+ Lovesong | 1989 |      5 | Paris  |        4
+ Trust    | 1992 |      4 | Wish   |        5
+(5 rows)
+
+***************************
+view update: INSERT INTO tracks1 VALUES(Mysong, 2018, 10, Myalbum, 20);
+INSERT 0 0
+***************************
+********************
+****** result ******
+select * from tracks limit 10;
+    track     | date | rating |  album  
+--------------+------+--------+---------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+ Mysong       | 2018 |     10 | Myalbum
+(7 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+ Myalbum        |       20
+(6 rows)
+
+select * from tracks1 limit 10;
+  track   | date | rating |  album  | quantity 
+----------+------+--------+---------+----------
+ Lullaby  | 1989 |      3 | Show    |        3
+ Lovesong | 1989 |      5 | Galore  |        1
+ Lullaby  | 1989 |      3 | Galore  |        1
+ Lovesong | 1989 |      5 | Paris   |        4
+ Trust    | 1992 |      4 | Wish    |        5
+ Mysong   | 2018 |     10 | Paris   |        4
+(6 rows)
+
+================================= demo 1.1 ===================================
+***************************
+****** original data ******
+select * from tracks limit 10;
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+(6 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+(5 rows)
+
+select * from tracks1 limit 10;
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lovesong | 1989 |      5 | Galore |        1
+ Lullaby  | 1989 |      3 | Galore |        1
+ Lovesong | 1989 |      5 | Paris  |        4
+ Trust    | 1992 |      4 | Wish   |        5
+(5 rows)
+
+***************************
+view update: INSERT INTO tracks1 VALUES(Mysong, 2018, 10, Paris, 20);
+INSERT 0 0
+***************************
+********************
+****** result ******
+select * from tracks limit 10;
+    track     | date | rating |  album  
+--------------+------+--------+---------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+ Mysong       | 2018 |     10 | Myalbum
+(7 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+ Myalbum        |       20
+(6 rows)
+
+select * from tracks1 limit 10;
+  track   | date | rating |  album  | quantity 
+----------+------+--------+---------+----------
+ Lullaby  | 1989 |      3 | Show    |        3
+ Lovesong | 1989 |      5 | Galore  |        1
+ Lullaby  | 1989 |      3 | Galore  |        1
+ Lovesong | 1989 |      5 | Paris   |        4
+ Trust    | 1992 |      4 | Wish    |        5
+ Mysong   | 2018 |     10 | Paris   |        4
+(6 rows)
+
+=========================demo1.2=============================
+****** original data ******
+select * from tracks limit 10;
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+ Mysong       | 2000 |      8 | Paris
+(6 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+(5 rows)
+
+select * from tracks1 limit 10;
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lovesong | 1989 |      5 | Galore |        1
+ Lullaby  | 1989 |      3 | Galore |        1
+ Lovesong | 1989 |      5 | Paris  |        4
+ Trust    | 1992 |      4 | Wish   |        5
+ Mysong   | 2000 |      8 | Paris  |        4
+(5 rows)
+
+***************************
+view update: INSERT INTO tracks1 VALUES(Mysong, 2018, 10, Myalbum, 20);
+INSERT 0 0
+***************************
+********************
+****** result ******
+select * from tracks limit 10;
+    track     | date | rating |  album  
+--------------+------+--------+---------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+ Mysong       | 2018 |     10 | Myalbum
+(7 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+ Myalbum        |       20
+(6 rows)
+
+select * from tracks1 limit 10;
+  track   | date | rating |  album  | quantity 
+----------+------+--------+---------+----------
+ Lullaby  | 1989 |      3 | Show    |        3
+ Lovesong | 1989 |      5 | Galore  |        1
+ Lullaby  | 1989 |      3 | Galore  |        1
+ Lovesong | 1989 |      5 | Paris   |        4
+ Trust    | 1992 |      4 | Wish    |        5
+ Mysong   | 2018 |     10 | Myalbum |       20
+(6 rows)
+
+================================= demo 2 ===================================
+***************************
+****** original data ******
+select * from tracks limit 10;
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+(6 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+(5 rows)
+
+select * from tracks1 limit 10;
+o  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lovesong | 1989 |      5 | Galore |        1
+ Lullaby  | 1989 |      3 | Galore |        1
+ Lovesong | 1989 |      5 | Paris  |        4
+ Trust    | 1992 |      4 | Wish   |        5
+(5 rows)
+
+***************************
+view update: DELETE FROM tracks1 WHERE track=Lovesong
+DELETE 0
+***************************
+********************
+****** result ******
+select * from tracks limit 10;
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+(4 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+(5 rows)
+
+select * from tracks1 limit 10;
+  track  | date | rating | album  | quantity 
+---------+------+--------+--------+----------
+ Lullaby | 1989 |      3 | Show   |        3
+ Lullaby | 1989 |      3 | Galore |        1
+ Trust   | 1992 |      4 | Wish   |        5
+(3 rows)
+
+================================= demo 3 ===================================
+***************************
+****** original data ******
+select * from tracks limit 10;
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+(6 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+(5 rows)
+
+select * from tracks1 limit 10;
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lovesong | 1989 |      5 | Galore |        1
+ Lullaby  | 1989 |      3 | Galore |        1
+ Lovesong | 1989 |      5 | Paris  |        4
+ Trust    | 1992 |      4 | Wish   |        5
+(5 rows)
+
+***************************
+view update: INSERT INTO tracks1 VALUES(Mysong, 2018, 10, Tokyo, 5);
+INSERT 0 0
+***************************
+********************
+****** result ******
+select * from tracks limit 10;
+  track   | date | rating | album  
+----------+------+--------+--------
+ Lullaby  | 1989 |      3 | Galore
+ Lullaby  | 1989 |      3 | Show
+ Lovesong | 1989 |      5 | Galore
+ Lovesong | 1989 |      5 | Paris
+ Trust    | 1992 |      4 | Wish
+ Mysong   | 2018 |     10 | Tokyo
+(6 rows)
+
+select * from albums limit 10;
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+ Tokyo          |        5
+(6 rows)
+
+select * from tracks1 limit 10;
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lovesong | 1989 |      5 | Galore |        1
+ Lullaby  | 1989 |      3 | Galore |        1
+ Lovesong | 1989 |      5 | Paris  |        4
+ Trust    | 1992 |      4 | Wish   |        5
+ Mysong   | 2018 |     10 | Tokyo  |        5
+(6 rows)
+

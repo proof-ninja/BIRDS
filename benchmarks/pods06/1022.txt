@@ -1,0 +1,53 @@
+-albums(A, Q) :- albums(A,Q), not tracks1(_,_,_,A,Q), tracks(T,D,R,A)
+
+-> albums(A,Q), not tracks1(_,_,_,A,Q)
+
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+
+tracks1
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lullaby  | 1989 |      3 | Galore |        1
+ Trust    | 1992 |      4 | Wish   |        5
+
+ Disintegration |        6
+ Paris          |        4
+
+-> albums(A,Q), not tracks1(_,_,_,A,Q), tracks(T,D,R,A)
+
+tracks
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+
+
+
+
+-albums(A, Q) :- albums(A,Q), -tracks1(_,_,_,A,Q), tracks(T,D,R,A), not -tracks(T,D,R,A).
+
+-> -tracks is empty in demo2
+
+-albums(A, Q) :- albums(A,Q), -tracks1(_,_,_,A,Q), tracks(T,D,R,A)
+
+->    DELETE FROM tracks1 WHERE TRAKCS='Lovesong' 
+   -> -tracks1(T,D,R,A,Q) :- tracks1(T,D,R,A,Q), T='Lovesong'
+   -> -tracks1(_,_,_,A,Q) :- tracks1(V,_,_,A,Q), V='Lovesong'
+
+-albums(A, Q) :- albums(A,Q), tracks1(V,_,_,A,Q), V='Lovesong', tracks(T,D,R,A)
+
+-> view unfolding tracks1(V,_,_,A,Q) :- tracks(V,_,_,A), album(A,Q), V='Lovesong'
+
+-albums(A, Q) :- albums(A,Q), tracks(V,_,_,A), album(A,Q), V='Lovesong' , tracks(T,D,R,A)
+

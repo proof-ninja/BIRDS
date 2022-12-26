@@ -1,0 +1,36 @@
+.decl tracks(track: symbol, date: number, rating: number, album: symbol)
+tracks("Lullaby", 1989, 3, "Galore").
+tracks("Lullaby", 1989, 3, "Show").
+tracks("Lovesong", 1989, 5,"Galore").
+tracks("Lovesong", 1989, 5, "Paris").
+tracks("Trust", 1992, 4, "Wish").
+tracks("Another", 1999, 4, "Tokyo").
+
+.decl albums(album: symbol, quantity: number)
+albums("Disintegration", 6).
+albums("Show", 3).
+albums("Galore", 1).
+albums("Paris", 4).
+albums("Wish", 5).
+
+.decl tracks1(track: symbol, date: number, rating: number, album: symbol, quantity: number)
+tracks1("Lullaby", 1989, 3, "Galore", 1).
+tracks1("Lullaby", 1989, 3, "Show", 3).
+tracks1("Trust", 1992, 4, "Wish", 5).
+
+.decl mt1(track: symbol, date: number, rating: number, album: symbol, quantity: number)
+mt1("Lovesong", 1989, 5, "Galore", 1).
+mt1"Lovesong", 1989, 5, "Paris", 4).
+
+.decl mt(track: symbol, date: number, rating: number, album: symbol)
+.output mt
+mt(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+
+.decl ma(album: symbol, quantity: number)
+.output ma
+ma(A,Q) :- albums(A,Q), !tracks1(_,_,_,A,Q), tracks(T,D,R,A), !mt(T,D,R,A).
+
+
+
+
+

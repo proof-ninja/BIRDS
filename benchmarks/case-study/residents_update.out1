@@ -1,0 +1,10 @@
+-male(E, B) :- male(E, B) , others(E, B, G) , G = 'M' , E = 'Joe'.
+-female(E, B) :- female(E, B) , others(E, B, G) , G = 'F' , E = 'Joe'.
+-others(E, B, G) :- others(E, B, G) , E = 'Joe'.
+-female(E, B) :- female(E, B) , E = 'Joe'.
+-others(E, B, G) :- female(E, B) , others(E, B, G) , G = 'F' , E = 'Joe'.
+-male(E, B) :- male(E, B) , E = 'Joe'.
+-others(E, B, G) :- male(E, B) , others(E, B, G) , G = 'M' , E = 'Joe'.
++male(E, B) :- others(E, B, V1) , E = 'Joe' , G = 'M' , not male(E, B) , not others(E, B, G).
++male(E, B) :- female(E, B) , E = 'Joe' , G = 'M' , not male(E, B) , not others(E, B, G).
+

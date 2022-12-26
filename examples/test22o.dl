@@ -1,0 +1,7 @@
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , -tracks1(_, _, _, ALBUM, QUANTITY) , +tracks(TRACK, DATE, RATING, ALBUM) , not -tracks(TRACK, DATE, RATING, ALBUM).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not albums(ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+

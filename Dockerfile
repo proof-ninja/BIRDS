@@ -7,7 +7,11 @@ ENV OS_LOCALE="en_US.UTF-8" \
     LC_ALL=${OS_LOCALE} \
     PG_VERSION=9.6 \
     OCAML_VERSION=4.07.0 \
+<<<<<<< HEAD
     Z3_VERSION=4.8.7 \
+=======
+    Z3_VERSION=4.8.6 \
+>>>>>>> d96beeb (introduce files)
     RACKET_VERSION=8.0 \
     NODE_VERSION=8.16.0 \
     PG_USER=postgres \

@@ -1,0 +1,5 @@
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , ALBUM = 'Paris'.
++albums(ALBUM, QUANTITY) :- ALBUM = 'Paris' , QUANTITY = 20 , not albums(ALBUM, QUANTITY).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , ALBUM = 'Paris'.
++tracks(TRACK, DATE, RATING, ALBUM) :- TRACK = 'Mysong' , DATE = 2018 , RATING = 10 , ALBUM = 'Paris' , not tracks(TRACK, DATE, RATING, ALBUM).
+

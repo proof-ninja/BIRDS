@@ -1,0 +1,28 @@
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(V27, _, _, ALBUM) , V27 = 'Lovesong' , not albums(ALBUM, _).
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(V5, _, _, ALBUM) , tracks(V1, _, _, ALBUM) , V1 = 'Lovesong' , not V5 = 'Lovesong' , not tracks(_, _, _, ALBUM).
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , albums(ALBUM, V7) , tracks(V5, V6, V7, ALBUM) , tracks(V4, V5, V6, ALBUM) , V4 = 'Lovesong' , not V5 = 'Lovesong' , not tracks(_, _, _, ALBUM).
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, V8) , albums(ALBUM, QUANTITY) , tracks(V5, _, _, ALBUM) , tracks(V8, _, _, ALBUM) , tracks(V11, _, _, ALBUM) , V8 = 'Lovesong' , V11 = 'Lovesong' , not V5 = 'Lovesong'.
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(V5, _, _, ALBUM) , tracks(V18, _, _, ALBUM) , V18 = 'Lovesong' , not V5 = 'Lovesong'.
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(V21, _, _, ALBUM) , V21 = 'Lovesong'.
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(V5, _, _, ALBUM) , not V5 = 'Lovesong' , not tracks(_, _, _, ALBUM).
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(V5, _, _, ALBUM) , tracks(V24, _, _, ALBUM) , V24 = 'Lovesong' , not V5 = 'Lovesong'.
+-albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(TRACK, _, _, ALBUM) , tracks(V27, _, _, ALBUM) , V27 = 'Lovesong' , not TRACK = 'Lovesong'.
+-tracks(TRACK, DATE, RATING, ALBUM) :- albums(ALBUM, _) , tracks(V31, _, _, ALBUM) , tracks(TRACK, DATE, RATING, ALBUM) , TRACK = 'Lovesong' , not V31 = 'Lovesong'.
+-tracks(TRACK, DATE, RATING, ALBUM) :- albums(ALBUM, _) , tracks(TRACK, DATE, RATING, ALBUM) , TRACK = 'Lovesong'.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

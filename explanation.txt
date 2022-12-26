@@ -1,0 +1,42 @@
+(1) albums(ALBUM, V6845) はV6845が他で参照されていないので、albums(ALBUM, _)と等価、重複するalbumsとtracksを消す
+(2) contradictionで消える (tracks(V31, V32, V33, ALBUM) ,  not tracks(V31, V32, V33, ALBUM).
+(3) contradictionで消える ( V34は他で参照されていないので、albums(ALBUM, _)となり, albums(ALBUM, _), not album(ALBUM, _) または tracks, not tracks)
+(4) contradictionで消える (tracks(TRACK, DATE, RATING, ALBUM) , not tracks(TRACK, DATE, RATING, ALBUM))
+(5) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(6) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(7) 重複するalbumsを消し、tracks(V6853, V6854, V6855, ALBUM) のV6853, V6854は他で参照されていないのでAnoVarとなりtracks(_, _, V6855, ALBUM)となる。条件の緩いtracks(_, _, _, ALBUM)は消える
+(8) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(9) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(10) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(11) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(12) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(13) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(14) contradictionで消える (tracks(V5, V6, V7, ALBUM) , not tracks(V5, V6, V7, ALBUM))
+(15) 整理すると(1)と同じルールになり、重複するので消える
+(16) contradictionで消える (albums(ALBUM, V34) , not albums(ALBUM, V34))
+(17) contradictionで消える (albums(ALBUM, V34) , not albums(ALBUM, V34))
+(18) 重複するalbumsを消し、tracksはより条件の緩いtracks(V6847, V6848, V6849, ALBUM) を残す。他で参照されていない変数をanonimous変数(AnoVar)にする。
+(19) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(20) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(21) 整理すると(7)と同じルールになり、重複するので消える
+(22) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(23) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(24) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(25) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(26) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(27) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(28) contradictionで消える (albums(ALBUM, V8) , not albums(ALBUM, V8))
+(29) 整理すると(1)と同じになり、重複するルールなので消える
+(30) V34, V6846は他で参照されていないのでAnoVarにするとalbumsが重複するので一つにする。V31, V32は他で参照されていないのでAnoVarにする。（注意：現在の実装では消えてしまうので良くない）
+(31) V34は他で参照されていないので albums(ALBUM, _) となり、contradictionで消える (albums(ALBUM, _), not albums(ALBUM, _))
+(32) 重複するalbumsを消し、他で参照されてないV6847とV848をAnoVarにする
+(33) 整理すると(36)と同じになり、重複するルールなので消える
+(34) 整理すると(42)と同じになり、重複するルールなので消える
+(35) 整理すると(7)と同じになり、重複するルールなので消える
+(36) 重複するalbumsを消し、albums(ALBUM, V8)はalbums(ALBUM, _)となりalbums(ALBUM, QUANTITY)と比べて緩い条件なので消える
+(37) V8は他で参照されていないので、albums(ALBUM, _)となり、contradictionで消える (albums(ALBUM, _), not albums(ALBUM, _)
+(38) V8は他で参照されていないので、albums(ALBUM, _)となり、contradictionで消える (albums(ALBUM, _), not albums(ALBUM, _)
+(39) V8, V6868は他で参照されていないので、albums(ALBUM, _)は重複する。またalbums(ALBUM, _)はalbums(ALBUM, QUANTITY)と比べて緩い条件なので消える。また、V6864とV6867の出現の仕方が同じなので、重複する出現（tracksも含めて）を消す。（注意：現在の実装では対応できていない）。結果として(36)と同じルールになり、重複するので消える（注意：これも現在の実装では対応できていない）
+(40) V8, V6868は他で参照されていないので、albums(ALBUM, _)は重複する。またalbums(ALBUM, _)はalbums(ALBUM, QUANTITY)と比べて緩い条件なので消える。V6869とV6870は他で参照されていないのでAnoVarになる
+(41) V8は他で参照されていないのでAnoVarになる。albums(ALBUM, _)はalbums(ALBUM, QUANTITY)と比べて緩いので消える。V6873とV6874は他で参照されていないのでAnoVarとなる。結果として(40)と同じルールになってしまうのでどちらか消えてほしい（注意：現在の実装では対応できていない）
+(42) V8が他で参照されていないのでAnoVarとなる。albums(ALBUM, _)はalbums(ALBUM, QUANTITY)と比べて緩いので消える。

@@ -1,0 +1,21 @@
+source t('TRACK':string,'DATE':int,'RATING':int,'ALBUM':string).
+source a('ALBUM':string,'QUANTITY':int).
+view v('TRACK':string,'DATE':int,'RATING':int,'ALBUM':string,'QUANTITY':int).
+
+% constraints:
+
+⊥ :-v1(T,D,R,A,_),v1(_,_,_,A,Q), notv1(T,D,R,A,Q).
+
+% view definition:
+v(T,D,R,A,Q) :- t(T,D,R,A), a(A,Q).
+
+% caculate delta relation of tracks for the modification in the view
++t(T,D,R,A) :- v(T,D,R,A,_), not t(T,D,R,A).
+-t(T,D,R,A) :- t(T,D,R,A),not v(T,D,R,A,_), a(A,_).
+-t(T,D,R,A) :- t(T,D,R,A),not v(T,D,R,A,_), v(_,_,_,A,_).
+
+% caculate delta relation of albums for the modification in the view 
++a(A, Q) :- v(_,_,_,A,Q), not a(A,Q).
+-a(A, Q) :- a(A,Q), not v(_,_,_,A,Q), t(T,D,R,A), not -t(T,D,R,A).
+-a(A, Q) :- a(A,Q), not v(_,_,_,A,Q), +t(T,D,R,A), not -t(T,D,R,A).
+-a(A, Q) :- a(A,Q), not v(_,_,_,A,Q), v(_,_,_,A,_), not -t(_,_,_,A).

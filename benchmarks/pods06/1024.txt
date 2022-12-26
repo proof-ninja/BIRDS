@@ -1,0 +1,201 @@
+tracks1(T,D,R,A,Q) :- tracks(T,D,R,A), albums(A,Q).
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+-albums(A, Q) :- albums(A,Q), not tracks1(_,_,_,A,Q), tracks(T,D,R,A), not -tracks(T,D,R,A).
+
+***demo2
+
+tracks1(T,D,R,A,Q) :- tracks(T,D,R,A), albums(A,Q).
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+-albums(A, Q) :- albums(A,Q), not tracks1(_,_,_,A,Q), tracks(T,D,R,A), not -tracks(T,D,R,A).
+
+=======================
+state-based for -tracks
+=======================
+tracks
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+
+album
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Show           |        3
+ Galore         |        1
+ Paris          |        4
+ Wish           |        5
+
+
+tracks1
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lullaby  | 1989 |      3 | Galore |        1
+ Trust    | 1992 |      4 | Wish   |        5
+
+
+(1) tracks(T,D,R,A), not tracks1(T,D,R,A,_)
+
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+ Another song | 1999 |      4 | Tokyo
+
+(2c) tracks(T,D,R,A), not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+
+-tracks
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lovesong     | 1989 |      5 | Galore
+
+(2d) tracks(T,D,R,A), not tracks1(T,D,R,A,_), albums(A,_).
+
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+
+=======================
+state-based for -album
+=======================
+
+(1) albums(A,Q), not tracks1(_,_,_,A,Q)
+
+album
+     album      | quantity 
+----------------+----------
+ Disintegration |        6
+ Paris          |        4
+
+(2) tracks(T,D,R,A), not -tracks(T,D,R,A)
+
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Galore
+ Lullaby      | 1989 |      3 | Show
+ Lovesong     | 1989 |      5 | Paris
+ Trust        | 1992 |      4 | Wish
+ Another song | 1999 |      4 | Tokyo
+
+
+(2) albums(A,Q), not tracks1(_,_,_,A,Q), tracks(T,D,R,A), not -tracks(T,D,R,A).
+
+-album
+     album      | quantity 
+----------------+----------
+ Paris          |        4
+
+=======================
+operation-based for -tracks
+=======================
+(+tracks1 is bottom)
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+
+=> tracks1 :- +tracks1,  tracks1 :- tracks1, not -tracks1
+Here, tracks1 in the body is the old tracks1.
+
+x-tracks(T,D,R,A) :- tracks(T,D,R,A), not +tracks1(T,D,R,A,_), +tracks1(_,_,_,A,_).
+                                                               ^^^^^^^^^^^^^^^^^^^
+x-tracks(T,D,R,A) :- tracks(T,D,R,A), not (tracks1(T,D,R,A,_), not -tracks1(T,D,R,A,_)) ,+tracks1(_,_,_,A,_).
+                                                                                         ^^^^^^^^^^^^^^^^^^^
+-tracks(T,D,R,A) :- tracks(T,D,R,A), not +tracks1(T,D,R,A,_), tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+                                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+          |      |        | Show   | 
+          |      |        | Wish   |
+
+
+-tracks
+  track     | date | rating | album  
+--------------+------+--------+--------
+ Lullaby      | 1989 |      3 | Show
+ Trust        | 1992 |      4 | Wish
+
+
+
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A), not (tracks1(T,D,R,A,_), not -tracks1(T,D,R,A,_)) , tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lullaby  | 1989 |      3 | Show   |        3
+ Lullaby  | 1989 |      3 | Galore |        1
+ Trust    | 1992 |      4 | Wish   |        5
+
+
+
+=> 
+
+(a) -tracks(T,D,R,A) :- tracks(T,D,R,A), not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ Another song | 1999 |      4 | Tokyo
+
+(a) -tracks(T,D,R,A) :- tracks(T,D,R,A), not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+          |      |        | Show   | 
+          |      |        | Wish   |
+
+
+
+(b) -tracks(T,D,R,A) :- tracks(T,D,R,A), -tracks1(T,D,R,A,_) , tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lovesong     | 1989 |      5 | Galore
+ Lovesong     | 1989 |      5 | Paris
+
+
+
+
+
+=> with state-based for -tracks1
+
+-tracks1(T,D,R,A,Q) :- tracks1(T,D,R,A,Q), T='Lovesong'
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lovesong | 1989 |      5 | Galore |        1
+ Lovesong | 1989 |      5 | Paris  |        4
+
+
+(a) -tracks(T,D,R,A) :- tracks(T,D,R,A), not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+
+tracks(T,D,R,A), not tracks1(T,D,R,A,_)
+
+ Another song | 1999 |      4 | Tokyo
+
+tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+
+old tracks1
+
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+          |      |        | Show   | 
+          |      |        | Wish   | 
+
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A), not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+
+empty
+
+
+
+-tracks
+    track     | date | rating | album  
+--------------+------+--------+--------
+ Lovesong     | 1989 |      5 | Galore

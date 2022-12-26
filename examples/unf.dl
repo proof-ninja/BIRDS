@@ -1,0 +1,43 @@
+-a(A, Q) :- a(A, Q) , not t(_, _, _, A) , +v(_, _, _, A, _) , not -t(_, _, _, A).
+-a(A, Q) :- a(A, Q) , not t(_, _, _, A) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _) , not -t(_, _, _, A).
+-t(T, D, R, A) :- t(T, D, R, A) , not t(T, D, R, A) , +v(_, _, _, A, _).
+-t(T, D, R, A) :- t(T, D, R, A) , not t(T, D, R, A) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _).
+-a(A, Q) :- a(A, Q) , not +v(_, _, _, A, Q) , +v(_, _, _, A, _) , not -t(_, _, _, A).
+-a(A, Q) :- a(A, Q) , not a(A, Q) , +v(_, _, _, A, _) , not -t(_, _, _, A).
+-a(A, Q) :- a(A, Q) , -v(_, _, _, A, Q) , +v(_, _, _, A, _) , not -t(_, _, _, A).
+-a(A, Q) :- a(A, Q) , not +v(_, _, _, A, Q) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _) , not -t(_, _, _, A).
+-a(A, Q) :- a(A, Q) , not a(A, Q) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _) , not -t(_, _, _, A).
+-a(A, Q) :- a(A, Q) , -v(_, _, _, A, Q) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _) , not -t(_, _, _, A).
+-a(A, Q) :- a(A, Q) , -v(_, _, _, A, Q) , +t(T, D, R, A) , not -t(T, D, R, A).
+-a(A, Q) :- a(A, Q) , -v(_, _, _, A, Q) , t(T, D, R, A) , not -t(T, D, R, A).
++a(A, Q) :- +v(_, _, _, A, Q) , not a(A, Q).
+-t(T, D, R, A) :- t(T, D, R, A) , not +v(T, D, R, A, _) , +v(_, _, _, A, _).
+-t(T, D, R, A) :- t(T, D, R, A) , not a(A, _) , +v(_, _, _, A, _).
+-t(T, D, R, A) :- t(T, D, R, A) , -v(T, D, R, A, _) , +v(_, _, _, A, _).
+-t(T, D, R, A) :- t(T, D, R, A) , not +v(T, D, R, A, _) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _).
+-t(T, D, R, A) :- t(T, D, R, A) , not a(A, _) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _).
+-t(T, D, R, A) :- t(T, D, R, A) , -v(T, D, R, A, _) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _).
+-t(T, D, R, A) :- t(T, D, R, A) , -v(T, D, R, A, _) , a(A, _).
++t(T, D, R, A) :- +v(T, D, R, A, _) , not t(T, D, R, A).
+
+(a) +t(T, D, R, A) :- +v(T, D, R, A, _) , not t(T, D, R, A).
+(b) -t(T, D, R, A) :- t(T, D, R, A) , -v(T, D, R, A, _) , a(A, _).
+(d) +a(A, Q) :- +v(_, _, _, A, Q) , not a(A, Q).
+(e) -a(A, Q) :- a(A, Q) , -v(_, _, _, A, Q) , t(T, D, R, A) , not -t(T, D, R, A).
+(f) -a(A, Q) :- a(A, Q) , -v(_, _, _, A, Q) , +t(T, D, R, A) , not -t(T, D, R, A).
+(c1) -t(T, D, R, A) :- t(T, D, R, A) , not +v(T, D, R, A, _) , +v(_, _, _, A, _).
+(c2) -t(T, D, R, A) :- t(T, D, R, A) , not +v(T, D, R, A, _) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _).
+(c311) -t(T, D, R, A) :- t(T, D, R, A) , not t(T, D, R, A) , +v(_, _, _, A, _).
+(c312) -t(T, D, R, A) :- t(T, D, R, A) , not a(A, _) , +v(_, _, _, A, _).
+(c32) -t(T, D, R, A) :- t(T, D, R, A) , -v(T, D, R, A, _) , +v(_, _, _, A, _).
+(c411) -t(T, D, R, A) :- t(T, D, R, A) , not t(T, D, R, A) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _).
+(c412) -t(T, D, R, A) :- t(T, D, R, A) , not a(A, _) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _).
+(c42) -t(T, D, R, A) :- t(T, D, R, A) , -v(T, D, R, A, _) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _).
+(g1) -a(A, Q) :- a(A, Q) , not +v(_, _, _, A, Q) , +v(_, _, _, A, _) , not -t(_, _, _, A).
+(g2) -a(A, Q) :- a(A, Q) , not +v(_, _, _, A, Q) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _) , not -t(_, _, _, A).
+(g311) -a(A, Q) :- a(A, Q) , not t(_, _, _, A) , +v(_, _, _, A, _) , not -t(_, _, _, A).
+(g312) -a(A, Q) :- a(A, Q) , not a(A, Q) , +v(_, _, _, A, _) , not -t(_, _, _, A).
+(g32) -a(A, Q) :- a(A, Q) , -v(_, _, _, A, Q) , +v(_, _, _, A, _) , not -t(_, _, _, A).
+(g411) -a(A, Q) :- a(A, Q) , not t(_, _, _, A) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _) , not -t(_, _, _, A)
+(g412) -a(A, Q) :- a(A, Q) , not a(A, Q) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _) , not -t(_, _, _, A)
+(g42) -a(A, Q) :- a(A, Q) , -v(_, _, _, A, Q) , t(_, _, _, A) , a(A, _) , not -v(_, _, _, A, _) , not -t(_, _, _, A).

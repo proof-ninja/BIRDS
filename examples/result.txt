@@ -1,0 +1,47 @@
+1-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+2-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not albums(ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+3-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+4-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+6-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+x-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not tracks(TRACK, DATE, RATING, ALBUM) , +tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not albums(ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+x-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not tracks(TRACK, DATE, RATING, ALBUM) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+x-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not albums(ALBUM, _) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+
+source albums('ALBUM':string, 'QUANTITY':int).
+source tracks('TRACK':string, 'DATE':int, 'RATING':int, 'ALBUM':string).
+view tracks1('TRACK':string, 'DATE':int, 'RATING':int, 'ALBUM':string, 'QUANTITY':int).
+⊥() :- tracks1(T, D, R, A, _) , tracks1(_, _, _, A, Q) , not tracks1(T, D, R, A, Q).
+tracks1(T, D, R, A, Q) :- tracks(T, D, R, A) , albums(A, Q).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+1(c1) -t(T,D,R,A)                   :- t(T,D,R,A)                         , not +t1(T,D,R,A,_)                          , +t1(_,_,_,A,_).
+
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not albums(ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+x-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not tracks(TRACK, DATE, RATING, ALBUM) , +tracks1(_, _, _, ALBUM, _).
+2(c31) -t(T,D,R,A)                  :- t(T,D,R,A)                         , not t1(T,D,R,A,_)                          , +t1(_,_,_,A,_).
+
+
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , +tracks1(_, _, _, ALBUM, _).
+3(c32) -t(T,D,R,A)                  :- t(T,D,R,A)                         , -t1(T,D,R,A,_)                          , +t1(_,_,_,A,_).
+
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks1(_, _, _, ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not +tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+4(c2) -t(T,D,R,A)                   :- t(T,D,R,A)                         , not +t1(T,D,R,A,_)                          , t1(_,_,_,A,_)              , not -t1(_,_,_,A,_).
+
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks1(_, _, _, ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks1(_, _, _, ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , not tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+5(c41) -t(T,D,R,A)                  :- t(T,D,R,A)                         , not t1(T,D,R,A,_)                          , t1(_,_,_,A,_)              , not -t1(_,_,_,A,_).
+
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks1(_, _, _, ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks1(_, _, _, ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+-tracks(TRACK, DATE, RATING, ALBUM) :- tracks(TRACK, DATE, RATING, ALBUM) , -tracks1(TRACK, DATE, RATING, ALBUM, _) , tracks(_, _, _, ALBUM) , albums(ALBUM, _) , not -tracks1(_, _, _, ALBUM, _).
+(c42) -t(T,D,R,A)                   :- t(T,D,R,A)                         , -t1(T,D,R,A,_)                          , t1(_,_,_,A,_)              , not -t1(_,_,_,A,_).
+
+

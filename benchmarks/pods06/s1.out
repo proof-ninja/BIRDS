@@ -1,0 +1,4 @@
+-albums(A, Q) :- albums(A, Q) , tracks(T, D, R, A) , tracks(V1, _, _, A) , V1 = 'Lovesong'.
+-albums(A, Q) :- albums(A, Q) , tracks(T, D, R, A) , tracks(V2, _, _, A) , V2 = 'Lovesong' , not tracks(_, _, _, A).
+-tracks(T, D, R, A) :- albums(A, _) , tracks(T, D, R, A) , T = 'Lovesong'.
+

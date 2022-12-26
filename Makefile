@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 PACKAGES=postgresql,str,num
+=======
+PACKAGES=postgresql,str,num 
+>>>>>>> d96beeb (introduce files)
 
 # create directory if not exist
 DIR_GUARD=@mkdir -p $(@D)
@@ -27,11 +31,16 @@ MAIN_FILE=main
 LOGIC_FILES=\
     lib intro formulas prop fol skolem fol_ex\
 
+<<<<<<< HEAD
 LOGIC_FILES_WITH_MLI=\
     lib intro formulas prop fol skolem fol_ex\
 
 TOP_FILES=\
 	expr utils parser lexer\
+=======
+TOP_FILES=\
+	expr2 utils parser lexer\
+>>>>>>> d96beeb (introduce files)
 	conn_ops\
 	rule_preprocess stratification derivation \
 	bottom_up evaluation\
@@ -41,12 +50,20 @@ TOP_FILES=\
 	debugger\
 
 TOP_FILES_WITH_MLI=\
+<<<<<<< HEAD
 	parser expr conversion ast2sql ast2theorem\
+=======
+	parser ast2fol\
+>>>>>>> d96beeb (introduce files)
 
 FILES=\
     $(LOGIC_FILES:%=logic/%)\
     $(TOP_FILES) \
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> d96beeb (introduce files)
 .PHONY: all release clean depend #annot
 all: $(BIN_DIR)/$(EX_NAME)
 
@@ -75,6 +92,7 @@ $(TOP_FILES_WITH_MLI:%=$(OBJ_DIR)/%.cmo): $(OBJ_DIR)/%.cmo: $(SOURCE_DIR)/%.ml $
 	$(DIR_GUARD)
 	ocamlfind ocamlc $(OCAMLC_FLAGS) -package $(PACKAGES) -thread -o $(OBJ_DIR)/$* -c $<
 
+<<<<<<< HEAD
 $(LOGIC_FILES_WITH_MLI:%=$(LOGIC_OBJ_DIR)/%.cmi): $(LOGIC_OBJ_DIR)/%.cmi: $(LOGIC_SOURCE_DIR)/%.mli
 	$(DIR_GUARD)
 	ocamlfind ocamlc $(OCAMLC_FLAGS) -o $(LOGIC_OBJ_DIR)/$* -c $<
@@ -83,6 +101,8 @@ $(LOGIC_FILES_WITH_MLI:%=$(LOGIC_OBJ_DIR)/%.cmo): $(LOGIC_OBJ_DIR)/%.cmo: $(LOGI
 	$(DIR_GUARD)
 	ocamlfind ocamlc $(OCAMLC_FLAGS) -package $(PACKAGES) -thread -o $(LOGIC_OBJ_DIR)/$* -c $<
 
+=======
+>>>>>>> d96beeb (introduce files)
 #General rule for compiling
 $(OBJ_DIR)/%.cmi $(OBJ_DIR)/%.cmo $(OBJ_DIR)/%.cmt: $(SOURCE_DIR)/%.ml
 	$(DIR_GUARD)
@@ -102,7 +122,11 @@ release: $(RELEASE_DIR)/$(EX_NAME)
 $(RELEASE_DIR)/$(EX_NAME): $(FILES:%=$(RELEASE_DIR)/%.cmx) $(RELEASE_DIR)/$(MAIN_FILE).cmx
 	$(DIR_GUARD)
 	ocamlfind ocamlopt $(OCAMLOPT_FLAGS) -package $(PACKAGES) -thread -linkpkg $(FILES:%=$(RELEASE_DIR)/%.cmx) $(RELEASE_DIR)/$(MAIN_FILE).cmx -o $(RELEASE_DIR)/$(EX_NAME)
+<<<<<<< HEAD
 	rm -f $(RELEASE_DIR)/*.cmx $(RELEASE_DIR)/*.cmi $(RELEASE_DIR)/*.o $(LOGIC_RELEASE_DIR)/*.cmx $(LOGIC_RELEASE_DIR)/*.cmi $(LOGIC_RELEASE_DIR)/*.o
+=======
+	rm -f $(RELEASE_DIR)/*.cmx $(RELEASE_DIR)/*.cmi $(RELEASE_DIR)/*.o $(LOGIC_RELEASE_DIR)/*.cmx $(LOGIC_RELEASE_DIR)/*.cmi $(LOGIC_RELEASE_DIR)/*.o 
+>>>>>>> d96beeb (introduce files)
 
 #Rule for compiling the main file
 $(RELEASE_DIR)/$(MAIN_FILE).cmx: $(FILES:%=$(RELEASE_DIR)/%.cmx) $(SOURCE_DIR)/$(MAIN_FILE).ml
@@ -130,6 +154,7 @@ $(TOP_FILES_WITH_MLI:%=$(RELEASE_DIR)/%.cmx): $(RELEASE_DIR)/%.cmx: $(SOURCE_DIR
 	$(DIR_GUARD)
 	ocamlfind ocamlopt $(OCAMLOPT_FLAGS) -package $(PACKAGES) -thread -o $(RELEASE_DIR)/$* -c $<
 
+<<<<<<< HEAD
 $(LOGIC_FILES_WITH_MLI:%=$(LOGIC_RELEASE_DIR)/%.cmi): $(LOGIC_RELEASE_DIR)/%.cmi: $(LOGIC_SOURCE_DIR)/%.mli
 	$(DIR_GUARD)
 	ocamlfind ocamlopt $(OCAMLOPT_FLAGS) -o $(LOGIC_RELEASE_DIR)/$* -c $<
@@ -142,11 +167,17 @@ $(LOGIC_FILES_WITH_MLI:%=$(LOGIC_RELEASE_DIR)/%.cmx): $(LOGIC_RELEASE_DIR)/%.cmx
 	$(DIR_GUARD)
 	ocamlfind ocamlopt $(OCAMLOPT_FLAGS) -package $(PACKAGES) -thread -o $(LOGIC_RELEASE_DIR)/$* -c $<
 
+=======
+>>>>>>> d96beeb (introduce files)
 #General rule for compiling
 $(RELEASE_DIR)/%.cmi $(RELEASE_DIR)/%.cmx: $(SOURCE_DIR)/%.ml
 	$(DIR_GUARD)
 	ocamlfind ocamlopt $(OCAMLOPT_FLAGS) -package $(PACKAGES) -thread -o $(RELEASE_DIR)/$* -c $<
 
+<<<<<<< HEAD
 install:
+=======
+install: 
+>>>>>>> d96beeb (introduce files)
 	make release
 	mv release/birds /usr/local/bin/

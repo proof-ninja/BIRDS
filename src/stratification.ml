@@ -1,8 +1,16 @@
+<<<<<<< HEAD
 (**  Functions for stratifying a datalog program. Report an error if any of the predicates is indirectly recursive,
 or it is an incomplete program, which contains references to undefined predicates
  *)
 
 open Expr
+=======
+(**  Functions for stratifying a datalog program. Report an error if any of the predicates is indirectly recursive, 
+or it is an incomplete program, which contains references to undefined predicates
+ *)
+ 
+open Expr2
+>>>>>>> d96beeb (introduce files)
 open Utils
 
 (** Checks that all predicates in rterms are in the edb/idb, and returns those that contain idb predicates*)
@@ -10,7 +18,11 @@ let check_keys (edb:symtable) (idb:symtable) keys =
     let check key =
         if Hashtbl.mem edb key then false
         else if Hashtbl.mem idb key then true
+<<<<<<< HEAD
         else raise ( SemErr
+=======
+        else raise ( SemErr 
+>>>>>>> d96beeb (introduce files)
             (   "Incomplete program, predicate "^
                 (string_of_symtkey key)^" not defined"
             )
@@ -74,7 +86,11 @@ let get_preceding_rules prog query_rt =
 
 
 (** Get all rules in a stratified order. *)
+<<<<<<< HEAD
 let get_stratified_rules prog =
+=======
+let get_stratified_rules (prog:expr) : rule list  =
+>>>>>>> d96beeb (introduce files)
     let edb = extract_edb prog in
     let idb = extract_idb prog in
     let get_preds key rules lst = (Pred(get_rterm_predname (rule_head (List.hd rules)), gen_vars 0 (get_symtkey_arity key))) :: lst in

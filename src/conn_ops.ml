@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 (** Operations for a db-connection, such as fetching columns or printing the results
  *)
 
@@ -7,6 +8,17 @@ open Utils
 open Expr
 
 (** Extract response column-names and tuples to lists
+=======
+(** Operations for a db-connection, such as fetching columns or printing the results  
+ *)
+
+open Printf 
+open Postgresql 
+open Utils
+open Expr2
+
+(** Extract response column-names and tuples to lists 
+>>>>>>> d96beeb (introduce files)
  *  Returns: empty_query, tuples_ok or error messages in case of problems *)
 let res_to_lst conn res =
     match res#status with
@@ -71,27 +83,46 @@ let print_sql_res (conn:Postgresql.connection) sql =
 let print_creating_sql (conn:Postgresql.connection) sql =
     let res = (conn#exec sql) in
     print_endline "";
+<<<<<<< HEAD
     match res#status with
+=======
+    match res#status with 
+>>>>>>> d96beeb (introduce files)
     | Command_ok -> print_endline "-- run SQL successfully"
     | _             -> failwith "error of executing SQL: unexpected status"
 
 
+<<<<<<< HEAD
 let type_of_postgrestype str = match str with
+=======
+let type_of_postgrestype str = match str with 
+>>>>>>> d96beeb (introduce files)
     | "smallint" -> Sint
     | "integer"	-> Sint
     | "bigint"	-> Sint
     | "decimal variable" -> Sreal
     | "decimal" -> Sreal
+<<<<<<< HEAD
     | "numeric variable" -> Sreal
     | "numeric" -> Sreal
     | "real" -> Sreal
     | "double precision" -> Sreal
+=======
+    | "numeric variable" -> Sreal 
+    | "numeric" -> Sreal 
+    | "real" -> Sreal 
+    | "double precision" -> Sreal 
+>>>>>>> d96beeb (introduce files)
     | "smallserial"	-> Sint
     | "serial" -> Sint
     | "bigserial"	-> Sint
     | "boolean" -> Sbool
     | "text" -> Sstring
+<<<<<<< HEAD
     | "date" -> Sstring
+=======
+    | "date" -> Sstring 
+>>>>>>> d96beeb (introduce files)
     | _ -> Sstring
 
 (** Looks in the db for the description of the provided table-name
@@ -101,11 +132,19 @@ let import_table_schema (conn:Postgresql.connection) tname =
     let sql = "SELECT column_name,data_type,ordinal_position FROM information_schema.columns
                 WHERE table_name ='"^tname^"';" in
     let _,tuples = get_query_result conn sql in
+<<<<<<< HEAD
     let ordpos t = int_of_string (List.nth t 2) in
     let stuples = List.sort (fun a b -> (ordpos a) - (ordpos b)) tuples in
     let tuple_to_var_and_type t =
         let col = (String.uppercase_ascii (List.hd t)) in
         let type_of_var = type_of_postgrestype (List.nth t 1) in
+=======
+    let ordpos t = int_of_string (List.nth t 2) in 
+    let stuples = List.sort (fun a b -> (ordpos a) - (ordpos b)) tuples in
+    let tuple_to_var_and_type t = 
+        let col = (String.uppercase_ascii (List.hd t)) in
+        let type_of_var = type_of_postgrestype (List.nth t 1) in 
+>>>>>>> d96beeb (introduce files)
         col,type_of_var in
     let col_types = List.map tuple_to_var_and_type stuples in
     (tname, col_types)
@@ -124,3 +163,7 @@ let import_dbschema (conn:Postgresql.connection) (dbschema:string) =
     (* List.map (insert_t_pred conn symt) t_names; *)
     (* symt *)
     List.map (import_table_schema conn) t_names;
+<<<<<<< HEAD
+=======
+
+>>>>>>> d96beeb (introduce files)

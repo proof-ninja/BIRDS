@@ -1,0 +1,24 @@
+tracks1(T,D,R,A,Q) :- tracks(T,D,R,A), albums(A,Q).
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+-albums(A, Q) :- albums(A,Q), not tracks1(_,_,_,A,Q), tracks(T,D,R,A), not -tracks(T,D,R,A).
+
+================
+apply incremental view maintenance for -tracks
+================
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+
+=> tracks1(T,D,R,A,_) :- tracks1(T,D,R,A,_) U Δ(T,D,R,A,_
+   tracks1(
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+
+
+The discussion includes the following things;
+(1) The demo 2 has some ..
+(2) It is difficult to specify view update strategis on join view.
+(3) I'd like to ask company to ... (a) dl2sql, (b) IDE for BIRDS
+(4) bag semantics
+(5) Detection of invalid view updates
+(6) How to use BIRDS in test mode.
+

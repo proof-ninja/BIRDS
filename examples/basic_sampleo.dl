@@ -1,0 +1,4 @@
+-s1(X, Y) :- s1(X, Y) , -v(X, Y).
+-s2(X, Y) :- s2(X, Y) , -v(X, Y).
++s1(X, Y) :- +v(X, Y) , not s1(X, Y) , not s2(X, Y).
+

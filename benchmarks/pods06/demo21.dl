@@ -1,0 +1,14 @@
+% generate problem of size 10
+t(lullaby, 1989, 3, galore).
+t(lullaby, 1989, 3, show).
+t(lovesong, 1989, 5, galore).
+t(lovesong, 1989, 5, paris).
+t(trust, 1992, 4, wish).
+t(another, 1999, 4, tokyo).
+v(lullaby, 1989, 3, galore, 1).
+v(lullaby, 1989, 3, show, 3).
+v(lovesong, 1989, 5, galore, 1).
+v(lovesong, 1989, 5, paris, 4).
+v(trust, 1992, 4, wish, 5).
+
+

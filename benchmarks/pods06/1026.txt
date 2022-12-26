@@ -1,0 +1,136 @@
+tracks1(T,D,R,A,Q) :- tracks(T,D,R,A), albums(A,Q).
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+-albums(A, Q) :- albums(A,Q), not tracks1(_,_,_,A,Q), tracks(T,D,R,A), not -tracks(T,D,R,A).
+
+***demo2
+
+=======================
+operation-based for -tracks
+=======================
+(+tracks1 is bottom)
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A), not (tracks1(T,D,R,A,_), d1)
+=>
+-tracks(T,D,R,A) :- tracks(T,D,R,A), not (tracks1(T,D,R,A,_), d1)
+
+
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A), not (tracks1(T,D,R,A,_), not tracks1(T,D,R,A,_), T="Lovesong") 
+=>
+mt(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), tracks1(T,D,R,A,_), T="Lovesong".
+
+
+
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A), tracks1(_,_,_,A,_), not tracks1(T,D,R,A,_).
+
+-tracks(T,D,R,A) = tracks(T,D,R,A) * - (tracks1(T,D,R,A,_) * tracks1(_,_,_,A,_).
+                        a                     b                    c
+                 = a * -(b-d1) *(c-d2)
+                 = (a*(-b) + a*d1) * (c-d2)
+                 = a*(-b)*c + a*(-b)*(-d2) + a*d1*c + a*d1*(-d2)
+
+a*(-b)*(-d2)
+mt(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), !tracks1(V,_,_,A,_), V="Lovesong"
+
+
+
+a*b*c
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+=>
+-tracks(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+
+a*b*d2
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), not tracks1(V,_,_,A,_), V="Lovesong".
+=>
+mt(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), !tracks1(V,_,_,A,_), V="Lovesong".
+
+mt(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), !mt1(_,_,_,A,_).
+
+a*d1*c
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+=>
+mt(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), T="Lovesong", tracks1(_,_,_,A,_).
+
+mt(T,D,R,A) :- tracks(T,D,R,A), !mt1(T,D,R,A,_), tracks1(_,_,_,A,_).
+
+a*d1*d2
+
+mt(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), T="Lovesong", !tracks1(V,_,_,A,_), V="Lovesong".
+
+mt(T,D,R,A) :- tracks(T,D,R,A), !mt1(T,D,R,A,_), !mt1(V,_,_,A,_).
+
+
+d1=not mt1
+
+d1= not (tracks1(T,D,R,A,_), T="Lovesong")
+  = not tracks1(T,D,R,A,_), T="Lovesong"
+
+d2= not tracks1(V,_,_,A,_), V="Lovesong"
+  = not tracks1(V,_,_,A,_), V="Lovesong"
+
+  tracks1 :- tracks1 U delta
+
+
+
+
+
+  tracks1 :- +tracks1
+
+  tracks1 :- tracks1, not -tracks1
+  ->
+  tracks1 = tracks1 + (- -tracks1)
+  
+  ------------------------------------------
+  
+
+not tracks1 := not +tracks1
+
+  not tracks1 :- not (tracks1, not -tracks1)
+  ->
+  not tracks1 = - (tracks1 + (- -tracks1))
+              = -tracks1 + -tracks1
+
+=> 
+
+x-tracks(T,D,R,A) :- tracks(T,D,R,A), not +tracks1(T,D,R,A,_), +tracks1(_,_,_,A,_).
+                                                               ^^^^^^^^^^^^^^^^^^^
+x-tracks(T,D,R,A) :- tracks(T,D,R,A), not (tracks1(T,D,R,A,_), not -tracks1(T,D,R,A,_)) ,+tracks1(_,_,_,A,_).
+                                                                                         ^^^^^^^^^^^^^^^^^^^
+x-tracks(T,D,R,A) :- tracks(T,D,R,A), not +tracks1(T,D,R,A,_), tracks1(_,_,_,A,_), not -tracks1(_,_,_,A,_).
+                                     ^^^^^^^^^^^^^^^^^^^^^^^
+
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+
+=>
+
+-tracks(T,D,R,A) = tracks(T,D,R,A) *  (- tracks1(T,D,R,A,_)) * tracks1(_,_,_,A,_)
+
+=>
+
+-tracks(T,D,R,A) = tracks(T,D,R,A) *  (- tracks1(T,D,R,A,_) + (-tracks1)) * (tracks1(_,_,_,A,_) + (- -tracks1))
+                   ^^^^^^^^^^^^^^^     ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^                  
+                        a                     b                     d1                 c                d2
+
+=>
+
+-tracks(T,D,R,A) = a *  (b + d1) * (c + d2)
+                 = (a*b + a*d1) * (c + d2)
+		 = a*b*c + a*b*d2 + a*d1*c + a*d1*d2
+=>
+
+x -tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not tracks1(T,D,R,A,_), not -tracks1(_,_,_,A,_).
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not -tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+-tracks(T,D,R,A) :- tracks(T,D,R,A),not -tracks1(T,D,R,A,_), not -tracks1(_,_,_,A,_).
+
+=> state-bsed for -tracks1
+   DELETE FROM tracks1 WHERE TRAKCS='Lovesong' 
+   -> -tracks1(T,D,R,A,Q) :- tracks1(T,D,R,A,Q), T='Lovesong'
+
+  track   | date | rating | album  | quantity 
+----------+------+--------+--------+----------
+ Lovesong | 1989 |      5 | Galore |        1
+ Lovesong | 1989 |      5 | Paris  |        4
+
+

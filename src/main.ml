@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 (*
 @author: Vandang Tran
 *)
@@ -83,6 +84,42 @@ let speclist = [
   ("-w", Arg.String (fun s -> password := s),  "<password> Database user password (default: 12345678)");
   ("-d", Arg.String (fun s -> dbname := s),    "<dbname> Database name to connect to (default: \"datalogdb\")");
   ("-t", Arg.Int (fun d -> timeout := d),    "<timeout> Timeout (second) (default: 120s)");
+=======
+(* 
+@Authox: Vandang Tran
+*)
+
+(**  main file, Execution from command line, connection info, help printouts for command line usage etc. 
+*)
+(* open Lib
+ * open Formulas
+ * open Fol
+ * open Skolem
+ * open Fol_ex *)
+open String
+open Lexer 
+exception Eof
+open List
+open Printf
+open Postgresql
+(* open Conn_ops *)
+open Utils
+(* open Derivation *)
+open Ast2sql
+open Arg
+(* open Ast2theorem
+ * open Ast2fol
+ * open Bx *)
+open Expr2
+
+(** check for options of command line*)
+(*default values*)
+let inputf = ref ""
+
+let usage = "usage: " ^ Sys.argv.(0) ^ " [OPTIONS]"
+let speclist = [
+    ("-f", Arg.String (fun s -> inputf := s),   "<file> Input program file, if not chosen, read from stdin");
+>>>>>>> d96beeb (introduce files)
 ]
 
 let () =
@@ -94,6 +131,7 @@ let () =
     )
     usage
 
+<<<<<<< HEAD
 (** assign postgreSQL connection parameters to conninfo variable *)
 let conninfo =
   sprintf "host=%s port=%d user=%s password=%s dbname=%s"
@@ -505,6 +543,177 @@ let small_test() =
   let l = ["a4"; "a2"; "a3"] in
   let sortlst = Lib.sort (fun a b -> a < b) l in
   List.iter (fun a -> print_endline a) sortlst
+=======
+let initu (e:expr) : update =
+  match e.update with
+  | None -> failwith "update is not specified"
+  | Some u -> u
+
+let initv (e:expr) : view =
+  match e.view with
+  | None -> failwith "view is not specified"
+  | Some v -> v
+
+let rec update2dl (u:update) (v:view) (vs:var list) : rule list =
+  let (attrs:string list) = get_schema_attrs v in
+  let (avs:(string*var) list) = combine attrs vs in
+  match u with
+  | Update (t,us,cs) -> 
+     let (dlt:rule) = (Deltadelete(t, vs), Rel(Pred(t, vs))::(map (c2t t avs)) cs) in
+     let (ad:rule) = (Deltainsert(t,vs), (((map (uset2t avs)) us)@[Rel(Deltadelete(t, newvs us avs vs))])) in
+     [dlt;(vu ad dlt)]
+     (* [dlt;ad] *)
+  | Insert1 (t,cts) -> 
+     let (vcs:(var*const) list) = combine vs cts in 
+     [(Deltainsert(t,vs), (map ct2t) vcs)]
+  | Insert2 (t,sql) ->
+     failwith "Insert2 is not implemented yet in update2dl"
+  | Delete (t,cs) ->
+     [(Deltadelete(t, vs), Rel(Pred(t, vs))::(map (c2t t avs)) cs)]
+and newvs (us:uset list) avs (vs:var list) : var list =
+  match vs with
+  | [] -> []
+  | v::vs' -> if contv v avs us then
+                (NamedVar("V" ^ string_of_int(fresh())))::(newvs us avs vs')
+              else 
+                v::(newvs us avs vs')
+and contv (v:var) avs (us:uset list) : bool = 
+  fold_right (||) (map (ctv v avs) us) false 
+and ctv (v:var) avs ((s,_):uset) : bool =
+  match v with
+  | NamedVar(s') -> (assoc s avs)=v
+  | _ -> failwith "var should be NamedVar"
+and uset2t avs ((s,v):uset) : term =
+   Equat(Equation("=", Var(assoc s avs), v))
+and ct2t ((v,c):var*const) : term =
+   Equat(Equation("=", Var(v), Const(c)))
+and c2t (t:string) avs (c:condition) : term =
+  match c with
+  | Condition(op, s, v) -> 
+       Equat (Equation (op, Var(assoc s avs), v))
+  | _ -> failwith "EXISTS and NOT EXISTS are not implemented yet in delete2datalo"
+
+let rec dl2update (d:rule) (v:view) : update =
+  match d with
+  | (Deltainsert(t,vs), ts) -> Insert2(t,ts2sql ts)
+  | (Deltadelete(t,vs), ts) -> Delete(t,ts2cs ts)
+  | _ -> failwith "normal predicates in dl2update"
+and ts2sql (ts:term list) : sql =
+  Select([],[],[])
+and ts2cs (ts:term list) : condition list =
+  []
+
+let rec utrans (ps:rule list) (us:rule list) : rule list =
+  fold_right (@) (map (tran ps) us) []
+and tran (ps:rule list) ((h,ts):rule) : rule list =
+  (* let rs = extract_effective_e ps h in *)
+  let rs = map (rep_dlt_by_bool h) ps in
+  (* let rs1 = map rm_true rs in *)
+  let rs2 = rm_false_rule rs in
+  (* failwith (fold_right (^) ((map string_of_rule) ((h,ts)::rs)) "") *)
+  view_unfold rs2 [(h,ts)]
+and rm_true ((h,ts):rule) : rule =
+  let ts1 = 
+  let rec rm_t (ts:term list) : term list =
+    match ts with
+    | [] -> ts
+    | (Bool(true)::ts') -> rm_t ts'
+    | t::ts' -> t::rm_t ts'
+  in rm_t ts
+  in (h,ts1)
+and rm_false_rule (rs:rule list) : rule list =
+  match rs with
+  | [] -> []
+  | (h,ts)::rs' -> if false_in ts then
+                     rm_false_rule rs'
+                   else
+                     (h,ts)::(rm_false_rule rs')
+and false_in (ts:term list) : bool =
+  fold_right (||) (map (fun t -> t=Bool(false))ts) false
+
+and rep_dlt_by_bool (h1:rterm) ((h2,ts):rule) : rule =
+  (h2,(map (rep_d_by_b h1) ts ))
+and rep_d_by_b (h1:rterm) (t:term) : term =
+  match (h1,t) with
+  | (Deltainsert(_), Rel(Deltadelete(_))) -> Bool(false)
+  | (Deltadelete(_), Rel(Deltainsert(_))) -> Bool(false)
+  | (Deltainsert(_), Not(Deltadelete(_))) -> Bool(false)
+  | (Deltadelete(_), Not(Deltainsert(_))) -> Bool(false)
+  | _ -> t
+
+and extract_effective_e (ps:rule list) (rt:rterm) : rule list =
+  let rs = 
+  match ps with
+  | [] -> []
+  | (r,ts')::ps' -> if fold_right (||) (map (eq_name rt) ts') false then
+                      (r,ts')::(extract_effective_e ps' rt)
+                    else
+                      (extract_effective_e ps' rt)
+  in
+  let rec non_effect_e (rs:rule list) (h:rterm) : rule list = 
+  match rs with
+  | [] -> []
+  | (r,ts')::ps' -> if fold_right (||) (map (non_effct h) ts') false then
+                      (non_effect_e ps' h)
+                    else
+                      (r,ts')::(non_effect_e ps' h)
+  in non_effect_e rs rt
+and non_effct (rt:rterm) (t:term) : bool =
+  match (rt,t) with
+  | (Deltainsert(s1,_), Rel(Deltadelete(s2,_)))
+    | (Deltainsert(s1,_), Not(Deltadelete(s2,_)))
+    | (Deltadelete(s1,_), Rel(Deltainsert(s2,_)))
+    | (Deltadelete(s1,_), Not(Deltainsert(s2,_)))
+    -> s1=s2
+  | _ -> false
+
+and eq_name (rt:rterm) (t:term) : bool =
+  match (rt,t) with
+  | (rt1, Rel(rt2)) -> 
+     eq_rt_name rt1 rt2
+  | _ -> false
+and eq_rt_name (rt1:rterm) (rt2:rterm) : bool =
+  match (rt1,rt2) with 
+  | (Pred(s1,_), Pred(s2,_)) 
+    | (Deltainsert(s1,_), Deltainsert(s2,_))
+    | (Deltadelete(s1,_), Deltadelete(s2,_)) ->
+     s1=s2
+  | _ -> false
+
+let extract_view_vars ((h,_):rule) : var list =
+  match h with
+  | Pred(_,vs) | Deltainsert(_,vs) | Deltadelete(_,vs) -> vs
+
+let view_update_translation (e:expr) = 
+  let (u:update) = initu e in
+  let (v:view) = initv e in
+  let (gs,ps) = extract_get_puts v e in
+  let ps = opb e in
+  let (vs:var list) = extract_view_vars (hd gs) in 
+  let (rs0:rule list) = update2dl u v vs in
+  (* failwith (fold_right (^) (map string_of_rule gs) "") *)
+  let (rs1:rule list) =pview_unfold rs0 gs in
+  let (rs2:rule list) = utrans ps rs1 in
+  let (rs3:rule list) = map sort_body rs2 in
+  (* let (rs3:rule list) = simplification rs2 in *)
+  (* let (out_prog:expr) = {get_empty_expr with rules=rs3; sources=e.sources; query=Some (rule_head (hd rs3))} in
+   * let (edb:symtable) = extract_edb out_prog in
+   * unfold_query_sql_stt "public" false edb out_prog 
+   * (\* ps@[(Pred("abc",[]),[])]@rs1 *\) *)
+  rs3
+let main () =
+  let chan = if !inputf = "" then stdin else open_in !inputf in
+  let lexbuf = Lexing.from_channel chan in 
+  (* add information of the file name to lexbuf *)
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname =  (if !inputf = "" then "stdin" else !inputf)};
+  (* while true do *)
+  let (input_ast:Expr2.expr) = Parser.main Lexer.token lexbuf in 
+  let (out_put:rule list) = view_update_translation input_ast in
+  (* let (out_put:string) = view_update_translation input_ast in *)
+  print_endline (fold_right (^) ((map string_of_rule) out_put) "")
+  (* print_endline o out_put *)
+
+>>>>>>> d96beeb (introduce files)
 
 (** mainly a call to the above main function *)
 let _ =
@@ -516,9 +725,16 @@ let _ =
   | Parsing.Parse_error ->  fprintf stderr "%s\n"  "Syntax error"; exit 1;
   | LexErr msg -> fprintf stderr "%s\n"  (msg^":\nError: Illegal characters"); exit 1;
   | ChkErr msg -> fprintf stderr "%s\n"  ("Verification Error: "^msg); exit 1;
+<<<<<<< HEAD
   | EnvErr msg -> fprintf stderr "%s\n"  ("Environment Error: "^msg); exit 1;
+=======
+>>>>>>> d96beeb (introduce files)
   | ParseErr msg -> fprintf stderr "%s\n"  (msg^":\nError: Syntax error"); exit 1;
   | Failure msg -> fprintf stderr "%s\n"  msg; exit 1;
   | Invalid_argument msg -> fprintf stderr "%s\n"  msg; exit 1;
   | Eof -> fprintf stderr "%s\n"  "Lexer.Eof"; exit 1;
   | e -> prerr_endline (Printexc.to_string e)
+<<<<<<< HEAD
+=======
+
+>>>>>>> d96beeb (introduce files)

@@ -356,17 +356,28 @@ let is_ground t =
 (** Is the literal negative? *)
 let is_negative t =
   assert (not (is_var t.(0)));
+<<<<<<< HEAD
   match t.(0) with
   | Const c -> (Symbol.to_string c).[0] == '!'
+=======
+  match t.(0) with 
+  | Const c -> (Symbol.to_string c).[0] == '!'  
+>>>>>>> d96beeb (introduce files)
   | Var _ -> false
 
 (** negate a literal *)
 let negate t =
   assert (not (is_var t.(0)));
   let a = Array.make (Array.length t) (Const "c") in
+<<<<<<< HEAD
   a.(0) <- (match t.(0) with
       | Const c ->
         let predname= Symbol.to_string c in
+=======
+  a.(0) <- (match t.(0) with 
+      | Const c -> 
+        let predname= Symbol.to_string c in 
+>>>>>>> d96beeb (introduce files)
         if predname.[0] == '!' then (Const (String.sub predname 1 (String.length predname -1)))
         else (Const ("!"^predname))
       | Var _ -> t.(0));
@@ -376,10 +387,17 @@ let negate t =
   a
 
 let is_builtin lit = match (open_literal lit :> string * term list) with
+<<<<<<< HEAD
   | "lt", _
   | "<", _
   | "le", _
   | "<=", _
+=======
+  | "lt", _ 
+  | "<", _ 
+  | "le", _ 
+  | "<=", _ 
+>>>>>>> d96beeb (introduce files)
   | "gt", _
   | ">", _
   | "ge", _
@@ -475,7 +493,11 @@ let is_empty_subst = function | SubstEmpty -> true | _ -> false
 
 (** Offset to avoid collisions with the given clause *)
 (* Var đang được dùng là số chứ ko phải symbol, nên phải tạo context cho var để tránh trùng var với lại 1 cái clause đang consider
+<<<<<<< HEAD
 Phương pháp đơn giản để tạo context là bằng 1 biến offset, tức là var 1, 2, 3 sẽ là đếm bắt đầu từ cái offset này, nên chúng sẽ khác với var 1,2,3 trong cái given clause mà offset của nó thường sẽ đặt là 0
+=======
+Phương pháp đơn giản để tạo context là bằng 1 biến offset, tức là var 1, 2, 3 sẽ là đếm bắt đầu từ cái offset này, nên chúng sẽ khác với var 1,2,3 trong cái given clause mà offset của nó thường sẽ đặt là 0 
+>>>>>>> d96beeb (introduce files)
 Như vậy chỉ số j trong Var j kết hợp với số offset (context) sẽ cho con trỏ tuyệt đối trở tới Var
 *)
 let offset clause =
@@ -1590,6 +1612,7 @@ let getvar ~tbl name =
     n
 
 let term_of_var (is_neg:bool) ~tbl var  = match var with
+<<<<<<< HEAD
   | Expr.NamedVar _
   | Expr.NumberedVar _ ->
     if is_neg then (try mk_var (Hashtbl.find tbl.vartbl_tbl (Expr.string_of_var var))
@@ -1601,11 +1624,25 @@ let term_of_var (is_neg:bool) ~tbl var  = match var with
           )))
     else mk_var (getvar ~tbl (Expr.string_of_var var))
   | Expr.AnonVar    ->
+=======
+  | Expr2.NamedVar _
+  | Expr2.NumberedVar _ ->
+    if is_neg then (try mk_var (Hashtbl.find tbl.vartbl_tbl (Expr2.string_of_var var))
+          with Not_found ->
+            raise (Utils.SemErr (
+              "Program is unsafe, variable "^(Expr2.string_of_var var)^
+              " in negated call to predicate does not appear in a positive "^
+              "goal or strict equation. Try anonimous variables."
+          )))
+    else mk_var (getvar ~tbl (Expr2.string_of_var var))
+  | Expr2.AnonVar    -> 
+>>>>>>> d96beeb (introduce files)
       if is_neg then raise (Utils.SemErr ( "Datalog Evaluator: Anonymous variables '_' in negated atoms are currently not supported, please use mediate relations instead! For example, 'not r(X, _)' can be rewritten into 'not r_t(X)', where r_t is defined by a rule 'r_t(X) :- r(X, _).' " ));
       let n = tbl.vartbl_count in
       Hashtbl.add tbl.vartbl_tbl ("ANON_"^string_of_int n) n;
       tbl.vartbl_count <- n + 1;
       mk_var n
+<<<<<<< HEAD
   | Expr.ConstVar c -> mk_const (Symbol.make (Expr.string_of_const c))
   | _ -> invalid_arg "function term_of_var called with a Aggregation Var"
 
@@ -1619,10 +1656,26 @@ let literal_of_rterm (is_neg:bool) ?(tbl=mk_vartbl 100) rt  = match rt with
     let args = List.map (term_of_var is_neg ~tbl) args in
     mk_literal s args
   | Expr.Deltainsert (s, args) ->
+=======
+  | Expr2.ConstVar c -> mk_const (Symbol.make (Expr2.string_of_const c)) 
+  | _ -> invalid_arg "function term_of_var called with a Aggregation Var"
+
+let literal_of_rterm (is_neg:bool) ?(tbl=mk_vartbl 100) rt  = match rt with
+  | Expr2.Pred (s, args) ->
+    let s = Symbol.make s in
+    let args = List.map (term_of_var is_neg ~tbl) args in
+    mk_literal s args
+  | Expr2.Deltadelete (s, args) ->
+    let s = Symbol.make ("-"^s) in
+    let args = List.map (term_of_var is_neg ~tbl) args in
+    mk_literal s args
+  | Expr2.Deltainsert (s, args) ->
+>>>>>>> d96beeb (introduce files)
     let s = Symbol.make ("+"^s) in
     let args = List.map (term_of_var is_neg ~tbl) args in
     mk_literal s args
 
+<<<<<<< HEAD
 let rterm_of_literal lit=
   let predname, args = open_literal lit in
   let var_of_term t = match t with
@@ -1658,19 +1711,65 @@ let term_of_literal lit=
       | _ -> Expr.Rel (Expr.Pred (name, List.map  var_of_term args ))
     )
 
+=======
+let rterm_of_literal lit= 
+  let predname, args = open_literal lit in
+  let var_of_term t = match t with
+  | Const s -> Expr2.ConstVar (Expr2.String (Symbol.to_string s))
+  | Var i -> Expr2.NumberedVar i in
+  Expr2.Pred ( Symbol.to_string predname, List.map  var_of_term args )
+
+let literal_of_term ?(tbl=mk_vartbl 100) t = match t with
+  | Expr2.Rel rt -> literal_of_rterm false ~tbl rt 
+  | Expr2.Not rt -> 
+    let delta_to_pred r = match r with     
+      | Expr2.Pred (pn,vars) -> Expr2.Pred (pn,vars)
+      | Expr2.Deltainsert (pn,vars) -> Expr2.Pred ("+"^ pn,vars)
+      | Expr2.Deltadelete (pn,vars) -> Expr2.Pred ("-"^ pn,vars) in
+    literal_of_rterm true ~tbl (Utils.rename_rterm "!" (delta_to_pred rt))  (* negative predicate *)
+  | Expr2.Equat (Equation(op,vt1, vt2)) -> literal_of_rterm false ~tbl (Pred(op,[Expr2.vterm2var vt1 ;Expr2.vterm2var vt2])) 
+  | Expr2.Noneq e ->
+    let neg_e = Expr2.negate_eq e in 
+    (match neg_e with 
+    (Equation(op,vt1, vt2)) -> literal_of_rterm false ~tbl (Pred(op,[Expr2.vterm2var vt1 ;Expr2.vterm2var vt2])) )
+  (* | _ -> invalid_arg ("function literal_of_term called with: "^(Expr2.string_of_term t)) *)
+
+let term_of_literal lit= 
+  let predname, args = open_literal lit in
+  let var_of_term t = match t with
+  | Const s -> Expr2.ConstVar (Expr2.String (Symbol.to_string s))
+  | Var i -> Expr2.NumberedVar i in
+  let name= Symbol.to_string predname in 
+    (match name.[0] with 
+      '!' -> Expr2.Not (Expr2.Pred (String.sub name 1 (String.length name -1), List.map  var_of_term args ))
+      | '+' -> Expr2.Rel (Expr2.Deltainsert (String.sub name 1 (String.length name -1), List.map  var_of_term args ))
+      | '-' -> Expr2.Rel (Expr2.Deltadelete (String.sub name 1 (String.length name -1), List.map  var_of_term args ))
+      | _ -> Expr2.Rel (Expr2.Pred (name, List.map  var_of_term args ))
+    )
+  
+>>>>>>> d96beeb (introduce files)
 let clause_of_rule r = match r with
   | (a, l) ->
     let tbl = mk_vartbl (2* List.length (Utils.get_termlst_vars l)) in
     let a = literal_of_rterm false ~tbl a in
     let (p_rt,n_rt,all_eqs,all_ineqs) = Utils.split_terms l in
+<<<<<<< HEAD
     let p_t = List.map (fun x -> Expr.Rel x) p_rt in
     let n_t = List.map (fun x -> Expr.Not x) n_rt in
+=======
+    let p_t = List.map (fun x -> Expr2.Rel x) p_rt in 
+    let n_t = List.map (fun x -> Expr2.Not x) n_rt in
+>>>>>>> d96beeb (introduce files)
     let l = List.map (literal_of_term ~tbl) (p_t @ all_eqs @ n_t @ all_ineqs) in
     mk_clause a l
 
 let clause_of_fact r = match r with
   | a ->
+<<<<<<< HEAD
     let tbl = mk_vartbl (Expr.get_arity a) in
+=======
+    let tbl = mk_vartbl (Expr2.get_arity a) in
+>>>>>>> d96beeb (introduce files)
     let a = literal_of_rterm false ~tbl a in
     let l = List.map (literal_of_term ~tbl) [] in
     mk_clause a l
@@ -1683,7 +1782,11 @@ let rule_of_clause clause =
   (head,body)
 
 let query_of_ast q = match q with
+<<<<<<< HEAD
   | Expr.Conj_query (vars, lits, neg) ->
+=======
+  | Expr2.Conj_query (vars, lits, neg) ->
+>>>>>>> d96beeb (introduce files)
     let tbl = mk_vartbl (List.length (Utils.get_rtermlst_vars lits)) in
     let lits = List.map (literal_of_rterm false ~tbl) lits in
     let neg = List.map (literal_of_rterm true ~tbl) neg in
@@ -1694,4 +1797,8 @@ let query_of_ast q = match q with
       | Const _ -> failwith "query_of_ast: expected variables")
       vars
     in
+<<<<<<< HEAD
     vars, lits, neg
+=======
+    vars, lits, neg
+>>>>>>> d96beeb (introduce files)

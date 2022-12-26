@@ -19,3 +19,9 @@ tracks1(T,D,R,A,Q) :- tracks(T,D,R,A), albums(A,Q).
 -albums(ALBUM, QUANTITY) :- albums(ALBUM,QUANTITY), not tracks1(_,_,_,ALBUM,QUANTITY), tracks(TRACK,DATE,RATING,ALBUM), not -tracks(TRACK,DATE,RATING,ALBUM).
 -albums(ALBUM, QUANTITY) :- albums(ALBUM,QUANTITY), not tracks1(_,_,_,ALBUM,QUANTITY), +tracks(TRACK,DATE,RATING,ALBUM), not -tracks(TRACK,DATE,RATING,ALBUM).
 -albums(ALBUM, QUANTITY) :- albums(ALBUM,QUANTITY), not tracks1(_,_,_,ALBUM,QUANTITY), tracks1(_,_,_,ALBUM,_), not -tracks(_,_,_,ALBUM).
+<<<<<<< HEAD
+=======
+
+DELETE FROM tracks1 WHERE RATING=1 
+%DELETE FROM tracks1 WHERE TRACK='Lovesong'
+>>>>>>> d96beeb (introduce files)

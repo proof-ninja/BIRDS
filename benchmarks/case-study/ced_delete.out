@@ -1,0 +1,7 @@
+ast.sources:
+source ed('EMP_NAME':string,'DEPT_NAME':string).
+source eed('EMP_NAME':string,'DEPT_NAME':string).
+view ced('EMP_NAME':string, 'DEPT_NAME':string).
+
++eed(E, D) :- ed(E, D) , E = 'Alice' , not eed(E, D).
+?- +eed(E,D).

@@ -1,0 +1,164 @@
+.decl tracks(track: symbol, date: number, rating: number, album: symbol)
+tracks("Lullaby", 1989, 3, "Galore").
+tracks("Lullaby", 1989, 3, "Show").
+tracks("Lovesong", 1989, 5,"Galore").
+tracks("Lovesong", 1989, 5, "Paris").
+tracks("Trust", 1992, 4, "Wish").
+tracks("Another", 1999, 4, "Tokyo").
+
+.decl albums(album: symbol, quantity: number)
+albums("Disintegration", 6).
+albums("Show", 3).
+albums("Galore", 1).
+albums("Paris", 4).
+albums("Wish", 5).
+
+.decl tracks1(track: symbol, date: number, rating: number, album: symbol, quantity: number)
+tracks1(T,D,R,A,Q) :- tracks(T,D,R,A), albums(A,Q).
+//tracks1("Lullaby", 1989, 3, "Galore", 1).
+//tracks1("Lullaby", 1989, 3, "Show", 3).
+//tracks1("Trust", 1992, 4, "Wish", 5).
+//tracks1("Lovesong", 1989, 5, "Galore", 1).
+//tracks1("Lovesong", 1989, 5, "Paris", 4).
+
+// mt1 is -tracks1 (delete from tracks1)
+.decl mt1(track: symbol, date: number, rating: number, album: symbol, quantity: number)
+.output mt1
+// DELETE FROM tracks1 WHERE T="Lovesong"
+mt1(T,D,R,A,Q) :- tracks1(T,D,R,A,Q), T="Lovesong".
+// expand tracks1
+//mt1(T,D,R,A,Q) :- tracks(T,D,R,A), albums(A,Q) T="Lovesong".
+//mt1("Lovesong", 1989, 5, "Galore", 1).
+//mt1("Lovesong", 1989, 5, "Paris", 4).
+// (1) important!
+//!mt1(T,D,R,A,Q) :- tracks1(T,D,R,A,Q), T!="Lovesong".
+// expand tracks1
+//!mt1(T,D,R,A,Q) :- tracks(T,D,R,A), albums(A,Q), T!="Lovesong".
+// (2) naive
+// !mt1(T,D,R,A,Q) :- !tracks(T,D,R,A).
+// !mt1(T,D,R,A,Q) :- !albums(A,Q).
+// !mt1(T,D,R,A,Q) :- T!="Lovesong".
+// for 
+
+// ut1 is updated tracks1 
+.decl ut1(track: symbol, date: number, rating: number, album: symbol, quantity: number)
+.output ut1
+//ut1("Lullaby", 1989, 3, "Galore", 1).
+//ut1("Lullaby", 1989, 3, "Show", 3).
+//ut1("Trust", 1992, 4, "Wish", 5).
+ut1(T,D,R,A,Q) :- tracks1(T,D,R,A,Q), !mt1(T,D,R,A,Q).
+//ut1(T,D,R,A,Q) :- +tracks1(T,D,R,A).
+//   !ut1(T,D,R,A,Q) :- !(tracks1(T,D,R,A,Q), !mt1(T,D,R,A,Q)).
+// => 
+//   !ut1(T,D,R,A,Q) :- !tracks1(T,D,R,A,Q).
+//   !ut1(T,D,R,A,Q) :- mt1(T,D,R,A,Q).
+// => expand tracks1
+//   !ut1(T,D,R,A,Q) :- !tracks(T,D,R,A).
+//   !ut1(T,D,R,A,Q) :- !albums(A,Q).
+//   !ut1(T,D,R,A,Q) :- mt1(T,D,R,A,Q).
+
+
+
+.decl mto(track: symbol, date: number, ratngi: number, album: symbol)
+.output mto
+//-tracks(TRACK,DATE,RATING,ALBUM) :- tracks(TRACK,DATE,RATING,ALBUM),not tracks1(TRACK,DATE,RATING,ALBUM,_), tracks1(_,_,_,ALBUM,_).
+// =>
+//mts(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), tracks1(_,_,_,A,_).
+// --state-based--------
+//mto(T,D,R,A) :- tracks(T,D,R,A), !ut1(T,D,R,A,_), ut1(_,_,_,A,_).
+// -------------------
+// expand ut1, ut1(_,_,_,A,_) ＝ut1(FV1, FV2, FV3, A, FV4) :- tracks1(FV1,FV2,FV3,A,FV4), !mt1(FV1,FV2,FV3,A,FV4).
+//mto(T,D,R,A) :- tracks(T,D,R,A), !tracks1(T,D,R,A,_), tracks1(FV1,FV2,FV3,A,FV4), !mt1(FV1,FV2,FV3,A,FV4).
+//mto(T,D,R,A) :- tracks(T,D,R,A), mt1(T,D,R,A,_), tracks1(FV1,FV2,FV3,A,FV4), !mt1(FV1,FV2,FV3,A,FV4).
+// -------------------
+// expand tracks1
+//mto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), !mt1(FV1,FV2,FV3,A,FV4).
+//mto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), !mt1(FV1,FV2,FV3,A,FV4).
+//mto(T,D,R,A) :- tracks(T,D,R,A), mt1(T,D,R,A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), !mt1(FV1,FV2,FV3,A,FV4).
+// ***-------------------
+// (1) expand mt1, !mt1(FV1,FV2,FV3,A,FV4) :- tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+//mto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+//mto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+//mto(T,D,R,A) :- tracks(T,D,R,A), tracks(T,D,R,A), albums(A,_), T="Lovesong", tracks(FV1,FV2,FV3,A), albums(A,FV4), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+// -------------------
+// simplification
+//xmto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+//                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//xmto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+//                                  ^^^^^^^^^^^^                         ^^^^^^^^^^^^^
+//mto(T,D,R,A) :- tracks(T,D,R,A), albums(A,_), T="Lovesong", tracks(FV1,FV2,FV3,A), FV1!="Lovesong".
+// -------------------
+
+
+// ***-------------------
+// (2) expand mt1, 
+//mto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), !tracks(FV1,FV2,FV3,A).
+//mto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), !albums(A,FV4).
+//mto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+
+//mto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), !tracks(FV1,FV2,FV3,A).
+//mto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), !albums(A,FV4).
+//mto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+
+//mto(T,D,R,A) :- tracks(T,D,R,A), tracks(T,D,R,A), albums(A,_), T="Lovesong", tracks(FV1,FV2,FV3,A), albums(A,FV4), !tracks(FV1,FV2,FV3,A).
+//mto(T,D,R,A) :- tracks(T,D,R,A), tracks(T,D,R,A), albums(A,_), T="Lovesong", tracks(FV1,FV2,FV3,A), albums(A,FV4), !albums(A,FV4).
+//mto(T,D,R,A) :- tracks(T,D,R,A), tracks(T,D,R,A), albums(A,_), T="Lovesong", tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+//-----------
+// simplification
+//x mto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), !tracks(FV1,FV2,FV3,A).
+//                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//x mto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), !albums(A,FV4).
+//                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//x mto(T,D,R,A) :- tracks(T,D,R,A), !tracks(T,D,R,A), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+//                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//x mto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), !tracks(FV1,FV2,FV3,A).
+//                                   ^^^^^^^^^^^^                         ^^^^^^^^^^^^^^
+//x mto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), !albums(A,FV4).
+//                                   ^^^^^^^^^^^^                         ^^^^^^^^^^^^^
+//x mto(T,D,R,A) :- tracks(T,D,R,A), !albums(A,_), tracks(FV1,FV2,FV3,A), albums(A,FV4), FV1!="Lovesong".
+//                                   ^^^^^^^^^^^^                         ^^^^^^^^^^^^^
+//x mto(T,D,R,A) :- tracks(T,D,R,A), albums(A,_), T="Lovesong", tracks(FV1,FV2,FV3,A), albums(A,FV4), !tracks(FV1,FV2,FV3,A).
+//                                                              ^^^^^^^^^^^^^^^^^^^^^                 ^^^^^^^^^^^^^^^^^^^^^^
+//x mto(T,D,R,A) :- tracks(T,D,R,A), tracks(T,D,R,A), albums(A,_), T="Lovesong", tracks(FV1,FV2,FV3,A), albums(A,FV4), !albums(A,FV4).
+//                                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+mto(T,D,R,A) :- tracks(T,D,R,A), albums(A,_), T="Lovesong", tracks(FV1,FV2,FV3,A), FV1!="Lovesong".
+//----------------------------
+
+
+.decl mao(album: symbol, quantity: number)
+.output mao
+//-albums(A, Q) :- albums(A,Q), not tracks1(_,_,_,A,Q), tracks(T,D,R,A), not -tracks(T,D,R,A).
+// => 
+//mao(A, Q) :- albums(A,Q), !tracks1(_,_,_,A,Q), tracks(T,D,R,A), !mto(T,D,R,A).
+// --state-based--------
+//mao(A,Q) :- albums(A,Q), !ut1(_,_,_,A,Q), tracks(T,D,R,A), !mto(T,D,R,A).
+mao(A,Q) :- albums(A,Q), !ut1(_,_,_,A,Q).
+// -------------------
+// LVGN
+//mao(A, Q) :- albums(A,Q), mt1(_,_,_,A,Q), tracks(T,D,R,A), !mto(T,D,R,A).
+// expand ut1 
+//mao(A,Q) :- albums(A,Q), !tracks1(_,_,_,A,Q), tracks(T,D,R,A), !mto(T,D,R,A).
+//mao(A,Q) :- albums(A,Q), mt1(_,_,_,A,Q), tracks(T,D,R,A), !mto(T,D,R,A).
+// -------------------
+// expand tracks1
+//mao(A,Q) :- albums(A,Q), !tracks1(_,_,_,A,Q), tracks(T,D,R,A), !mto(T,D,R,A).
+//mao(A,Q) :- albums(A,Q), mt1(_,_,_,A,Q), tracks(T,D,R,A), !mto(T,D,R,A).
+// -------------------
+.decl tmp(track: symbol, date: number, ratngi: number, album: symbol)
+.output tmp
+tmp(T,D,R,A) :- tracks(T,D,R,A), !mto(T,D,R,A).
+
+.decl atmp(album: symbol, quantity: number)
+.output atmp
+//atmp(A,Q) :- albums(A,Q), !tracks1(_,_,_,A,Q).
+atmp(A,Q) :- albums(A,Q), mt1(_,_,_,A,Q).
+
+//-------------
+//tmp
+//-------------
+.decl foo(album: symbol)
+.output foo
+foo(A) :- tracks(_,_,_,A).
+
+
+

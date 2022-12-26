@@ -3,7 +3,11 @@ source tracks1('TRACK':string,'DATE':int,'RATING':int,'ALBUM':string,'QUANTITY':
 view tracks2('TRACK':string,'RATING':int,'ALBUM':string,'QUANTITY':int).
 
 % view definition:
+<<<<<<< HEAD
 % tracks2(T,R,A,Q) :- tracks1(T,_,R,A,Q).
+=======
+tracks2(T,R,A,Q) :- tracks1(T,_,R,A,Q).
+>>>>>>> d96beeb (introduce files)
 
 % rule for deletion from tracks1
 -tracks1(TRACK,DATE,RATING,ALBUM,QUANTITY) :- tracks1(TRACK,DATE,RATING,ALBUM,QUANTITY),

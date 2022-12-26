@@ -1,0 +1,12 @@
+(18) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, V6849, ALBUM) , V6849 = 1 , not albums(ALBUM, _).
+(1) -tracks(TRACK, DATE, RATING, ALBUM) :- albums(ALBUM, _) , tracks(TRACK, DATE, RATING, ALBUM) , RATING = 1.
+(32) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, RATING, ALBUM) , tracks(_, _, V6849, ALBUM) , V6849 = 1 , not RATING = 1.
+(34) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, V7, ALBUM) , tracks(_, _, V6852, ALBUM) , V6852 = 1 , not V7 = 1. (36)と重複するので消えてほしい
+(7) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, V6855, ALBUM) , V6855 = 1.
+(30) -tracks(TRACK, DATE, RATING, ALBUM) :- albums(ALBUM, _) , tracks(_, _, V33, ALBUM) , tracks(TRACK, DATE, RATING, ALBUM) , RATING = 1 , not V33 = 1. （今の実装では消えてしまう、消えないでほしい）
+(36) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, V7, ALBUM) , tracks(_, _, V6858, ALBUM) , V6858 = 1 , not V7 = 1.
+(39) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, V7, ALBUM) , tracks(_, _, V6864, ALBUM) , V6864 = 1 , not V7 = 1. (36)と重複するので消えてほしい
+(40) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, V7, ALBUM) , tracks(_, _, V6871, ALBUM) , V6871 = 1 , not V7 = 1 , not tracks(_, _, _, ALBUM).
+(41) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, V7, ALBUM) , tracks(_, _, V6875, ALBUM) , V6875 = 1 , not V7 = 1 , not tracks(_, _, _, ALBUM). (40)と等価なのでどちらか消えてほしい
+(42) -albums(ALBUM, QUANTITY) :- albums(ALBUM, QUANTITY) , tracks(_, _, V7, ALBUM) , not V7 = 1 , not tracks(_, _, _, ALBUM).
+
