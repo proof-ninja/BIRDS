@@ -1,0 +1,11 @@
+opam-version: "2.0"
+license: "MIT"
+homepage: "https://github.com/proof-ninja/BIRDS/"
+bug-reports: "https://github.com/proof-ninja/BIRDS/issues"
+dev-repo: "git+https://github.com/proof-ninja/BIRDS.git"
+depends: [
+  "ocaml" {>= "4.07.0"}
+  "menhir" {>= "20230608"}
+  "ocamlgraph" {>= "2.0.0"}
+  "num" {>= "1.4"}
+]

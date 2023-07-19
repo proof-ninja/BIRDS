@@ -7,6 +7,7 @@ BX algorithms on Datalog programs
 @author: Vandang Tran
 *)
 
+open Logic
 open Lib
 open Formulas
 open Fol

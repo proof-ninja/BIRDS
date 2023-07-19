@@ -12,6 +12,7 @@ open Utils
 open Rule_preprocess
 open Stratification
 open Derivation
+open Logic
 
 (** Given an aggregate function name, check if it is supported and returns it. *)
 let check_agg_function fn =

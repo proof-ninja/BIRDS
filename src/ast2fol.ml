@@ -7,6 +7,7 @@ Functions to transform datalog ast to first-order logic formula and vice versa
 @author: Vandang Tran
 *)
 
+open Logic
 open Lib
 open Formulas
 open Fol
