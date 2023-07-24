@@ -5,6 +5,12 @@
  (libraries birds sql))
 
 (executable
+ (public_name dl2u)
+ (name dl2u)
+ (modules dl2u)
+ (libraries birds))
+
+(executable
  (public_name parse)
  (name parse)
  (modules parse)
