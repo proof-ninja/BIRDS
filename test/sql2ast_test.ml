@@ -1,3 +1,4 @@
+open Birds
 open Utils
 
 type test_case = {

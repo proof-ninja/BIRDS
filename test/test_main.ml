@@ -1,4 +1,3 @@
-
 let () =
   let has_failed =
     List.exists (fun b -> b) [

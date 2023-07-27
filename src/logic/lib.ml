@@ -200,7 +200,7 @@ let rec earlier l x y =
 let rec do_list f l =
   match l with
     [] -> ()
-  | h::t -> f(h); do_list f t;;
+  | h::t -> f(h) |> ignore; do_list f t;;
 
 (* ------------------------------------------------------------------------- *)
 (* Association lists.                                                        *)
