@@ -71,7 +71,7 @@ type sql_from_target =
   | SqlFromOther of sql_query
 
 and sql_from_clause_entry =
-  sql_from_target * sql_instance_name
+  sql_from_target * sql_instance_name option
 
 and sql_from_clause =
   | SqlFrom of sql_from_clause_entry list
@@ -82,7 +82,10 @@ and sql_constraint =
   | SqlExist      of sql_from_clause * sql_where_clause
 
 and sql_where_clause =
-  | SqlWhere of sql_constraint list
+  | SqlWhere of {
+      using       : sql_from_clause_entry list;
+      constraints : sql_constraint list;
+    }
 
 and sql_aggregation_clause =
   sql_group_by * sql_having
@@ -175,18 +178,19 @@ let rec stringify_sql_from_target (target : sql_from_target) : string =
   | SqlFromOther sql_query            -> Printf.sprintf "(%s)" (stringify_sql_query sql_query)
 
 
+and stringify_sql_nonempty_from_clause_list (froms : sql_from_clause_entry list) : string =
+  froms |> List.map (fun (target, name_opt) ->
+    let s_target = stringify_sql_from_target target in
+    match name_opt with
+    | None      -> s_target
+    | Some name -> Printf.sprintf "%s AS %s" s_target name
+  ) |> String.concat ", "
+
+
 and stringify_sql_from_clause (SqlFrom froms : sql_from_clause) : string =
   match froms with
-  | [] ->
-      ""
-
-  | _ :: _ ->
-      let s =
-        froms |> List.map (fun (target, name) ->
-          Printf.sprintf "%s AS %s" (stringify_sql_from_target target) name
-        ) |> String.concat ", "
-      in
-      Printf.sprintf " FROM %s" s
+  | []     -> ""
+  | _ :: _ -> Printf.sprintf " FROM %s" (stringify_sql_nonempty_from_clause_list froms)
 
 
 and stringify_sql_constraint (sql_constraint : sql_constraint) : string =
@@ -208,16 +212,23 @@ and stringify_sql_constraint (sql_constraint : sql_constraint) : string =
       Printf.sprintf "EXISTS ( SELECT *%s%s )" s_from s_where
 
 
-and stringify_sql_where_clause (SqlWhere constraints : sql_where_clause) : string =
-  match constraints with
-  | [] ->
-      ""
+and stringify_sql_where_clause (sql_where : sql_where_clause) : string =
+  let SqlWhere { using; constraints } = sql_where in
+  let s_using =
+    match using with
+    | []     -> ""
+    | _ :: _ -> Printf.sprintf " USING %s" (stringify_sql_nonempty_from_clause_list using)
+  in
+  let s_constraints =
+    match constraints with
+    | [] ->
+        ""
 
-  | _ :: _ ->
-      let s =
-        constraints |> List.map stringify_sql_constraint |> String.concat " AND "
-      in
-      Printf.sprintf " WHERE %s" s
+    | _ :: _ ->
+        let s = constraints |> List.map stringify_sql_constraint |> String.concat " AND " in
+        Printf.sprintf " WHERE %s" s
+  in
+  Printf.sprintf "%s%s" s_using s_constraints
 
 
 and stringify_sql_aggregation_clause (agg : sql_aggregation_clause) : string =
@@ -489,13 +500,13 @@ let rec non_rec_unfold_sql_of_symtkey (dbschema : string) (idb : symtable) (cnt 
               (* generate sql query for idb predicate *)
               let idb_sql = non_rec_unfold_sql_of_symtkey dbschema idb cnt (pname, arity)  in
               let pn_a = pname ^ "_a" ^ (string_of_int arity) in
-              (SqlFromOther idb_sql, pn_a ^ "_" ^ (string_of_int n))
+              (SqlFromOther idb_sql, Some (pn_a ^ "_" ^ (string_of_int n)))
             in
             let edb_alias (pname : string) (arity : int) (n : int) : sql_from_clause_entry =
               if str_contains pname "__tmp_" then
-                (SqlFromTable (None, pname), pname ^ "_a" ^ (string_of_int arity) ^ "_" ^ (string_of_int n))
+                (SqlFromTable (None, pname), Some (pname ^ "_a" ^ (string_of_int arity) ^ "_" ^ (string_of_int n)))
               else
-                (SqlFromTable (Some dbschema, pname), pname ^ "_a" ^ (string_of_int arity) ^ "_" ^ (string_of_int n))
+                (SqlFromTable (Some dbschema, pname), Some (pname ^ "_a" ^ (string_of_int arity) ^ "_" ^ (string_of_int n)))
             in
             let set_alias (rterm : rterm) (a_lst, n) =
               let pname = get_rterm_predname rterm in
@@ -554,11 +565,11 @@ let rec non_rec_unfold_sql_of_symtkey (dbschema : string) (idb : symtable) (cnt 
                 (* Get the from sql of the rterm *)
                 let from_sql : sql_from_clause =
                   if Hashtbl.mem idb key then
-                    SqlFrom [ (SqlFromOther (non_rec_unfold_sql_of_symtkey dbschema idb cnt (pname,arity)), alias) ]
+                    SqlFrom [ (SqlFromOther (non_rec_unfold_sql_of_symtkey dbschema idb cnt (pname,arity)), Some alias) ]
                   else if str_contains pname "__tmp_" then
-                    SqlFrom [ (SqlFromTable (None, pname), alias) ]
+                    SqlFrom [ (SqlFromTable (None, pname), Some alias) ]
                   else
-                    SqlFrom [ (SqlFromTable (Some dbschema, pname), alias) ]
+                    SqlFrom [ (SqlFromTable (Some dbschema, pname), Some alias) ]
                 in
                 (* print_endline "___neg sql___"; print_string from_sql; print_endline "___neg sql___"; *)
                 (* Get the where sql of the rterm *)
@@ -605,8 +616,8 @@ let rec non_rec_unfold_sql_of_symtkey (dbschema : string) (idb : symtable) (cnt 
                   | _ ->
                       invalid_arg "There is a non-expected type of var in a negated rterm"
                 in
-                let const_lst = List.fold_left2 build_const [] cnames vlst in
-                let where_sql = SqlWhere const_lst in
+                let constraints = List.fold_left2 build_const [] cnames vlst in
+                let where_sql = SqlWhere { using = []; constraints } in
                 SqlNotExist (from_sql, where_sql)
             in
             List.map gen_neg_sql neg_rt
@@ -614,7 +625,7 @@ let rec non_rec_unfold_sql_of_symtkey (dbschema : string) (idb : symtable) (cnt 
           let fnrt = unfold_sql_of_negated_rterms idb vt cnt eqt neg_rt in
           (* merge all constraints *)
           let constraints = List.concat [fvt; feqt; fineq; fnrt] in
-          SqlWhere constraints
+          SqlWhere { using = []; constraints }
         in
         let where_sql = unfold_get_where_clause idb vt cnt eqtb ineqs n_rt in
         let agg_sql = get_aggregation_sql vt cnt head agg_eqs agg_ineqs in
@@ -650,12 +661,13 @@ let non_rec_unfold_sql_of_query (dbschema : string) (idb : symtable) (cnt : coln
       List.map (fun (a, b) -> (SqlColumn (Some qrule_alias, a), b)) (List.combine cols cols_by_var)
     in
     let sql_from =
-      (SqlFromOther (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule))), qrule_alias)
+      (SqlFromOther (non_rec_unfold_sql_of_symtkey dbschema local_idb cnt (symtkey_of_rterm (rule_head qrule))),
+        Some qrule_alias)
     in
     SqlQuery {
       select = SqlSelect sel_lst;
       from   = SqlFrom [ sql_from ];
-      where  = SqlWhere [];
+      where  = SqlWhere { using = []; constraints = [] };
       agg    = (SqlGroupBy [], SqlHaving []);
     }
 
@@ -1784,13 +1796,11 @@ let combine_column_names ~(error_detail : error_detail) (table_env : table_envir
 
 let validate_args_in_head ~(error_detail : error_detail) (table_env : table_environment) (table : table_name) (args : var list) =
   let open ResultMonad in
-  args |> List.fold_left (fun res arg ->
-    res >>= fun x_acc ->
+  args |> mapM (fun arg ->
     match arg with
-    | NamedVar x -> return @@ x :: x_acc
+    | NamedVar x -> return x
     | _          -> err @@ InvalidArgInHead { var = arg; error_detail }
-  ) (return []) >>= fun x_acc ->
-  let vars = List.rev x_acc in
+  ) >>= fun vars ->
   combine_column_names ~error_detail table_env table vars
 
 
@@ -1838,22 +1848,19 @@ let negate_comparison_operator = function
 
 let validate_args_in_body ~(error_detail : error_detail) (vars : var list) : (argument list, error) result =
   let open ResultMonad in
-  vars |> List.fold_left (fun res var ->
-    res >>= fun arg_acc ->
+  vars |> mapM (fun var ->
     match var with
-    | NamedVar x -> return @@ ArgNamedVar x :: arg_acc
-    | ConstVar c -> return @@ ArgConst c :: arg_acc
-    | AnonVar    -> return @@ ArgAnon :: arg_acc
+    | NamedVar x -> return @@ ArgNamedVar x
+    | ConstVar c -> return @@ ArgConst c
+    | AnonVar    -> return @@ ArgAnon
     | _          -> err @@ InvalidArgInBody { var; error_detail }
-  ) (return []) >>= fun arg_acc ->
-  return @@ List.rev arg_acc
+  )
 
 
 (* Separate predicates in a given rule body into positive ones, negative ones, and comparisons. *)
 let decompose_body ~(error_detail : error_detail) (body : term list) : (positive_predicate list * negative_predicate list * comparison list, error) result =
   let open ResultMonad in
-  body |> List.fold_left (fun res term ->
-    res >>= fun (pos_acc, neg_acc, comp_acc) ->
+  body |> foldM (fun (pos_acc, neg_acc, comp_acc) term ->
     match term with
     | Rel (Pred (table, vars)) ->
         validate_args_in_body ~error_detail vars >>= fun args ->
@@ -1892,7 +1899,7 @@ let decompose_body ~(error_detail : error_detail) (body : term list) : (positive
         let op_dual = negate_comparison_operator op in
         return (pos_acc, neg_acc, Comparison (op_dual, t1, t2) :: comp_acc)
 
-  ) (return ([], [], [])) >>= fun (pos_acc, neg_acc, comp_acc) ->
+  ) ([], [], []) >>= fun (pos_acc, neg_acc, comp_acc) ->
   return (List.rev pos_acc, List.rev neg_acc, List.rev comp_acc)
 
 
@@ -1909,8 +1916,7 @@ type delta_environment = (instance_name * column_name list) DeltaEnv.t
 
 let assign_or_find_instance_names (delta_env : delta_environment) (poss : positive_predicate list) : ((positive_predicate * instance_name) list * instance_name list, error) result =
   let open ResultMonad in
-  poss |> List.fold_left (fun res pos ->
-    res >>= fun (index, named_pos_acc, referred_instance_acc) ->
+  poss |> foldM (fun (index, named_pos_acc, referred_instance_acc) pos ->
     match pos with
     | PositivePred (table, _args) ->
         let instance = Printf.sprintf "%s_%d" table index in
@@ -1926,7 +1932,7 @@ let assign_or_find_instance_names (delta_env : delta_environment) (poss : positi
               return (index, (pos, instance) :: named_pos_acc, instance :: referred_instance_acc)
         end
 
-  ) (return (0, [], [])) >>= fun (_, named_pos_acc, referred_instance_acc) ->
+  ) (0, [], []) >>= fun (_, named_pos_acc, referred_instance_acc) ->
   return @@ (List.rev named_pos_acc, List.rev referred_instance_acc)
 
 
@@ -2038,8 +2044,7 @@ let combine_delta_column_names (delta_env : delta_environment) (delta_key : delt
 (* Extends `subst` by traversing occurrence of variables in positive predicates. *)
 let extend_substitution_by_traversing_positives ~(error_detail : error_detail) (table_env : table_environment) (delta_env : delta_environment) (named_poss : (positive_predicate * instance_name) list) (subst : Subst.t) : (Subst.t, error) result =
   let open ResultMonad in
-  named_poss |> List.fold_left (fun res (pos, instance) ->
-    res >>= fun subst ->
+  named_poss |> foldM (fun subst (pos, instance) ->
     begin
       match pos with
       | PositivePred (table, args) ->
@@ -2059,8 +2064,7 @@ let extend_substitution_by_traversing_positives ~(error_detail : error_detail) (
       ) subst
     in
     return subst
-  ) (return subst) >>= fun subst ->
-  return subst
+  ) subst
 
 
 (* Extends `subst` by constraints where a variable is equal to a constant
@@ -2159,10 +2163,9 @@ let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_en
   ) subst (return ([], VarMap.empty)) >>= fun (sql_constraint_acc, varmap) ->
 
   (* Adds comparison constraints to SQL constraints: *)
-  comps |> List.fold_left (fun res comp ->
+  comps |> foldM (fun sql_constraint_acc comp ->
     let Comparison (op, vt1, vt2) = comp in
     let error_detail = InComparison comp in
-    res >>= fun sql_constraint_acc ->
     sql_of_vterm_new ~error_detail varmap vt1 >>= fun sql_vt1 ->
     sql_of_vterm_new ~error_detail varmap vt2 >>= fun sql_vt2 ->
     let sql_op =
@@ -2175,11 +2178,10 @@ let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_en
       | GreaterThanOrEqualTo -> SqlRelGeneral ">="
     in
     return @@ SqlConstraint (sql_vt1, sql_op, sql_vt2) :: sql_constraint_acc
-  ) (return sql_constraint_acc) >>= fun sql_constraint_acc ->
+  ) sql_constraint_acc >>= fun sql_constraint_acc ->
 
   (* Adds constraints that stem from negative predicates: *)
-  negs |> List.fold_left (fun res neg ->
-    res >>= fun sql_constraint_acc ->
+  negs |> foldM (fun sql_constraint_acc neg ->
     begin
       match neg with
       | NegativePred (table, args) ->
@@ -2191,9 +2193,8 @@ let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_en
 
     end >>= fun (table, columns_and_args) ->
     let instance = "t" in
-    let sql_from = SqlFrom [ (SqlFromTable (None, table), instance) ] in
-    columns_and_args |> List.fold_left (fun res (column, arg) ->
-      res >>= fun acc ->
+    let sql_from = SqlFrom [ (SqlFromTable (None, table), Some instance) ] in
+    columns_and_args |> foldM (fun acc (column, arg) ->
       sql_vterm_of_arg ~error_detail varmap arg >>= function
       | None -> (* corresponds to underscore *)
           return @@ acc
@@ -2201,44 +2202,43 @@ let convert_rule_to_operation_based_sql ~(error_detail : error_detail) (table_en
       | Some sql_vt ->
           return @@ SqlConstraint (SqlColumn (Some instance, column), SqlRelEqual, sql_vt) :: acc
 
-    ) (return []) >>= fun acc ->
-    let sql_where = SqlWhere (List.rev acc) in
+    ) [] >>= fun acc ->
+    let sql_where = SqlWhere { using = []; constraints = List.rev acc } in
     return @@ SqlNotExist (sql_from, sql_where) :: sql_constraint_acc
-  ) (return sql_constraint_acc) >>= fun sql_constraint_acc ->
+  ) sql_constraint_acc >>= fun sql_constraint_acc ->
 
   (* Builds the SELECT clause: *)
-  columns_and_vars |> List.fold_left (fun res (column0, x0) ->
-    res >>= fun selected_acc ->
+  columns_and_vars |> mapM (fun (column0, x0) ->
     match varmap |> VarMap.find_opt x0 with
     | None ->
         err @@ HeadVariableDoesNotOccurInBody x0
 
     | Some (Subst.Occurrence (instance, column)) ->
-        return @@ (SqlColumn (Some instance, column), column0) :: selected_acc
+        return (SqlColumn (Some instance, column), column0)
 
     | Some (Subst.EqualToConst c) ->
-        return @@ (SqlConst c, column0) :: selected_acc
+        return (SqlConst c, column0)
 
-  ) (return []) >>= fun selected_acc ->
-  let sql_select = SqlSelect (List.rev selected_acc) in
+  ) >>= fun selecteds ->
+  let sql_select = SqlSelect selecteds in
 
   (* Builds the FROM clause: *)
   let from_clause_entries =
     List.concat [
       named_poss |> List.map (fun (pos, instance) ->
         match pos with
-        | PositivePred (table, _args) -> [ (SqlFromTable (None, table), instance) ]
+        | PositivePred (table, _args) -> [ (SqlFromTable (None, table), Some instance) ]
         | _                           -> []
       ) |> List.concat;
       referred_instances |> List.map (fun instance ->
-        (SqlFromTable (None, instance), instance)
+        (SqlFromTable (None, instance), Some instance)
       )
     ]
   in
   let sql_from = SqlFrom from_clause_entries in
 
   (* Builds the WHERE clause: *)
-  let sql_where = SqlWhere (List.rev sql_constraint_acc) in
+  let sql_where = SqlWhere { using = []; constraints = List.rev sql_constraint_acc } in
 
   return @@ SqlQuery {
     select = sql_select;
@@ -2263,24 +2263,22 @@ type delta_grouping_state = {
 
 let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule list) : (rule_group list, error) result =
   let open ResultMonad in
-  rules |> List.fold_left (fun res rule ->
-    res >>= fun (state_opt, group_acc) ->
+  rules |> foldM (fun (state_opt, group_acc) rule ->
     let (head, body) = rule in
-    let error_detail = InRule rule in
-    get_spec_from_head ~error_detail table_env head >>= function
-    | PredHead(table, columns_and_vars) ->
-        let group = PredGroup(table, { columns_and_vars; body }) in
+    get_spec_from_head ~error_detail:(InRule rule) table_env head >>= function
+    | PredHead (table, columns_and_vars) ->
+        let group = PredGroup (table, { columns_and_vars; body }) in
         begin
           match state_opt with
           | None ->
               return (None, group :: group_acc)
 
           | Some state ->
-              let group_prev = DeltaGroup(state.current_target, List.rev state.current_accumulated) in
+              let group_prev = DeltaGroup (state.current_target, List.rev state.current_accumulated) in
               return (None, group :: group_prev :: group_acc)
         end
 
-    | DeltaHead(delta_kind, table, columns_and_vars) ->
+    | DeltaHead (delta_kind, table, columns_and_vars) ->
         let delta_key = (delta_kind, table) in
         let intermediate = { columns_and_vars; body } in
         begin
@@ -2300,21 +2298,21 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
                   current_accumulated = intermediate :: state.current_accumulated;
                 }, group_acc)
               else
-                let group = DeltaGroup(state.current_target, List.rev state.current_accumulated) in
-                return @@ (Some {
+                let group = DeltaGroup (state.current_target, List.rev state.current_accumulated) in
+                return (Some {
                   current_target      = delta_key;
                   current_accumulated = [ intermediate ];
                   already_handled     = state.already_handled |> DeltaKeySet.add state.current_target;
                 }, group :: group_acc)
         end
 
-  ) (return (None, [])) >>= fun (state_opt, group_acc) ->
+  ) (None, []) >>= fun (state_opt, group_acc) ->
   match state_opt with
   | None ->
       return (List.rev group_acc)
 
   | Some state ->
-      let group_last = DeltaGroup(state.current_target, List.rev state.current_accumulated) in
+      let group_last = DeltaGroup (state.current_target, List.rev state.current_accumulated) in
       let groups = List.rev (group_last :: group_acc) in
       return groups
 
@@ -2334,11 +2332,10 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
   in
   let rules = List.rev expr.rules in (* `expr` holds its rules in the reversed order *)
   divide_rules_into_groups table_env rules >>= fun rule_groups ->
-  rule_groups |> List.fold_left (fun res rule_group ->
-    res >>= fun (i, creation_acc, update_acc, delta_env) ->
+  rule_groups |> foldM (fun (i, creation_acc, update_acc, delta_env) rule_group ->
     let temporary_table = Printf.sprintf "temp%d" i in
     match rule_group with
-    | PredGroup(table, headless_rule) ->
+    | PredGroup (table, headless_rule) ->
         let error_detail =
           let rule =
             let head = Pred (table, headless_rule.columns_and_vars |> List.map (fun (_, x) -> NamedVar x)) in
@@ -2350,47 +2347,49 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
         let creation = SqlCreateView (table, sql_query) in
         return (i + 1, creation :: creation_acc, update_acc, delta_env)
 
-    | DeltaGroup(delta_key, headless_rules) ->
-        headless_rules |> List.fold_left (fun res_acc headless_rule ->
-          res_acc >>= fun sql_query_acc ->
+    | DeltaGroup (delta_key, headless_rules) ->
+        let (delta_kind, table) = delta_key in
+        headless_rules |> mapM (fun headless_rule ->
           let error_detail =
             let rule =
               let vars = headless_rule.columns_and_vars |> List.map (fun (_, x) -> NamedVar x) in
-              match delta_key with
-              | (Insert, table) -> (Deltainsert (table, vars), headless_rule.body)
-              | (Delete, table) -> (Deltadelete (table, vars), headless_rule.body)
+              match delta_kind with
+              | Insert -> (Deltainsert (table, vars), headless_rule.body)
+              | Delete -> (Deltadelete (table, vars), headless_rule.body)
             in
             InRule rule
           in
-          convert_rule_to_operation_based_sql ~error_detail table_env delta_env headless_rule >>= fun sql_query ->
-          return @@ sql_query :: sql_query_acc
-        ) (return []) >>= fun sql_query_acc ->
-        let sql_query =
-          let sql_queries = List.rev sql_query_acc in
-          SqlUnion (SqlUnionOp, sql_queries)
-        in
-        let (delta_kind, table) = delta_key in
-        let error_detail = InGroup delta_key in
-        get_column_names_from_table ~error_detail table_env table >>= fun cols ->
+          convert_rule_to_operation_based_sql ~error_detail table_env delta_env headless_rule
+        ) >>= fun sql_queries ->
+        let sql_query = SqlUnion (SqlUnionOp, sql_queries) in
+        get_column_names_from_table ~error_detail:(InGroup delta_key) table_env table >>= fun cols ->
         let delta_env = delta_env |> DeltaEnv.add delta_key (temporary_table, cols) in
         let creation = SqlCreateTemporaryTable (temporary_table, sql_query) in
         let update =
-          let instance_name = "inst" in
           match delta_kind with
           | Insert ->
-              SqlInsertInto
-                (temporary_table,
-                  SqlFrom [ (SqlFromTable (None, temporary_table), instance_name) ])
+              SqlInsertInto (table,
+                SqlFrom [ (SqlFromTable (None, temporary_table), None) ])
 
           | Delete ->
-              SqlDeleteFrom
-                (temporary_table,
-                  SqlWhere [
-                    SqlExist (SqlFrom [ (SqlFromTable (None, temporary_table), instance_name) ], SqlWhere []) ])
+              let sql_where =
+                let cols =
+                  match table_env |> TableEnv.find_opt table with
+                  | None      -> assert false
+                  | Some cols -> cols
+                in
+                let constraints =
+                  cols |> List.map (fun col ->
+                    SqlConstraint (SqlColumn (Some table, col), SqlRelEqual, SqlColumn (Some temporary_table, col))
+                  )
+                in
+                SqlWhere { using = [ (SqlFromTable (None, temporary_table), None) ]; constraints }
+              in
+              SqlDeleteFrom (table, sql_where)
         in
         return (i + 1, creation :: creation_acc, update :: update_acc, delta_env)
 
-  ) (return (0, [], [], DeltaEnv.empty)) >>= fun (_, creation_acc, update_acc, _) ->
+  ) (0, [], [], DeltaEnv.empty) >>= fun (_, creation_acc, update_acc, _) ->
   return @@ List.concat [
     List.rev creation_acc;
     List.rev update_acc;
