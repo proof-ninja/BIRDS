@@ -1,9 +1,11 @@
 open Birds
 open Utils
 
+module Sql = Sql.Ast
+
 type test_case = {
   title : string;
-  input : Sql2ast.sql_update * Sql2ast.sql_column_name list;
+  input : Sql.update * Sql.column_name list;
   expected : Expr.rule list
 }
 
@@ -69,14 +71,14 @@ let main () =
        *
        *)
       input = (
-        SqlUpdateSet (
+        Sql.UpdateSet (
           "ced",
-          [(None, "dname"), SqlConst (String "'R&D'")],
-          Some (SqlWhere ([
-            SqlConstraint (
-              SqlColumn (None, "dname"),
-              SqlRelEqual,
-              SqlConst (String "'Dev'")
+          [(None, "dname"), Sql.Const (String "'R&D'")],
+          Some (Sql.Where ([
+            Sql.Constraint (
+              Sql.Column (None, "dname"),
+              Sql.RelEqual,
+              Sql.Const (String "'Dev'")
             )
           ]))
         ),
@@ -122,23 +124,23 @@ let main () =
        *
        *)
       input = (
-        SqlUpdateSet (
+        Sql.UpdateSet (
           "t",
           [
-            (None, "c1"), SqlConst (String "'v1'");
-            (None, "c3"), SqlConst (String "'v3'");
-            (None, "c5"), SqlConst (String "'v5'")
+            (None, "c1"), Sql.Const (String "'v1'");
+            (None, "c3"), Sql.Const (String "'v3'");
+            (None, "c5"), Sql.Const (String "'v5'")
           ],
-          Some (SqlWhere ([
-            SqlConstraint (
-              SqlColumn (None, "c2"),
-              SqlRelEqual,
-              SqlConst (String "'v2'")
+          Some (Sql.Where ([
+            Sql.Constraint (
+              Sql.Column (None, "c2"),
+              Sql.RelEqual,
+              Sql.Const (String "'v2'")
             );
-            SqlConstraint (
-              SqlColumn (None, "c3"),
-              SqlRelEqual,
-              SqlConst (String "'v100'")
+            Sql.Constraint (
+              Sql.Column (None, "c3"),
+              Sql.RelEqual,
+              Sql.Const (String "'v100'")
             )
           ]))
         ),
@@ -200,13 +202,13 @@ let main () =
        *
        *)
       input = (
-        SqlUpdateSet (
+        Sql.UpdateSet (
           "t",
           [
-            (None, "c1"), SqlColumn (None, "c2");
-            (None, "c2"), SqlColumn (None, "c3")
+            (None, "c1"), Sql.Column (None, "c2");
+            (None, "c2"), Sql.Column (None, "c3")
           ],
-          Some (SqlWhere ([]))
+          Some (Sql.Where ([]))
         ),
         ["c1"; "c2"; "c3"; "c4"]
       );

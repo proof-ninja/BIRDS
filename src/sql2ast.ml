@@ -1,61 +1,8 @@
 open Utils
 
+module Sql = Sql.Ast
+
 let ( >>= ) = ResultMonad.( >>= )
-
-type sql_binary_operator =
-  | SqlPlus    (* + *)
-  | SqlMinus   (* - *)
-  | SqlTimes   (* * *)
-  | SqlDivides (* / *)
-  | SqlLor     (* || *)
-
-type sql_unary_operator =
-  | SqlNegate (* - *)
-
-type sql_operator =
-  | SqlRelEqual
-  | SqlRelNotEqual
-  | SqlRelGeneral of string
-
-type sql_table_name = string
-
-type sql_column_name = string
-
-type sql_instance_name = string
-
-type sql_column = sql_instance_name option * sql_column_name
-
-type sql_vterm =
-  | SqlConst    of Expr.const
-  | SqlColumn   of sql_column
-  | SqlUnaryOp  of sql_unary_operator * sql_vterm
-  | SqlBinaryOp of sql_binary_operator * sql_vterm * sql_vterm
-
-type sql_constraint =
-  | SqlConstraint of sql_vterm * sql_operator * sql_vterm
-
-type sql_where_clause =
-  | SqlWhere of sql_constraint list
-
-type sql_update =
-  | SqlUpdateSet of sql_table_name * (sql_column * sql_vterm) list * sql_where_clause option
-
-let string_of_sql_binary_operator = function
-  | SqlPlus    -> "+"
-  | SqlMinus   -> "-"
-  | SqlTimes   -> "*"
-  | SqlDivides -> "/"
-  | SqlLor     -> "||"
-
-let string_of_sql_unary_operator = function
-  | SqlNegate -> "-"
-
-let string_of_sql_operator = function
-  | SqlRelEqual      -> "="
-  | SqlRelNotEqual   -> "<>"
-  | SqlRelGeneral op -> op
-
-let string_of_sql_column_ignore_instance (_, column) = column
 
 type error =
   | InvalidColumnName of string
@@ -67,28 +14,35 @@ let string_of_error = function
 module ColumnVarMap = Map.Make(String)
 
 let rec ast_vterm_of_sql_vterm colvarmap = function
-  | SqlConst const ->
-      ResultMonad.return (Expr.Const const)
-  | SqlColumn column ->
-      let column_name = string_of_sql_column_ignore_instance column in
+  | Sql.Const const ->
+      ResultMonad.return @@ Expr.Const
+      begin match const with
+      | Sql.Int n -> Expr.Int n
+      | Sql.Real f -> Expr.Real f
+      | Sql.String s -> Expr.String s
+      | Sql.Bool b -> Expr.Bool b
+      | Sql.Null -> Expr.Null
+      end
+  | Sql.Column column ->
+      let column_name = Sql.string_of_column_ignore_instance column in
       ColumnVarMap.find_opt column_name colvarmap
         |> Option.map (fun var -> Expr.Var var)
         |> Option.to_result ~none:(InvalidColumnName column_name)
-  | SqlUnaryOp (op, sql_vterm) ->
+  | Sql.UnaryOp (op, sql_vterm) ->
       ast_vterm_of_sql_vterm colvarmap sql_vterm >>= fun vterm ->
-      let op = string_of_sql_unary_operator op in
+      let op = Sql.string_of_unary_operator op in
       ResultMonad.return (Expr.UnaryOp (op, vterm))
-  | SqlBinaryOp (op, left, right) ->
+  | Sql.BinaryOp (op, left, right) ->
       ast_vterm_of_sql_vterm colvarmap left >>= fun left ->
       ast_vterm_of_sql_vterm colvarmap right >>= fun right ->
-      let op = string_of_sql_binary_operator op in
+      let op = Sql.string_of_binary_operator op in
       ResultMonad.return (Expr.BinaryOp (op, left, right))
 
 let ast_terms_of_sql_where_clause colvarmap = function
-  | SqlWhere sql_constraints ->
+  | Sql.Where sql_constraints ->
     let ast_term_of_sql_constraint = function
-      | SqlConstraint (left, op, right) ->
-          let op = string_of_sql_operator op in
+      | Sql.Constraint (left, op, right) ->
+          let op = Sql.string_of_operator op in
           ast_vterm_of_sql_vterm colvarmap left >>= fun left ->
           ast_vterm_of_sql_vterm colvarmap right >>= fun right ->
           ResultMonad.return (Expr.Equat (Expr.Equation (op, left, right))) in
@@ -105,7 +59,7 @@ let build_effects colvarmap column_and_vterms =
   column_and_vterms
     |> ResultMonad.mapM (fun (sql_col, sql_vterm) ->
       ast_vterm_of_sql_vterm colvarmap sql_vterm >>= fun vterm ->
-      let column_name = string_of_sql_column_ignore_instance sql_col in
+      let column_name = Sql.string_of_column_ignore_instance sql_col in
       ColumnVarMap.find_opt column_name colvarmap
         |> Option.to_result ~none:(InvalidColumnName column_name)
         >>= fun var ->
@@ -128,7 +82,7 @@ let build_creation_rule colvarmap colvarmap' column_and_vterms table_name column
   column_and_vterms
     |> ResultMonad.mapM (fun (column, vterm) ->
       ast_vterm_of_sql_vterm colvarmap' vterm >>= fun vterm ->
-      let column_name = string_of_sql_column_ignore_instance column in
+      let column_name = Sql.string_of_column_ignore_instance column in
       ColumnVarMap.find_opt column_name colvarmap
         |> Option.map (fun var -> Expr.Equat (Expr.Equation ("=", Expr.Var var, vterm)))
         |> Option.to_result ~none:(InvalidColumnName column_name)
@@ -137,7 +91,7 @@ let build_creation_rule colvarmap colvarmap' column_and_vterms table_name column
   (* Create a rule corresponding to the operation to insert the record to be updated. *)
   columns
     |> ResultMonad.mapM (fun column ->
-      let column_name = string_of_sql_column_ignore_instance (None, column) in
+      let column_name = Sql.string_of_column_ignore_instance (None, column) in
       ColumnVarMap.find_opt column_name colvarmap'
         |> Option.to_result ~none:(InvalidColumnName column_name)
     ) >>= fun delete_var_list ->
@@ -148,8 +102,8 @@ let build_creation_rule colvarmap colvarmap' column_and_vterms table_name column
 
 module ColumnSet = Set.Make(String)
 
-let update_to_datalog (update : sql_update) (columns : sql_column_name list) : (Expr.rule list, error) result =
-  let SqlUpdateSet (table_name, column_and_vterms, where_clause) = update in
+let update_to_datalog (update : Sql.update) (columns : Sql.column_name list) : (Expr.rule list, error) result =
+  let Sql.UpdateSet (table_name, column_and_vterms, where_clause) = update in
 
   (* Create (column name as String, Expr.var) list. *)
   let make_column_var_list make_var =
@@ -159,7 +113,7 @@ let update_to_datalog (update : sql_update) (columns : sql_column_name list) : (
     )
   in
   let make_colvarmap column_var_list = column_var_list
-    |> List.map (fun (col, var) -> string_of_sql_column_ignore_instance col, var)
+    |> List.map (fun (col, var) -> Sql.string_of_column_ignore_instance col, var)
     |> List.to_seq
     |> ColumnVarMap.of_seq in
 
@@ -181,7 +135,7 @@ let update_to_datalog (update : sql_update) (columns : sql_column_name list) : (
       | None ->
           (var :: varlist), in_set
       | Some _ ->
-          let column_name = string_of_sql_column_ignore_instance column in
+          let column_name = Sql.string_of_column_ignore_instance column in
           (var :: varlist), (ColumnSet.add column_name in_set)
       ) column_var_list ([], ColumnSet.empty)
   in
@@ -193,7 +147,7 @@ let update_to_datalog (update : sql_update) (columns : sql_column_name list) : (
     *)
   let column_var_list' = columns
     |> make_column_var_list (fun idx column_name ->
-      let column_name = string_of_sql_column_ignore_instance (None, column_name) in
+      let column_name = Sql.string_of_column_ignore_instance (None, column_name) in
       if ColumnSet.exists (fun c -> c = column_name) in_set then
         Expr.NamedVar (Printf.sprintf "GENV%d_2" (idx + 1))
       else

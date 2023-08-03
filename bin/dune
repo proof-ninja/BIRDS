@@ -1,0 +1,5 @@
+(executable
+ (public_name u2dl)
+ (name u2dl)
+ (modules u2dl)
+ (libraries birds sql))
