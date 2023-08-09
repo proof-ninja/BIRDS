@@ -24,7 +24,7 @@ type fol = R of string * term list;;
 (* Special case of applying a subfunction to the top *terms*.                *)
 (* ------------------------------------------------------------------------- *)
 
-let onformula f = onatoms(fun (R(p,a)) -> Atom(R(p,map f a)));;
+let [@warning "-32"] onformula f = onatoms(fun (R(p,a)) -> Atom(R(p,map f a)));;
 
 (* ------------------------------------------------------------------------- *)
 (* Printing of terms.                                                        *)
@@ -60,7 +60,7 @@ and print_infix_term isleft oldprec newprec sym p q =
   print_term (if isleft then newprec+1 else newprec) q;
   if oldprec > newprec then (close_box(); print_string ")") else ();;
 
-let printert tm =
+let [@warning "-32"] printert tm =
   open_box 0; print_string "<<|";
   open_box 0; print_term 0 tm; close_box();
   print_string "|>>"; close_box();;
@@ -71,12 +71,12 @@ let printert tm =
 (* Printing of formulas.                                                     *)
 (* ------------------------------------------------------------------------- *)
 
-let print_atom prec (R(p,args)) =
+let print_atom _prec (R(p,args)) =
   if mem p ["="; "<"; "<="; ">"; ">="] && length args = 2
   then print_infix_term false 12 12 (" "^p) (el 0 args) (el 1 args)
   else print_fargs p args;;
 
-let print_fol_formula = print_qformula print_atom;;
+let [@warning "-32"] print_fol_formula = print_qformula print_atom;;
 
 (* #install_printer print_fol_formula;; *)
 
@@ -84,12 +84,12 @@ let print_fol_formula = print_qformula print_atom;;
 (* Semantics, implemented of course for finite domains only.                 *)
 (* ------------------------------------------------------------------------- *)
 
-let rec termval (domain,func,pred as m) v tm =
+let rec termval (_domain, func, _pred as m) v tm =
   match tm with
     Var(x) -> apply v x
   | Fn(f,args) -> func f (map (termval m v) args);;
 
-let rec holds (domain,func,pred as m) v fm =
+let [@warning "-32"] rec holds (domain, _func, pred as m) v fm =
   match fm with
     False -> false
   | True -> true
@@ -106,7 +106,7 @@ let rec holds (domain,func,pred as m) v fm =
 (* Examples of particular interpretations.                                   *)
 (* ------------------------------------------------------------------------- *)
 
-let bool_interp =
+let [@warning "-32"] bool_interp =
   let func f args =
     match (f,args) with
       ("0",[]) -> false
@@ -120,7 +120,7 @@ let bool_interp =
     | _ -> failwith "uninterpreted predicate" in
   ([false; true],func,pred);;
 
-let mod_interp n =
+let [@warning "-32"] mod_interp n =
   let func f args =
     match (f,args) with
       ("0",[]) -> 0
@@ -141,12 +141,12 @@ let mod_interp n =
 let rec fvt tm =
   match tm with
     Var x -> [x]
-  | Fn(f,args) -> unions (map fvt args);;
+  | Fn(_f, args) -> unions (map fvt args);;
 
-let rec var fm =
+let [@warning "-32"] rec var fm =
    match fm with
     False | True -> []
-  | Atom(R(p,args)) -> unions (map fvt args)
+  | Atom(R(_p, args)) -> unions (map fvt args)
   | Not(p) -> var p
   | And(p,q) | Or(p,q) | Imp(p,q) | Iff(p,q) -> union (var p) (var q)
   | Forall(x,p) | Exists(x,p) -> insert x (var p);;
@@ -154,7 +154,7 @@ let rec var fm =
 let rec fv fm =
   match fm with
     False | True -> []
-  | Atom(R(p,args)) -> unions (map fvt args)
+  | Atom(R(_p, args)) -> unions (map fvt args)
   | Not(p) -> fv p
   | And(p,q) | Or(p,q) | Imp(p,q) | Iff(p,q) -> union (fv p) (fv q)
   | Forall(x,p) | Exists(x,p) -> subtract (fv p) [x];;

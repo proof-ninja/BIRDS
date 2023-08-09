@@ -5,7 +5,7 @@ open Lib;;
 open Formulas;;
 open Format;;
 
-type prop = P of string;;
+type [@warning "-37"] prop = P of string;;
 
 let pname(P s) = s;;
 
@@ -14,9 +14,9 @@ let pname(P s) = s;;
 (* Printer.                                                                  *)
 (* ------------------------------------------------------------------------- *)
 
-let print_propvar prec p = print_string(pname p);;
+let print_propvar _prec p = print_string(pname p);;
 
-let print_prop_formula = print_qformula print_propvar;;
+let [@warning "-32"] print_prop_formula = print_qformula print_propvar;;
 
 (* #install_printer print_prop_formula;; *)
 
@@ -85,7 +85,7 @@ let rec onallvaluations subfn v ats =
              onallvaluations subfn (v' false) ps &&
              onallvaluations subfn (v' true) ps;;
 
-let print_truthtable fm =
+let [@warning "-32"] print_truthtable fm =
   let ats = atoms fm in
   let width = itlist (max ** String.length ** pname) ats 5 + 1 in
   let fixw s = s^String.make(width - String.length s) ' ' in
@@ -97,7 +97,7 @@ let print_truthtable fm =
   let separator = String.make (width * length ats + 9) '-' in
   print_string(itlist (fun s t -> fixw(pname s) ^ t) ats "| formula");
   print_newline(); print_string separator; print_newline();
-  let _ = onallvaluations mk_row (fun x -> false) ats in
+  let _ = onallvaluations mk_row (fun _x -> false) ats in
   print_string separator; print_newline();;
 
 (* ------------------------------------------------------------------------- *)
@@ -127,7 +127,7 @@ END_INTERACTIVE;; *)
 (* ------------------------------------------------------------------------- *)
 
 let tautology fm =
-  onallvaluations (eval fm) (fun s -> false) (atoms fm);;
+  onallvaluations (eval fm) (fun _s -> false) (atoms fm);;
 
 (* ------------------------------------------------------------------------- *)
 (* Examples.                                                                 *)
@@ -151,13 +151,13 @@ END_INTERACTIVE;; *)
 
 let unsatisfiable fm = tautology(Not fm);;
 
-let satisfiable fm = not(unsatisfiable fm);;
+let [@warning "-32"] satisfiable fm = not(unsatisfiable fm);;
 
 (* ------------------------------------------------------------------------- *)
 (* Substitution operation.                                                   *)
 (* ------------------------------------------------------------------------- *)
 
-let psubst subfn = onatoms (fun p -> tryapplyd subfn p (Atom p));;
+let [@warning "-32"] psubst subfn = onatoms (fun p -> tryapplyd subfn p (Atom p));;
 
 (* ------------------------------------------------------------------------- *)
 (* Example.                                                                  *)
@@ -200,11 +200,11 @@ END_INTERACTIVE;; *)
 (* Dualization.                                                              *)
 (* ------------------------------------------------------------------------- *)
 
-let rec dual fm =
+let [@warning "-32"] rec dual fm =
   match fm with
     False -> True
   | True -> False
-  | Atom(p) -> fm
+  | Atom(_p) -> fm
   | Not(p) -> Not(dual p)
   | And(p,q) -> Or(dual p,dual q)
   | Or(p,q) -> And(dual p,dual q)
@@ -227,11 +227,11 @@ let psimplify1 fm =
     Not False -> True
   | Not True -> False
   | Not(Not p) -> p
-  | And(p,False) | And(False,p) -> False
+  | And(_p, False) | And(False, _p) -> False
   | And(p,True) | And(True,p) -> p
   | Or(p,False) | Or(False,p) -> p
-  | Or(p,True) | Or(True,p) -> True
-  | Imp(False,p) | Imp(p,True) -> True
+  | Or(_p, True) | Or(True, _p) -> True
+  | Imp(False, _p) | Imp(_p, True) -> True
   | Imp(True,p) -> p
   | Imp(p,False) -> Not p
   | Iff(p,True) | Iff(True,p) -> p
@@ -261,7 +261,7 @@ END_INTERACTIVE;; *)
 (* Some operations on literals.                                              *)
 (* ------------------------------------------------------------------------- *)
 
-let negative = function (Not p) -> true | _ -> false;;
+let negative = function (Not _p) -> true | _ -> false;;
 
 let positive lit = not(negative lit);;
 
@@ -319,7 +319,7 @@ let rec nenf fm =
   | Iff(p,q) -> Iff(nenf p,nenf q)
   | _ -> fm;;
 
-let nenf fm = nenf(psimplify fm);;
+let [@warning "-32"] nenf fm = nenf(psimplify fm);;
 
 (* ------------------------------------------------------------------------- *)
 (* Some tautologies remarked on.                                             *)
@@ -348,9 +348,9 @@ let rec allsatvaluations subfn v pvs =
              allsatvaluations subfn (v' false) ps @
              allsatvaluations subfn (v' true) ps;;
 
-let dnf fm =
+let [@warning "-32"] dnf fm =
   let pvs = atoms fm in
-  let satvals = allsatvaluations (eval fm) (fun s -> false) pvs in
+  let satvals = allsatvaluations (eval fm) (fun _s -> false) pvs in
   list_disj (map (mk_lits (map (fun p -> Atom p) pvs)) satvals);;
 
 (* ------------------------------------------------------------------------- *)
@@ -377,7 +377,7 @@ let rec distrib fm =
   | And(Or(p,q),r) -> Or(distrib(And(p,r)),distrib(And(q,r)))
   | _ -> fm;;
 
-let rec rawdnf fm =
+let [@warning "-32"] rec rawdnf fm =
   match fm with
     And(p,q) -> distrib(And(rawdnf p,rawdnf q))
   | Or(p,q) -> Or(rawdnf p,rawdnf q)
@@ -463,7 +463,7 @@ let simpcnf fm =
   let cjs = filter (non trivial) (purecnf fm) in
   filter (fun c -> not(exists (fun c' -> psubset c' c) cjs)) cjs;;
 
-let cnf fm = list_conj(map list_disj (simpcnf fm));;
+let [@warning "-32"] cnf fm = list_conj(map list_disj (simpcnf fm));;
 
 (* ------------------------------------------------------------------------- *)
 (* Example.                                                                  *)

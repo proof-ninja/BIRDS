@@ -6,7 +6,6 @@
 *)
 
 exception Eof
-open Printf
 
 (* Evaluate the fixpoint of a Datalog program, also caculate the explanation *)
 let eval (log:bool) explain_lst prog =
@@ -16,12 +15,12 @@ let eval (log:bool) explain_lst prog =
   let print_result = ref true in (* must be true to get all the derived facts *)
   let print_saturated = ref false in
   let print_size = ref false in
-  let print_version = ref false in
+  let _print_version = ref false in
   let sums = ref [] in
   let patterns = (ref [] : Bottom_up.literal list ref) in
   let goals = (ref [] : Bottom_up.literal list ref) in
   let explains = ref [] in
-  let files = ref [] in
+  let _files = ref [] in
   let queries = ref [] in
   let returned_explanation = ref [] in
   let returned_facts = (ref [] : Bottom_up.literal list ref) in
@@ -30,7 +29,7 @@ let eval (log:bool) explain_lst prog =
     Format.printf "\r%% clause %-5d / %-5d  " i total;
     Format.print_flush () in
 
-  (** Simple goal handler (interprets 'lt') *)
+  (* Simple goal handler (interprets 'lt') *)
   let handle_goal db lit =
     (* log: Format.printf "%% goal %a@." Bottom_up.pp_literal lit; *)
     if Bottom_up.is_negative lit then (
@@ -45,7 +44,7 @@ let eval (log:bool) explain_lst prog =
           let fun_name = (fun term -> match term with Bottom_up.Const s -> Bottom_up.Symbol.to_string s | _ -> "") in
           if (Bottom_up.eq_term clause.(0).(0)  pos_lit.(0)) then (Format.printf "===found===\n"; lit_holds := false))) () db; *)
 
-      Bottom_up.db_match db pos_lit (fun lit' -> lit_holds := false);
+      Bottom_up.db_match db pos_lit (fun _lit' -> lit_holds := false);
       if !lit_holds then (
         (* Format.printf "========= no fact %a@." Bottom_up.pp_literal pos_lit;   *)
         Bottom_up.db_add_fact db lit)
@@ -91,33 +90,33 @@ let eval (log:bool) explain_lst prog =
         Bottom_up.db_add_fact db (Bottom_up.mk_literal "=" [Bottom_up.Const a; Bottom_up.Const a]) (* literal is true *)
       | _ -> () in
 
-  (** Handler that aggregates the number of facts with this head symbol. It adds the
-      handler to the global variable [sums] *)
-  let add_sum symbol =
+  (* Handler that aggregates the number of facts with this head symbol. It adds the
+     handler to the global variable [sums] *)
+  let _add_sum symbol =
     let count = ref 0 in
     (* print result at exit *)
     let printer () = Format.printf "%% number of fact with head %s: %d@." symbol !count in
     let handler _ = incr count in
     sums := (Bottom_up.StringSymbol.make symbol, handler, printer) :: !sums in
 
-  (** Handler that add a goal *)
-  let add_goal p =
+  (* Handler that add a goal *)
+  let _add_goal p =
     let lexbuf = Lexing.from_string p in
     let rterm = Parser.parse_rterm Lexer.token lexbuf in
     (* let rterm = Conversion.rterm_of_rterm2 rterm in *)
     let rterm = Bottom_up.literal_of_rterm false rterm in
     goals := rterm :: !goals in
 
-  (** Add the pattern to the list of patterns to explain *)
-  let add_explain p =
+  (* Add the pattern to the list of patterns to explain *)
+  let _add_explain p =
     let lexbuf = Lexing.from_string p in
     let rterm = Parser.parse_rterm Lexer.token lexbuf in
     (* let rterm = Conversion.rterm_of_rterm2 rterm in *)
     let rterm = Bottom_up.literal_of_rterm false rterm in
     explains := rterm :: !explains in
 
-  (** Add a query to the list of queries to run *)
-  let add_query q_str =
+  (* Add a query to the list of queries to run *)
+  let _add_query q_str =
     try
       let lexbuf = Lexing.from_string q_str in
       let ast = Parser.parse_query Lexer.token lexbuf in
@@ -127,7 +126,7 @@ let eval (log:bool) explain_lst prog =
     with Parsing.Parse_error ->
       failwith ("could not parse the query string " ^ q_str) in
 
-  (** Compute the fixpoint of clauses *)
+  (* Compute the fixpoint of clauses *)
   let process_clauses clauses =
     if not !quiet then Format.printf "%% process %d clauses@." (List.length clauses);
     if !print_input then (
@@ -199,7 +198,7 @@ let eval (log:bool) explain_lst prog =
     let explanation_summary fact =
     (* explanation *)
         let edb_facts = Bottom_up.db_explain db fact in
-        let all_clauses = List.map (fun (fact, clause, premises) -> clause ) (List.rev (complete_explanation fact)) in
+        let all_clauses = List.map (fun (_fact, clause, _premises) -> clause ) (List.rev (complete_explanation fact)) in
         (edb_facts, all_clauses) in
     (* print explanations *)
     List.iter (fun pattern ->

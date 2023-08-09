@@ -15,7 +15,7 @@ let gcd_num n1 n2 =
   abs_num(num_of_big_int
       (Big_int.gcd_big_int (big_int_of_num n1) (big_int_of_num n2)));;
 
-let lcm_num n1 n2 = abs_num(n1 */ n2) // gcd_num n1 n2;;
+let [@warning "-32"] lcm_num n1 n2 = abs_num(n1 */ n2) // gcd_num n1 n2;;
 
 (* ------------------------------------------------------------------------- *)
 (* A useful idiom for "non contradictory" etc.                               *)
@@ -27,18 +27,18 @@ let non p x = not(p x);;
 (* Kind of assertion checking.                                               *)
 (* ------------------------------------------------------------------------- *)
 
-let check p x = if p(x) then x else failwith "check";;
+let [@warning "-32"] check p x = if p(x) then x else failwith "check";;
 
 (* ------------------------------------------------------------------------- *)
 (* Repetition of a function.                                                 *)
 (* ------------------------------------------------------------------------- *)
 
-let rec funpow n f x =
+let [@warning "-32"] rec funpow n f x =
   if n < 1 then x else funpow (n-1) f (f x);;
 
-let can f x = try f x; true with Failure _ -> false;;
+let [@warning "-32"] can f x = try f x; true with Failure _ -> false;;
 
-let rec repeat f x = try repeat f (f x) with Failure _ -> x;;
+let [@warning "-32"] rec repeat f x = try repeat f (f x) with Failure _ -> x;;
 
 (* ------------------------------------------------------------------------- *)
 (* Handy list operations.                                                    *)
@@ -46,15 +46,15 @@ let rec repeat f x = try repeat f (f x) with Failure _ -> x;;
 
 let rec (--) = fun m n -> if m > n then [] else m::((m + 1) -- n);;
 
-let rec (---) = fun m n -> if m >/ n then [] else m::((m +/ Int 1) --- n);;
+let [@warning "-32"] rec (---) = fun m n -> if m >/ n then [] else m::((m +/ Int 1) --- n);;
 
-let rec map2 f l1 l2 =
+let [@warning "-32"] rec map2 f l1 l2 =
   match (l1,l2) with
     [],[] -> []
   | (h1::t1),(h2::t2) -> let h = f h1 h2 in h::(map2 f t1 t2)
   | _ -> failwith "map2: length mismatch";;
 
-let rev =
+let [@warning "-32"] rev =
   let rec rev_append acc l =
     match l with
       [] -> acc
@@ -63,12 +63,12 @@ let rev =
 
 let hd l =
   match l with
-   h::t -> h
+   h::_t -> h
   | _ -> failwith "hd";;
 
 let tl l =
   match l with
-   h::t -> t
+   _h::t -> t
   | _ -> failwith "tl";;
 
 let rec itlist f l b =
@@ -88,7 +88,7 @@ let rec itlist2 f l1 l2 b =
   | (h1::t1,h2::t2) -> f h1 h2 (itlist2 f t1 t2 b)
   | _ -> failwith "itlist2";;
 
-let rec zip l1 l2 =
+let [@warning "-32"] rec zip l1 l2 =
   match (l1,l2) with
         ([],[]) -> []
       | (h1::t1,h2::t2) -> (h1,h2)::(zip t1 t2)
@@ -114,19 +114,19 @@ let length =
     if l = [] then k else len (k + 1) (tl l) in
   fun l -> len 0 l;;
 
-let rec last l =
+let [@warning "-32"] rec last l =
   match l with
     [x] -> x
-  | (h::t) -> last t
+  | (_h::t) -> last t
   | [] -> failwith "last";;
 
-let rec butlast l =
+let [@warning "-32"] rec butlast l =
   match l with
     [_] -> []
   | (h::t) -> h::(butlast t)
   | [] -> failwith "butlast";;
 
-let rec find p l =
+let [@warning "-32"] rec find p l =
   match l with
       [] -> failwith "find"
     | (h::t) -> if p(h) then h else find p t;;
@@ -146,38 +146,38 @@ let rec allpairs f l1 l2 =
    h1::t1 ->  itlist (fun x a -> f h1 x :: a) l2 (allpairs f t1 l2)
   | [] -> [];;
 
-let rec distinctpairs l =
+let [@warning "-32"] rec distinctpairs l =
   match l with
    x::t -> itlist (fun y a -> (x,y) :: a) t (distinctpairs t)
   | [] -> [];;
 
-let rec chop_list n l =
+let [@warning "-32"] rec chop_list n l =
   if n = 0 then [],l else
   try let m,l' = chop_list (n-1) (tl l) in (hd l)::m,l'
   with Failure _ -> failwith "chop_list";;
 
-let replicate n a = map (fun x -> a) (1--n);;
+let [@warning "-32"] replicate n a = map (fun _x -> a) (1--n);;
 
-let rec insertat i x l =
+let [@warning "-32"] rec insertat i x l =
   if i = 0 then x::l else
   match l with
     [] -> failwith "insertat: list too short for position to exist"
   | h::t -> h::(insertat (i-1) x t);;
 
-let rec forall2 p l1 l2 =
+let [@warning "-32"] rec forall2 p l1 l2 =
   match (l1,l2) with
     [],[] -> true
   | (h1::t1,h2::t2) -> p h1 h2 && forall2 p t1 t2
   | _ -> false;;
 
-let index x =
+let [@warning "-32"] index x =
   let rec ind n l =
     match l with
       [] -> failwith "index"
     | (h::t) -> if Stdlib.compare x h = 0 then n else ind (n + 1) t in
   ind 0;;
 
-let rec unzip l =
+let [@warning "-32"] rec unzip l =
   match l with
     [] -> [],[]
   | (x,y)::t ->
@@ -187,7 +187,7 @@ let rec unzip l =
 (* Whether the first of two items comes earlier in the list.                 *)
 (* ------------------------------------------------------------------------- *)
 
-let rec earlier l x y =
+let [@warning "-32"] rec earlier l x y =
   match l with
     h::t -> (Stdlib.compare h y <> 0) &&
             (Stdlib.compare h x = 0 || earlier t x y)
@@ -206,12 +206,12 @@ let rec do_list f l =
 (* Association lists.                                                        *)
 (* ------------------------------------------------------------------------- *)
 
-let rec assoc a l =
+let [@warning "-32"] rec assoc a l =
   match l with
     (x,y)::t -> if Stdlib.compare x a = 0 then y else assoc a t
   | [] -> failwith "find";;
 
-let rec rev_assoc a l =
+let [@warning "-32"] rec rev_assoc a l =
   match l with
     (x,y)::t -> if Stdlib.compare y a = 0 then x else rev_assoc a t
   | [] -> failwith "find";;
@@ -245,9 +245,9 @@ let sort ord =
 (* Common measure predicates to use with "sort".                             *)
 (* ------------------------------------------------------------------------- *)
 
-let increasing f x y = Stdlib.compare (f x) (f y) < 0;;
+let [@warning "-32"] increasing f x y = Stdlib.compare (f x) (f y) < 0;;
 
-let decreasing f x y = Stdlib.compare (f x) (f y) > 0;;
+let [@warning "-32"] decreasing f x y = Stdlib.compare (f x) (f y) > 0;;
 
 (* ------------------------------------------------------------------------- *)
 (* Eliminate repetitions of adjacent elements, with and without counting.    *)
@@ -260,7 +260,7 @@ let rec uniq l =
                       if t'==t then l else x::t'
  | _ -> l;;
 
-let repetitions =
+let [@warning "-32"] repetitions =
   let rec repcount n l =
     match l with
       x::(y::_ as ys) -> if Stdlib.compare y x = 0 then repcount (n + 1) ys
@@ -269,12 +269,12 @@ let repetitions =
     | [] -> failwith "repcount" in
   fun l -> if l = [] then [] else repcount 1 l;;
 
-let rec tryfind f l =
+let [@warning "-32"] rec tryfind f l =
   match l with
       [] -> failwith "tryfind"
     | (h::t) -> try f h with Failure _ -> tryfind f t;;
 
-let rec mapfilter f l =
+let [@warning "-32"] rec mapfilter f l =
   match l with
     [] -> []
   | (h::t) -> let rest = mapfilter f t in
@@ -285,10 +285,11 @@ let rec mapfilter f l =
 (* ------------------------------------------------------------------------- *)
 
 let optimize ord f l =
-  fst(end_itlist (fun (x,y as p) (x',y' as p') -> if ord y y' then p else p')
+  fst(end_itlist (fun (_x, y as p) (_x', y' as p') -> if ord y y' then p else p')
                  (map (fun x -> x,f x) l));;
 
-let maximize f l = optimize (>) f l and minimize f l = optimize (<) f l;;
+let [@warning "-32"] maximize f l = optimize (>) f l
+and [@warning "-32"] minimize f l = optimize (<) f l;;
 
 (* ------------------------------------------------------------------------- *)
 (* Set operations on ordered lists.                                          *)
@@ -316,8 +317,8 @@ let union =
 let intersect =
   let rec intersect l1 l2 =
     match (l1,l2) with
-        ([],l2) -> []
-      | (l1,[]) -> []
+        ([], _l2) -> []
+      | (_l1, []) -> []
       | ((h1::t1 as l1),(h2::t2 as l2)) ->
           if h1 = h2 then h1::(intersect t1 t2)
           else if h1 < h2 then intersect t1 l2
@@ -327,8 +328,8 @@ let intersect =
 let subtract =
   let rec subtract l1 l2 =
     match (l1,l2) with
-        ([],l2) -> []
-      | (l1,[]) -> l1
+        ([], _l2) -> []
+      | (l1, []) -> l1
       | ((h1::t1 as l1),(h2::t2 as l2)) ->
           if h1 = h2 then subtract t1 t2
           else if h1 < h2 then h1::(subtract t1 l2)
@@ -338,16 +339,16 @@ let subtract =
 let subset,psubset =
   let rec subset l1 l2 =
     match (l1,l2) with
-        ([],l2) -> true
-      | (l1,[]) -> false
+        ([], _l2) -> true
+      | (_l1, []) -> false
       | (h1::t1,h2::t2) ->
           if h1 = h2 then subset t1 t2
           else if h1 < h2 then false
           else subset l1 t2
   and psubset l1 l2 =
     match (l1,l2) with
-        (l1,[]) -> false
-      | ([],l2) -> true
+        (_l1, []) -> false
+      | ([], _l2) -> true
       | (h1::t1,h2::t2) ->
           if h1 = h2 then psubset t1 t2
           else if h1 < h2 then false
@@ -355,7 +356,7 @@ let subset,psubset =
   (fun s1 s2 -> subset (setify s1) (setify s2)),
   (fun s1 s2 -> psubset (setify s1) (setify s2));;
 
-let rec set_eq s1 s2 = (setify s1 = setify s2);;
+let [@warning "-32"] set_eq s1 s2 = (setify s1 = setify s2);;
 
 let insert x s = union [x] s;;
 
@@ -380,7 +381,7 @@ let rec mem x lis =
 (* Finding all subsets or all subsets of a given size.                       *)
 (* ------------------------------------------------------------------------- *)
 
-let rec allsets m l =
+let [@warning "-32"] rec allsets m l =
   if m = 0 then [[]] else
   match l with
     [] -> []
@@ -398,19 +399,19 @@ let allnonemptysubsets s = subtract (allsubsets s) [[]];;
 (* Explosion and implosion of strings.                                       *)
 (* ------------------------------------------------------------------------- *)
 
-let explode s =
+let [@warning "-32"] explode s =
   let rec exap n l =
      if n < 0 then l else
       exap (n - 1) ((String.sub s n 1)::l) in
   exap (String.length s - 1) [];;
 
-let implode l = itlist (^) l "";;
+let [@warning "-32"] implode l = itlist (^) l "";;
 
 (* ------------------------------------------------------------------------- *)
 (* Timing; useful for documentation but not logically necessary.             *)
 (* ------------------------------------------------------------------------- *)
 
-let time f x =
+let [@warning "-32"] time f x =
   let start_time = Sys.time() in
   let result = f x in
   let finish_time = Sys.time() in
@@ -443,7 +444,7 @@ let undefined = Empty;;
 (* In case of equality comparison worries, better use this.                  *)
 (* ------------------------------------------------------------------------- *)
 
-let is_undefined f =
+let [@warning "-32"] is_undefined f =
   match f with
     Empty -> true
   | _ -> false;;
@@ -452,7 +453,7 @@ let is_undefined f =
 (* Operation analogous to "map" for lists.                                   *)
 (* ------------------------------------------------------------------------- *)
 
-let mapf =
+let [@warning "-32"] mapf =
   let rec map_list f l =
     match l with
       [] -> []
@@ -476,11 +477,11 @@ let foldl =
   let rec foldl f a t =
     match t with
       Empty -> a
-    | Leaf(h,l) -> foldl_list f a l
-    | Branch(p,b,l,r) -> foldl f (foldl f a l) r in
+    | Leaf(_h, l) -> foldl_list f a l
+    | Branch(_p, _b, l, r) -> foldl f (foldl f a l) r in
   foldl;;
 
-let foldr =
+let [@warning "-32"] foldr =
   let rec foldr_list f l a =
     match l with
       [] -> a
@@ -488,19 +489,19 @@ let foldr =
   let rec foldr f t a =
     match t with
       Empty -> a
-    | Leaf(h,l) -> foldr_list f l a
-    | Branch(p,b,l,r) -> foldr f l (foldr f r a) in
+    | Leaf(_h, l) -> foldr_list f l a
+    | Branch(_p, _b, l, r) -> foldr f l (foldr f r a) in
   foldr;;
 
 (* ------------------------------------------------------------------------- *)
 (* Mapping to sorted-list representation of the graph, domain and range.     *)
 (* ------------------------------------------------------------------------- *)
 
-let graph f = setify (foldl (fun a x y -> (x,y)::a) [] f);;
+let [@warning "-32"] graph f = setify (foldl (fun a x y -> (x,y)::a) [] f);;
 
-let dom f = setify(foldl (fun a x y -> x::a) [] f);;
+let dom f = setify(foldl (fun a x _y -> x::a) [] f);;
 
-let ran f = setify(foldl (fun a x y -> y::a) [] f);;
+let [@warning "-32"] ran f = setify(foldl (fun a _x y -> y::a) [] f);;
 
 (* ------------------------------------------------------------------------- *)
 (* Application.                                                              *)
@@ -522,13 +523,13 @@ let applyd =
       | _ -> d x in
     look f;;
 
-let apply f = applyd f (fun x -> failwith "apply");;
+let apply f = applyd f (fun _x -> failwith "apply");;
 
-let tryapplyd f a d = applyd f (fun x -> d) a;;
+let tryapplyd f a d = applyd f (fun _x -> d) a;;
 
-let tryapplyl f x = tryapplyd f x [];;
+let [@warning "-32"] tryapplyl f x = tryapplyd f x [];;
 
-let defined f x = try apply f x; true with Failure _ -> false;;
+let [@warning "-32"] defined f x = try apply f x; true with Failure _ -> false;;
 
 (* ------------------------------------------------------------------------- *)
 (* Undefinition.                                                             *)
@@ -537,7 +538,7 @@ let defined f x = try apply f x; true with Failure _ -> false;;
 let undefine =
   let rec undefine_list x l =
     match l with
-      (a,b as ab)::t ->
+      (a, _b as ab)::t ->
           let c = Stdlib.compare x a in
           if c = 0 then t
           else if c < 0 then l else
@@ -569,16 +570,16 @@ let undefine =
 (* Redefinition and combination.                                             *)
 (* ------------------------------------------------------------------------- *)
 
-let (|->),combine =
+let [@warning "-32"] (|->),combine =
   let newbranch p1 t1 p2 t2 =
     let zp = p1 lxor p2 in
     let b = zp land (-zp) in
     let p = p1 land (b - 1) in
     if p1 land b = 0 then Branch(p,b,t1,t2)
     else Branch(p,b,t2,t1) in
-  let rec define_list (x,y as xy) l =
+  let rec define_list (x, _y as xy) l =
     match l with
-      (a,b as ab)::t ->
+      (a, _b as ab)::t ->
           let c = Stdlib.compare x a in
           if c = 0 then xy::t
           else if c < 0 then xy::l
@@ -616,7 +617,7 @@ let (|->),combine =
             let l = combine_list op z l1 l2 in
             if l = [] then Empty else Leaf(h1,l)
           else newbranch h1 t1 h2 t2
-    | (Leaf(k,lis) as lf),(Branch(p,b,l,r) as br) ->
+    | (Leaf(k, _lis) as lf),(Branch(p,b,l,r) as br) ->
           if k land (b - 1) = p then
             if k land b = 0 then
               (match combine op z lf l with
@@ -626,7 +627,7 @@ let (|->),combine =
                  Empty -> l | r' -> Branch(p,b,l,r'))
           else
             newbranch k lf p br
-    | (Branch(p,b,l,r) as br),(Leaf(k,lis) as lf) ->
+    | (Branch(p,b,l,r) as br),(Leaf(k, _lis) as lf) ->
           if k land (b - 1) = p then
             if k land b = 0 then
               (match combine op z l lf with
@@ -676,17 +677,17 @@ let fpf xs ys = itlist2 (|->) xs ys undefined;;
 (* Grab an arbitrary element.                                                *)
 (* ------------------------------------------------------------------------- *)
 
-let rec choose t =
+let [@warning "-32"] rec choose t =
   match t with
     Empty -> failwith "choose: completely undefined function"
-  | Leaf(h,l) -> hd l
-  | Branch(b,p,t1,t2) -> choose t1;;
+  | Leaf(_h, l) -> hd l
+  | Branch(_b, _p, t1, _t2) -> choose t1;;
 
 (* ------------------------------------------------------------------------- *)
 (* Install a (trivial) printer for finite partial functions.                 *)
 (* ------------------------------------------------------------------------- *)
 
-let print_fpf (f:('a,'b)func) = print_string "<func>";;
+let [@warning "-32"] print_fpf (_f:('a,'b)func) = print_string "<func>";;
 
 (* #install_printer print_fpf;; *)
 
@@ -694,9 +695,9 @@ let print_fpf (f:('a,'b)func) = print_string "<func>";;
 (* Related stuff for standard functions.                                     *)
 (* ------------------------------------------------------------------------- *)
 
-let valmod a y f x = if x = a then y else f(x);;
+let [@warning "-32"] valmod a y f x = if x = a then y else f(x);;
 
-let undef x = failwith "undefined function";;
+let [@warning "-32"] undef _x = failwith "undefined function";;
 
 (* ------------------------------------------------------------------------- *)
 (* Union-find algorithm.                                                     *)
@@ -716,9 +717,9 @@ let tryterminus ptn a =
 
 let canonize ptn a = fst(tryterminus ptn a);;
 
-let equivalent eqv a b = canonize eqv a = canonize eqv b;;
+let [@warning "-32"] equivalent eqv a b = canonize eqv a = canonize eqv b;;
 
-let equate (a,b) (Partition f as ptn) =
+let [@warning "-32"] equate (a,b) (Partition f as ptn) =
   let (a',na) = tryterminus ptn a
   and (b',nb) = tryterminus ptn b in
   Partition
@@ -728,12 +729,12 @@ let equate (a,b) (Partition f as ptn) =
     else
        itlist identity [b' |-> Nonterminal a'; a' |-> Terminal(a',na+nb)] f);;
 
-let unequal = Partition undefined;;
+let [@warning "-32"] unequal = Partition undefined;;
 
-let equated (Partition f) = dom f;;
+let [@warning "-32"] equated (Partition f) = dom f;;
 
 (* ------------------------------------------------------------------------- *)
 (* First number starting at n for which p succeeds.                          *)
 (* ------------------------------------------------------------------------- *)
 
-let rec first n p = if p(n) then n else first (n +/ Int 1) p;;
+let [@warning "-32"] rec first n p = if p(n) then n else first (n +/ Int 1) p;;

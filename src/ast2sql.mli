@@ -1,4 +1,3 @@
-open Utils
 
 val unfold_view_sql : string -> bool -> Expr.expr -> string
 

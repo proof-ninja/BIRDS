@@ -10,7 +10,6 @@ Theorem generation for verification
 open Expr
 open Utils
 open Rule_preprocess
-open Stratification
 open Logic
 
 let rec lambda_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:symtkey)  =
@@ -25,7 +24,6 @@ let rec lambda_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:symtkey)  =
                 let lst = get_rterm_varlist r in
                 (* convert anonymous variables to named variable with alias,
                 they will be existential varialbes *)
-                let ind = 0 in
                 let anony_names, var_lst = List.fold_right (fun v (anony_names,vars) -> match v with AnonVar -> let alias = "anon_"^ string_of_int (List.length lst -1 - List.length vars) in (alias :: anony_names , (NamedVar alias) :: vars) | _ -> (anony_names,v::vars) )  lst ([],[]) in
                 (if (List.length anony_names >0) then "∃ " ^ String.concat " " anony_names ^ ", "
                 else "")^
@@ -72,7 +70,7 @@ let lambda_of_query (idb:symtable) (cnt:colnamtab) (query:rterm) =
         lambda_of_symtkey local_idb cnt (symtkey_of_rterm (rule_head qrule))
 
 (** Generate lambda expression from the ast, the goal is the query predicate of datalog program. *)
-let lambda_of_stt (debug:bool) prog =
+let [@warning "-32"] lambda_of_stt (_debug:bool) prog =
     let edb = extract_edb prog in
     (* todo: need to check if prog is non-recursive *)
     let view_rt = get_schema_rterm (get_view prog) in
@@ -87,10 +85,10 @@ let lambda_of_stt (debug:bool) prog =
     lambda
 
 (* transform edb relations to a list of functions from product of n (the arity) types to Prop *)
-let edb_to_func_types edb =
+let [@warning "-32"] edb_to_func_types edb =
     (* currently just set all the types are int (ℤ) *)
     let rel_to_function rel = get_rterm_predname rel ^ ": " ^
-        String.concat " → " ( List.map (fun x -> "ℤ") (get_rterm_varlist rel)) ^ " → Prop" in
+        String.concat " → " ( List.map (fun _x -> "ℤ") (get_rterm_varlist rel)) ^ " → Prop" in
     let p_el funcs s = (rel_to_function (rule_head s))::funcs in
     let p_lst _ lst funcs = (List.fold_left p_el [] lst)@funcs in
     Hashtbl.fold p_lst edb []
@@ -133,7 +131,7 @@ let source_to_lean_func_types (prog : expr) : (string * lean_type) list =
 let source_to_z3_func_types prog =
     (* currently just set all the types are int (ℤ) *)
     let p_el funcs (name, lst) = ( "(declare-fun " ^name ^ " (" ^
-        String.concat " " ( List.map (fun (col,typ) -> stype_to_z3_type typ) lst) ^ ") Bool)" )::funcs in
+        String.concat " " ( List.map (fun (_col, typ) -> stype_to_z3_type typ) lst) ^ ") Bool)" )::funcs in
     List.fold_left p_el [] prog.sources
 
 (* transform source and view relations in program to a list of functions from product of n (the arity) types to Prop *)
@@ -151,7 +149,7 @@ let source_view_to_lean_func_types (prog : expr) : (string * lean_type) list =
 let source_view_to_z3_func_types prog =
     (* currently just set all the types are int (ℤ) *)
     let p_el funcs (name, lst) = ( "(declare-fun " ^name ^ " (" ^
-        String.concat " " ( List.map (fun (col,typ) -> stype_to_z3_type typ) lst) ^ ") Bool)" )::funcs in
+        String.concat " " ( List.map (fun (_col, typ) -> stype_to_z3_type typ) lst) ^ ") Bool)" )::funcs in
     List.fold_left p_el [] (get_schema_stts prog)
 
 
@@ -229,19 +227,19 @@ let lean_simp_theorem_of_putget (debug : bool) (prog : expr) : lean_theorem =
   }
 
 (* take a view update datalog program and generate the theorem of checking whether all delta relations are disjoint *)
-let z3_assert_of_disjoint_delta (debug:bool) prog =
+let [@warning "-32"] z3_assert_of_disjoint_delta (debug:bool) prog =
     if debug then (print_endline "==> generating z3 assert for disjoint deltas";) else ();
     String.concat "\n"  (source_view_to_z3_func_types prog) ^
     "\n (assert " ^ (Fol_ex.z3_string_of_fol_formula (Not (Imp (Ast2fol.constraint_sentence_of_stt debug prog,
     (Imp(Ast2fol.disjoint_delta_sentence_of_stt debug prog, False)))))) ^ ") \n (check-sat)"
 
-let z3_assert_of_getput (debug:bool) prog =
+let [@warning "-32"] z3_assert_of_getput (debug:bool) prog =
     if debug then (print_endline "==> generating z3 assert of getput property";) else ();
     String.concat "\n"  (source_to_z3_func_types prog) ^
      "\n(assert " ^ (Fol_ex.z3_string_of_fol_formula (Not (Imp (Ast2fol.non_view_constraint_sentence_of_stt debug prog,
      (Imp(Ast2fol.getput_sentence_of_stt debug prog, False)))))) ^") \n (check-sat)"
 
-let z3_assert_of_putget (debug:bool) prog =
+let [@warning "-32"] z3_assert_of_putget (debug:bool) prog =
     if debug then (print_endline "==> generating z3 assert of putget property";) else ();
     String.concat " " (source_view_to_z3_func_types prog) ^
     "\n (assert " ^ (Fol_ex.z3_string_of_fol_formula
@@ -269,7 +267,7 @@ let sourcestability_of_stt (debug:bool) prog =
     "theorem sourcestability " ^ String.concat " " (List.map (fun x -> "{"^x^"}") (source_view_to_lean_func_types prog)) ^ ": " ^ (String.concat " ∨ " (List.map (fun pred -> "(" ^ pred^ ")") delta_lambda_exp_lst)) ^ " → false"
 *)
 
-let lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) : lean_theorem =
+let [@warning "-32"] lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) : lean_theorem =
   let statement =
     Fol_ex.lean_formula_of_fol_formula
       (Imp (Ast2fol.sourcestability_sentence_of_stt debug prog, False))

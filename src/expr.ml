@@ -66,7 +66,7 @@ type expr = {
 type conj_query =
   | Conj_query of var list * rterm list * rterm list
 
-let get_empty_pred = Pred ("⊥", [])
+let [@warning "-32"] get_empty_pred = Pred ("⊥", [])
 
 let get_empty_expr = {
   rules= [];
@@ -141,11 +141,11 @@ let get_empty_pred = Pred ("⊥", [])
 (** Get the predicate name of an rterm using delta__ins_/delta__del_ for delta predicates. *)
 let get_rterm_predname rterm = match rterm with
     | Pred ("⊥", []) -> "bot"
-    | Pred (x, vl) -> x
-    | Deltainsert (x, vl) -> "delta_ins_"^ x
-    | Deltadelete (x, vl) -> "delta_del_"^ x
+    | Pred (x, _vl) -> x
+    | Deltainsert (x, _vl) -> "delta_ins_"^ x
+    | Deltadelete (x, _vl) -> "delta_del_"^ x
 
-let is_rule_of_predname predname (h, b) =  (String.compare (get_rterm_predname h)  predname == 0)
+let is_rule_of_predname predname (h, _b) =  (String.compare (get_rterm_predname h)  predname == 0)
 
 (** Delete all rules of a predname. *)
 let delete_rule_of_predname predname expr = { expr with rules= List.filter (fun x -> not (is_rule_of_predname predname x)) expr.rules }
@@ -174,20 +174,20 @@ let vterm2var vt = match vt with
 
 (** Get the arity of an rterm. *)
 let get_arity rterm = match rterm with
-    | Pred (x, vl) -> List.length vl
-    | Deltainsert (x, vl) -> List.length vl
-    | Deltadelete (x, vl) -> List.length vl
+    | Pred (_x, vl) -> List.length vl
+    | Deltainsert (_x, vl) -> List.length vl
+    | Deltadelete (_x, vl) -> List.length vl
 
 (** Get the arity of a rule. *)
-let get_rule_arity (h, b) =  get_arity h
+let get_rule_arity (h, _b) =  get_arity h
 
 (** Get the predicate name of a term. *)
-let rec get_predname t = match t with
+let get_predname t = match t with
     | Rel r            -> get_rterm_predname r
     | _                -> invalid_arg "function get_predname called without a relation"
 
 (** Get a rule's head predicate name. *)
-let get_rule_predname (h, t) = get_rterm_predname h
+let get_rule_predname (h, _t) = get_rterm_predname h
 
 (** Get a rule's head pred. *)
 let rule_head (h, _) = h
@@ -197,34 +197,34 @@ let rule_body (_, t) = t
 
 (** Get rterm varlist. *)
 let get_rterm_varlist t = match t with
-    | Pred (x, vl) -> vl
-    | Deltainsert (x, vl) -> vl
-    | Deltadelete (x, vl) -> vl
+    | Pred (_x, vl) -> vl
+    | Deltainsert (_x, vl) -> vl
+    | Deltadelete (_x, vl) -> vl
 
 let rec get_vterm_varlist e = match e with 
-    | Const const -> []
+    | Const _const -> []
     | Var var ->  [var]
-    | BinaryOp (op, ae1, ae2) -> (get_vterm_varlist ae1) @ (get_vterm_varlist ae2) 
-    | UnaryOp (op, ae) -> get_vterm_varlist ae
+    | BinaryOp (_op, ae1, ae2) -> (get_vterm_varlist ae1) @ (get_vterm_varlist ae2) 
+    | UnaryOp (_op, ae) -> get_vterm_varlist ae
 
 (** Get the list of variables of a term. *)
-let rec get_term_varlist t = match t with
+let get_term_varlist t = match t with
     | Rel r            -> get_rterm_varlist r
-    | Equat (Equation (op, e1, e2)) -> (get_vterm_varlist e1) @ (get_vterm_varlist e2)
-    | Noneq (Equation (op,e1, e2))  -> (get_vterm_varlist e1) @ (get_vterm_varlist e2)
+    | Equat (Equation (_op, e1, e2)) -> (get_vterm_varlist e1) @ (get_vterm_varlist e2)
+    | Noneq (Equation (_op,e1, e2))  -> (get_vterm_varlist e1) @ (get_vterm_varlist e2)
     | Not r            -> get_rterm_varlist r
 
 (** Given a schema declaration (source and view), returns the rterm that is defined inside. *)
-let get_schema_rterm (name, lst) =  Pred(name, (List.map (fun (col,typ) -> NamedVar col) lst))
+let get_schema_rterm (name, lst) =  Pred(name, (List.map (fun (col, _typ) -> NamedVar col) lst))
 
 (** Given a schema declaration (source and view), returns the attribute list. *)
-let get_schema_attrs (name, lst) = List.map (fun (col,typ) ->  col) lst
+let get_schema_attrs (_name, lst) = List.map (fun (col, _typ) ->  col) lst
 
 (** Given a schema declaration (source and view), returns the list of column:typ  *)
-let get_schema_col_typs (name, lst) =  lst
+let get_schema_col_typs (_name, lst) =  lst
 
 (** Given a schema declaration (source and view), returns the schema name.  *)
-let get_schema_name (name, lst) = name
+let get_schema_name (name, _lst) = name
 
 (** Given program return all schema statement. *)
 let get_schema_stts expr = match expr.view with
@@ -236,7 +236,7 @@ let get_source_stts expr = expr.sources
 
 (** Given a rule, returns all the positive and negative rterms *)
 let get_all_rule_rterms (_, t) = 
-  let rec extract_rterm acc = function
+  let extract_rterm acc = function
             | Rel x -> x::acc
             | Not x -> x::acc
             | _ -> acc in
@@ -244,14 +244,14 @@ let get_all_rule_rterms (_, t) =
 
 (** Given a rule, returns all the negative rterms. *)
 let get_all_negative_rule_rterms (_, t) = 
-  let rec extract_rterm acc = function
+  let extract_rterm acc = function
             | Not x -> x::acc
             | _ -> acc in
         List.fold_left extract_rterm [] t
 
 (** Given a rule, returns all the negative rterms. *)
 let get_all_positive_rule_rterms (_, t) = 
-  let rec extract_rterm acc = function
+  let extract_rterm acc = function
             | Rel x -> x::acc
             | _ -> acc in
         List.fold_left extract_rterm [] t
@@ -274,8 +274,8 @@ let negate_eq = function
 
 (** Given an inequality, returns the (op,var,const) tuple that defines it. *)
 let extract_ineq_tuple = function
-  | Equat (Equation ("=",v,c)) -> invalid_arg "function extract_ineq_tuple called without an inequality"
-  | Noneq (Equation ("<>",v,c)) -> invalid_arg "function extract_ineq_tuple called without an inequality"
+  | Equat (Equation ("=", _v, _c)) -> invalid_arg "function extract_ineq_tuple called without an inequality"
+  | Noneq (Equation ("<>", _v, _c)) -> invalid_arg "function extract_ineq_tuple called without an inequality"
   | Equat (Equation (s,v,c)) -> (s,v,c)
   | Noneq (Equation (s,v,c)) -> 
     let et = negate_eq (Equation (s,v,c)) in 
@@ -315,8 +315,8 @@ let is_agg_equality = function
 (** Return true if the provided argument is an inequality involving an
 aggregate function. *)
 let is_agg_inequality = function
-  | Equat (Equation ("=", e1, e2))
-  | Noneq (Equation ("<>", e1, e2)) -> invalid_arg "function is_agg_inequality called without an equality"
+  | Equat (Equation ("=", _e1, _e2))
+  | Noneq (Equation ("<>", _e1, _e2)) -> invalid_arg "function is_agg_inequality called without an equality"
   | Equat (Equation (_ , e1, e2))
   | Noneq (Equation (_ , e1, e2)) -> (List.length (List.filter is_aggvar ((get_vterm_varlist e1) @ (get_vterm_varlist e2)))) > 0
   | _ -> invalid_arg "function is_agg_inequality called without an equality"
@@ -328,7 +328,7 @@ let is_agg_inequality = function
  ****************************************************)
 
 (** support function for smart stringify of the AST - see to_string below *)
-let rec string_of_const t = match t with 
+let string_of_const t = match t with 
     | Int x -> string_of_int x 
     | Real x -> if (x = floor x) then (string_of_float x)^"0" else (string_of_float x)
     | String x -> x  (* include single quote characters ' *)
@@ -383,7 +383,7 @@ let string_of_eterm r = match r with
     | Equation (op, e1,e2) -> (string_of_vterm e1) ^ " " ^ op ^ " " ^ (string_of_vterm e2)
 
 (** support function for smart stringify of the AST - see to_string below *)
-let rec string_of_term t = match t with 
+let string_of_term t = match t with 
     | Rel r             -> string_of_rterm r
     | Equat e      -> string_of_eterm e
     | Noneq e    -> "not " ^string_of_eterm e

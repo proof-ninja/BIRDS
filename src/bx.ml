@@ -26,9 +26,9 @@ let view_uniqueness_sentence_of_stt (log:bool) prog =
     let view_vars = List.map (fun x -> Expr.string_of_var x) @@ Expr.get_rterm_varlist (Expr.get_schema_rterm (get_view prog)) in
     let phi, lst = ranf2lvnf view_name fm in
     (* we do not need vars any more because it must be all free variables in vfol and phi_i *)
-    let lst2 = List.map (fun (vars, vfol, phi_i) ->
+    let lst2 = List.map (fun (_vars, vfol, phi_i) ->
     match vfol with
-        Atom(R(view_name,lst)) | Not(Atom(R(view_name,lst))) -> let subfn = fpf (List.map (fun x -> Fol_ex.string_of_term 0 x) lst) (List.map (fun x -> Fol.Var x) view_vars) in
+        Atom(R(_view_name, lst)) | Not(Atom(R(_view_name, lst))) -> let subfn = fpf (List.map (fun x -> Fol_ex.string_of_term 0 x) lst) (List.map (fun x -> Fol.Var x) view_vars) in
         (subst subfn vfol, subst subfn phi_i)
         | _ -> (vfol, phi_i)
     ) lst in
@@ -45,14 +45,14 @@ let view_uniqueness_sentence_of_stt (log:bool) prog =
     (* contruct a upper bound FO formula of view *)
     let view_upper_fol = List.fold_left (fun fm (vfol, phi_i) ->
     match vfol with
-        Formulas.Not(Formulas.Atom(R(view_name,lst))) -> let ex_vars = subtract (fv phi_i) view_vars in Or(fm, itlist mk_exists ex_vars phi_i )
+        Formulas.Not(Formulas.Atom(R(_view_name, _lst))) -> let ex_vars = subtract (fv phi_i) view_vars in Or(fm, itlist mk_exists ex_vars phi_i )
         | _ -> fm
     ) False lst2 in
     if log then print_endline @@ "upper bound of view: "^ (lean_string_of_fol_formula ((view_upper_fol)));
     (* contruct a lower bound FO formula of view *)
     let view_lower_fol = List.fold_left (fun fm (vfol, phi_i) ->
     match vfol with
-        | Formulas.Atom(R(view_name,lst)) -> let ex_vars = subtract (fv phi_i) view_vars in Or(fm, Not(itlist mk_exists ex_vars phi_i) )
+        | Formulas.Atom(R(_view_name, _lst)) -> let ex_vars = subtract (fv phi_i) view_vars in Or(fm, Not(itlist mk_exists ex_vars phi_i) )
         | _ -> fm
     ) False lst2 in
     if log then print_endline @@ "lower bound of view: " ^ (lean_string_of_fol_formula ((view_lower_fol)));
@@ -97,9 +97,9 @@ let derive_get_datalog (log:bool) (speedup:bool) timeout inputprog =
     );
     let phi, lst = ranf2lvnf view_name fm in
     (* we do not need vars any more because it must be all free variables in vfol and phi_i *)
-    let lst2 = List.map (fun (vars, vfol, phi_i) ->
+    let lst2 = List.map (fun (_vars, vfol, phi_i) ->
     match vfol with
-        Atom(R(view_name,lst)) | Not(Atom(R(view_name,lst))) -> let subfn = fpf (List.map (fun x -> Fol_ex.string_of_term 0 x) lst) (List.map (fun x -> Fol.Var x) view_vars) in
+        Atom(R(_view_name, lst)) | Not(Atom(R(_view_name, lst))) -> let subfn = fpf (List.map (fun x -> Fol_ex.string_of_term 0 x) lst) (List.map (fun x -> Fol.Var x) view_vars) in
         (subst subfn vfol, subst subfn phi_i)
         | _ -> (vfol, phi_i)
     ) lst in
@@ -115,14 +115,14 @@ let derive_get_datalog (log:bool) (speedup:bool) timeout inputprog =
     (* contruct upper bound FO formula of view *)
     let view_upper_fol = List.fold_left (fun fm (vfol, phi_i) ->
     match vfol with
-        Formulas.Atom(R(view_name,lst)) -> let ex_vars = subtract (fv phi_i) view_vars in And(fm, Not(itlist mk_exists ex_vars phi_i) )
+        Formulas.Atom(R(_view_name ,_lst)) -> let ex_vars = subtract (fv phi_i) view_vars in And(fm, Not(itlist mk_exists ex_vars phi_i) )
         | _ -> fm
     ) True lst2 in
     if log then print_endline @@ "Upper bound of the view: "^ (lean_string_of_fol_formula ((view_upper_fol)));
     (* contruct lower bound FO formula of view *)
     let view_lower_fol = List.fold_left (fun fm (vfol, phi_i) ->
     match vfol with
-        | Formulas.Not(Formulas.Atom(R(view_name,lst)))  -> let ex_vars = subtract (fv phi_i) view_vars in Or(fm, itlist mk_exists ex_vars phi_i )
+        | Formulas.Not(Formulas.Atom(R(_view_name, _lst)))  -> let ex_vars = subtract (fv phi_i) view_vars in Or(fm, itlist mk_exists ex_vars phi_i )
         | _ -> fm
     ) False lst2 in
     if log then print_endline @@ "Lower bound of the view: " ^ (lean_string_of_fol_formula ((view_lower_fol)));

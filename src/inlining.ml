@@ -215,7 +215,7 @@ let resolve_dependencies_among_predicates (improg : intermediate_program) : (pre
   (* Adds directed edges that represent dependencies among IDB predicates.
      Here, `impred_to` depends on `impred_from`: *)
   let graph =
-    acc |> List.rev |> List.fold_left (fun graph (impred_to, vertex_to, ruleabsset) ->
+    acc |> List.rev |> List.fold_left (fun graph (_impred_to, vertex_to, ruleabsset) ->
       let ruleabss = RuleAbstractionSet.elements ruleabsset in
       ruleabss |> List.fold_left (fun graph ruleabs ->
         ruleabs.body |> List.fold_left (fun graph clause ->

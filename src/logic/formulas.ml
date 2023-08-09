@@ -29,7 +29,7 @@ let bracket p n f x y =
 
 let rec strip_quant fm =
   match fm with
-    Forall(x,(Forall(y,p) as yp)) | Exists(x,(Exists(y,p) as yp)) ->
+    Forall(x,(Forall(_y, _p) as yp)) | Exists(x,(Exists(_y, _p) as yp)) ->
         let xs,q = strip_quant yp in x::xs,q
   |  Forall(x,p) | Exists(x,p) -> [x],p
   | _ -> [],fm;;
@@ -45,8 +45,8 @@ let print_formula pfn =
     | Or(p,q) ->  bracket (pr > 6) 0 (print_infix  6 "\\/") p q
     | Imp(p,q) ->  bracket (pr > 4) 0 (print_infix 4 "==>") p q
     | Iff(p,q) ->  bracket (pr > 2) 0 (print_infix 2 "<=>") p q
-    | Forall(x,p) -> bracket (pr > 0) 2 print_qnt "forall" (strip_quant fm)
-    | Exists(x,p) -> bracket (pr > 0) 2 print_qnt "exists" (strip_quant fm)
+    | Forall(_x, _p) -> bracket (pr > 0) 2 print_qnt "forall" (strip_quant fm)
+    | Exists(_x, _p) -> bracket (pr > 0) 2 print_qnt "exists" (strip_quant fm)
   and print_qnt qname (bvs,bod) =
     print_string qname;
     do_list (fun v -> print_string " "; print_string v) bvs;
@@ -70,24 +70,27 @@ let print_qformula pfn fm =
 (* OCaml won't let us use the constructors.                                  *)
 (* ------------------------------------------------------------------------- *)
 
-let mk_and p q = And(p,q) and mk_or p q = Or(p,q)
-and mk_imp p q = Imp(p,q) and mk_iff p q = Iff(p,q)
-and mk_forall x p = Forall(x,p) and mk_exists x p = Exists(x,p);;
+let mk_and p q = And(p,q)
+and [@warning "-32"] mk_or p q = Or(p,q)
+and [@warning "-32"] mk_imp p q = Imp(p,q)
+and [@warning "-32"] mk_iff p q = Iff(p,q)
+and mk_forall x p = Forall(x,p)
+and mk_exists x p = Exists(x,p);;
 
 (* ------------------------------------------------------------------------- *)
 (* Destructors.                                                              *)
 (* ------------------------------------------------------------------------- *)
 
-let dest_iff fm =
+let [@warning "-32"] dest_iff fm =
   match fm with Iff(p,q) -> (p,q) | _ -> failwith "dest_iff";;
 
-let dest_and fm =
+let [@warning "-32"] dest_and fm =
   match fm with And(p,q) -> (p,q) | _ -> failwith "dest_and";;
 
-let rec conjuncts fm =
+let [@warning "-32"] rec conjuncts fm =
   match fm with And(p,q) -> conjuncts p @ conjuncts q | _ -> [fm];;
 
-let dest_or fm =
+let [@warning "-32"] dest_or fm =
   match fm with Or(p,q) -> (p,q) | _ -> failwith "dest_or";;
 
 let rec disjuncts fm =
@@ -96,8 +99,8 @@ let rec disjuncts fm =
 let dest_imp fm =
   match fm with Imp(p,q) -> (p,q) | _ -> failwith "dest_imp";;
 
-let antecedent fm = fst(dest_imp fm);;
-let consequent fm = snd(dest_imp fm);;
+let [@warning "-32"] antecedent fm = fst(dest_imp fm);;
+let [@warning "-32"] consequent fm = snd(dest_imp fm);;
 
 (* ------------------------------------------------------------------------- *)
 (* Apply a function to the atoms, otherwise keeping structure.               *)
@@ -125,7 +128,7 @@ let rec overatoms f fm b =
   | Not(p) -> overatoms f p b
   | And(p,q) | Or(p,q) | Imp(p,q) | Iff(p,q) ->
         overatoms f p (overatoms f q b)
-  | Forall(x,p) | Exists(x,p) -> overatoms f p b
+  | Forall(_x, p) | Exists(_x, p) -> overatoms f p b
   | _ -> b;;
 
 (* ------------------------------------------------------------------------- *)

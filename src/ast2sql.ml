@@ -10,7 +10,6 @@ AST-to-SQL functions
 open Expr
 open Utils
 open Rule_preprocess
-open Stratification
 open Derivation
 
 type sql_binary_operator =
@@ -76,7 +75,7 @@ and sql_from_clause_entry =
 and sql_from_clause =
   | SqlFrom of sql_from_clause_entry list
 
-and sql_constraint =
+and [@warning "-37"] sql_constraint =
   | SqlConstraint of sql_vterm * sql_operator * sql_vterm
   | SqlNotExist   of sql_from_clause * sql_where_clause
   | SqlExist      of sql_from_clause * sql_where_clause
@@ -674,7 +673,7 @@ let non_rec_unfold_sql_of_query (dbschema : string) (idb : symtable) (cnt : coln
 
 (** Generate unfolded SQL statement from ast, the goal is the query predicate of datalog program, the query is a query over source relations.
 The result of this function is SQL query, whose returned table has column names of col0, col1,.... *)
-let unfold_query_sql_stt (dbschema : string) (log : bool) (edb : symtable) (prog : expr) =
+let unfold_query_sql_stt (dbschema : string) (_log : bool) (edb : symtable) (prog : expr) =
   let query_rt = get_query prog in
   (* Extract and pre-process the IDB from the program *)
   let idb = extract_idb prog in
@@ -794,7 +793,7 @@ let view_constraint_sql_of_stt (dbschema : string) (log : bool) (inc : bool) (op
         preprocess_rules idb;
         (* let cnt = build_colnamtab edb idb in *)
         if Hashtbl.mem idb (symtkey_of_rterm get_empty_pred) then
-          let remain_rules = Hashtbl.fold (fun k rules lst -> rules @ lst) idb [] in
+          let remain_rules = Hashtbl.fold (fun _k rules lst -> rules @ lst) idb [] in
           let prog3 = { get_empty_expr with view = prog2.view; sources = prog2.sources; rules = remain_rules } in
           (* non_rec_unfold_sql_of_query dbschema idb cnt get_empty_pred *)
           let prog4 =
@@ -896,7 +895,7 @@ let non_view_constraint_sql_of_stt (dbschema : string) (log : bool) (inc : bool)
         preprocess_rules idb;
         (* let cnt = build_colnamtab edb idb in *)
         if Hashtbl.mem idb (symtkey_of_rterm get_empty_pred) then
-          let remain_rules = Hashtbl.fold (fun k rules lst -> rules@lst) idb [] in
+          let remain_rules = Hashtbl.fold (fun _k rules lst -> rules@lst) idb [] in
           let prog3 = { get_empty_expr with view = prog2.view; sources = prog2.sources; rules = remain_rules } in
           (* non_rec_unfold_sql_of_query dbschema idb cnt get_empty_pred *)
           let prog4 =
@@ -1337,7 +1336,7 @@ let unfold_delta_trigger_stt (dbschema : string) (log : bool) (dejima_update_det
     (* convert these cols to string of tuple of these cols *)
     let cols_tuple_str = "("^ (String.concat "," (List.map  string_of_var (get_rterm_varlist (get_temp_rterm view_rt)) )) ^")" in
     let (vardec, delta_sql_stt) = unfold_delta_sql_stt dbschema log inc optimize prog in
-    let effect_sources, update_detection_trigger_sql =
+    let _effect_sources, update_detection_trigger_sql =
       if dejima_update_detect then
         source_update_detection_trigger_stt dbschema log dejima_user prog
       else
@@ -1969,7 +1968,6 @@ let get_sql_unary_operation ~(error_detail : error_detail) (un_op_str : string) 
 
 
 let get_named_var (varmap : Subst.entry VarMap.t) (x : named_var) : sql_vterm option =
-  let open ResultMonad in
   match varmap |> VarMap.find_opt x with
   | None                                       -> None
   | Some (Subst.Occurrence (instance, column)) -> Some (SqlColumn (Some instance, column))

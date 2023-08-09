@@ -70,7 +70,7 @@ let symtkey_of_rterm rt : symtkey = (get_rterm_predname rt, get_arity rt)
 
 (** Receives a rule and generates its hash key for the  symtable
 *)
-let symtkey_of_rule (h, b) : symtkey =  symtkey_of_rterm h
+let symtkey_of_rule (h, _b) : symtkey =  symtkey_of_rterm h
 
 (** Inserts a rule in the symtable *)
 let symt_insert (st:symtable) rule =
@@ -168,7 +168,7 @@ let build_colnamtab (edb:symtable) (idb:symtable) =
     let varlist = List.map string_of_var (get_rterm_varlist (rule_head rule)) in
     Hashtbl.add hs key varlist in
   Hashtbl.iter e_cols edb;
-  let i_cols key rules =
+  let i_cols key _rules =
     let rec cols ind n =
       if ind<n then ("COL"^(string_of_int ind))::(cols (ind+1) n)
       else [] in
@@ -200,18 +200,18 @@ module VarSet = Set.Make(struct
 type varset = VarSet.t
 
 (** Get the set of variables of a term list (maybe a rule body). *)
-let rec get_termlst_varset terms =
+let get_termlst_varset terms =
     let lst = List.fold_right (@) (List.map get_term_varlist terms) [] in
     VarSet.of_list lst
 
 
 (** Get the list of variables of a term list (maybe a rule body). *)
-let rec get_termlst_vars terms =
+let get_termlst_vars terms =
     let lst = List.fold_right (@) (List.map get_term_varlist terms) [] in lst
 
 
 (** Get the list of variables of a rterm list (maybe a rule body). *)
-let rec get_rtermlst_vars rterms =
+let get_rtermlst_vars rterms =
     let lst = List.fold_right (@) (List.map get_rterm_varlist rterms) [] in lst
 
 
@@ -283,7 +283,7 @@ let build_vartab (col_names:colnamtab) rterms =
 let build_num_vartab (col_names:colnamtab) rterms =
   let vt:vartab = Hashtbl.create (2*(List.length (get_rtermlst_vars rterms ))) in
   let in_rt n rterm =
-    let pname = get_rterm_predname rterm in
+    let _pname = get_rterm_predname rterm in
     let vlst = get_rterm_varlist rterm in
     let arity = get_arity rterm in
     let key = symtkey_of_rterm rterm in
@@ -355,12 +355,12 @@ let get_query expr =
 (** Return true if there is a query, otherwise error statements. *)
 let has_query expr =
   match expr.query with
-    | Some v -> true
+    | Some _v -> true
     | None -> false
 
 (** Takes a list of terms and splits them into positive rterms, negative terms, equalities, and inequalities. *)
 let split_terms terms =
-  let rec split t (pos,neg,eq,inq) = match t with
+  let split t (pos,neg,eq,inq) = match t with
     | Rel rt -> (rt::pos,neg,eq,inq)
     | Not rt -> (pos,rt::neg,eq,inq)
     | Equat (Equation ("=",_,_)) -> (pos,neg,t::eq,inq)
@@ -469,7 +469,7 @@ let print_deltas dlst =
     @return true if there are more than one updates, otherwise error statements *)
 let get_delta_rterms expr =
     let add_delta (rtset:rtermset) = function
-      | (head, lst) -> (
+      | (head, _lst) -> (
         match head with
           Pred _ -> rtset
           | Deltainsert _ -> RtermSet.add (variablize_rterm head) rtset
@@ -480,7 +480,7 @@ let get_delta_rterms expr =
        print_deltas delta_lst; *)
     match delta_lst with
     | []     -> raise (SemErr "The program has no update")
-    | _::tail    -> delta_lst
+    | _::_tail    -> delta_lst
 
 (** get all source predicates *)
 let get_source_rterms expr =
@@ -499,11 +499,11 @@ let is_delta_pair rt1 rt2 = match (rt1, rt2) with
     | _ -> false
 
 let is_delta_or_empty rt = match rt with
-  Pred (n,vs) -> (String.compare n (get_rterm_predname (get_empty_pred))) == 0
+  Pred (n, _vs) -> (String.compare n (get_rterm_predname (get_empty_pred))) == 0
   | Deltadelete _ -> true
   | Deltainsert _ -> true
 
-let rules_of_symt symt = Hashtbl.fold (fun k rules lst -> rules@lst) symt []
+let rules_of_symt symt = Hashtbl.fold (fun _k rules lst -> rules@lst) symt []
 
 let read_file filename =
   let lines = ref [] in
@@ -546,7 +546,7 @@ let verify_fo_lean debug timeout sentence =
   let chklib =  open_out tmp_chklib_file in
   fprintf chklib "%s\n" "import bx";
   close_out chklib;
-  let leanstatus, leanmessage = exe_command @@ "lean "^tmp_chklib_file in
+  let leanstatus, _leanmessage = exe_command @@ "lean "^tmp_chklib_file in
   if not (leanstatus = 0) then
     raise (EnvErr ("Lean paths to BIRDS's verification folder are not configured correctly! Please change the Lean path configuration in ~/.lean/leanpkg.path and check by 'lean --path'. More details at https://github.com/dangtv/BIRDS"))
   else ();
@@ -574,7 +574,7 @@ let check_ros_prog debug timeout sentence =
   let chklib =  open_out tmp_chklib_file in
   fprintf chklib "%s\n" "#lang rosette";
   close_out chklib;
-  let racketstatus, racketmessage = exe_command @@ "racket "^tmp_chklib_file in
+  let racketstatus, _racketmessage = exe_command @@ "racket "^tmp_chklib_file in
   if not (racketstatus = 0) then
     raise (EnvErr ("Package rosette is requried but not installed correctly. Please install by 'raco pkg install rosette'. More details at https://github.com/dangtv/BIRDS"))
   else ();

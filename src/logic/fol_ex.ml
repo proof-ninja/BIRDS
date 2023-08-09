@@ -51,9 +51,9 @@ let normal_logic_character name = match name with
     | "quantifer_sep" -> "."
     | _ -> failwith "unkown symbol of "^name
 
-let break_line sp = if(sp>0) then (String.concat "" (List.map (fun x -> " ") (0--(sp-1)))) else ""
+let break_line sp = if(sp>0) then (String.concat "" (List.map (Fun.const " ") (0--(sp-1)))) else ""
 
-let bracket p n f x y =
+let bracket p _n f x y =
     (if p then  "(" else "")^
     f x y^
     (if p then  ")" else "");;
@@ -69,8 +69,8 @@ let string_of_formula log_str pfn =
     | Or(p,q) ->  bracket (pr > 6) 0 (string_of_infix  6 (log_str "or")) p q
     | Imp(p,q) ->  bracket (pr > 4) 0 (string_of_infix 4 (log_str "imply")) p q
     | Iff(p,q) ->  bracket (pr > 2) 0 (string_of_infix 2 (log_str "iff")) p q
-    | Forall(x,p) -> bracket (pr > 0) 2 string_of_qnt (log_str "forall") (strip_quant fm)
-    | Exists(x,p) -> bracket (pr > 0) 2 string_of_qnt (log_str "exists") (strip_quant fm)
+    | Forall(_x, _p) -> bracket (pr > 0) 2 string_of_qnt (log_str "forall") (strip_quant fm)
+    | Exists(_x, _p) -> bracket (pr > 0) 2 string_of_qnt (log_str "exists") (strip_quant fm)
   and string_of_qnt qname (bvs,bod) =
     qname^ " "^
     String.concat " " bvs ^
@@ -119,7 +119,7 @@ and string_of_infix_term isleft oldprec newprec sym p q =
   string_of_term (if isleft then newprec+1 else newprec) q^
   (if oldprec > newprec then  ")" else "");;
 
-let string_of_atom prec (R(p,args)) =
+let string_of_atom _prec (R(p,args)) =
   if mem p ["="; "<"; "<="; ">"; ">="; "<>"] && length args = 2
   then string_of_infix_term false 12 12 (" "^p) (el 0 args) (el 1 args)
   else string_of_fargs p args;;
@@ -304,7 +304,7 @@ let rec type_of_var varname fm =
   | True -> []
   | Atom(R(r,args)) ->
     if r = "=" then (
-      let v, o = List.partition (fun x -> x = varname) (List.map (string_of_term 0) args) in
+      let _v, o = List.partition (fun x -> x = varname) (List.map (string_of_term 0) args) in
       [(r^ hd o, 0)]
     )
     else
@@ -321,7 +321,7 @@ let rec type_of_var varname fm =
   | Forall(x,p) -> type_of_var varname (let newx = variant x (varname::(fv fm)) in subst (x |=> Var newx) p)
   | Exists(x,p) -> type_of_var varname (let newx = variant x (varname::(fv fm)) in subst (x |=> Var newx) p)
 
-let z3_logic_character name = match name with
+let [@warning "-32"] z3_logic_character name = match name with
     | "false" -> "false"
     | "true" -> "true"
     | "not" -> "not"
@@ -334,22 +334,22 @@ let z3_logic_character name = match name with
     | "quantifer_sep" -> failwith "unkown symbol of "^name
     | _ -> failwith "unkown symbol of "^name
 
-let z3_character_of_operator o = match o with
+let [@warning "-32"] z3_character_of_operator o = match o with
   | "<>" -> failwith "unkown symbol of "^o
   | ">="
   | "<="
   | "=" | "<"| ">" -> o
   | _ -> failwith "unkown symbol of "^o
 
-let z3_string_of_string str =
+let [@warning "-32"] z3_string_of_string str =
   try  (ignore(int_of_string str); str) with
     (* try test () with *)
-    | Failure e ->
+    | Failure _e ->
         try  (ignore(float_of_string str); str) with
         (* try test () with *)
-        | Failure e ->
+        | Failure _e ->
             try  ( ignore(bool_of_string str); str) with
-            | Failure e | Invalid_argument e ->
+            | Failure _e | Invalid_argument _e ->
             if (str = "null") then  str else "\""^(String.sub str 1 (String.length str -2))^"\""
 
 let z3_normalize_string str =
@@ -398,8 +398,8 @@ let rec extract_ex_quants fm =
 (* Tranformation on formulas.                                                     *)
 (* ------------------------------------------------------------------------- *)
 
-let rec pnf_dnf fm = dnf_of_pnf (Skolem.pnf fm)
-and dnf_of_pnf fm =
+let [@warning "-32"] rec pnf_dnf fm = dnf_of_pnf (Skolem.pnf fm)
+and [@warning "-32"] dnf_of_pnf fm =
   match fm with
     Forall(x,p) -> Forall(x, dnf_of_pnf p)
   | Exists(x,p) -> Exists(x, dnf_of_pnf p)
@@ -432,9 +432,9 @@ let rec rr fm =
   match fm with
     | True -> (true,[])
     | False -> (true,[])
-    | Atom(R("=",[Var x; Fn (c,[])]))
-    | Atom(R("=",[Fn (c,[]); Var x])) -> (true,[x])
-    | Atom(R(p,args)) -> if is_relation_symbol p then (true, fv fm) else (true, [])
+    | Atom(R("=",[Var x; Fn (_c, [])]))
+    | Atom(R("=",[Fn (_c, []); Var x])) -> (true,[x])
+    | Atom(R(p, _args)) -> if is_relation_symbol p then (true, fv fm) else (true, [])
     | And(p,Atom(R("=",[Var x; Var y])))
     | And(Atom(R("=",[Var x; Var y])), p) -> let is_safe, rr_vars = rr p in if (intersect rr_vars [x;y]) = [] then (is_safe, rr_vars) else
      (is_safe, union rr_vars [x;y])
@@ -466,15 +466,15 @@ let rec to_conj_lst fm =
 let is_of_three_cases subfm = match subfm with
   Or(_,_) -> if is_safe_range subfm then false else true
   | Exists(_, _) ->
-    let quants, xi = extract_ex_quants subfm in
+    let _quants, xi = extract_ex_quants subfm in
     if is_safe_range xi then false else true
   | Not(Exists(x, fm)) ->
-    let quants, xi = extract_ex_quants (Exists(x, fm)) in
+    let _quants, xi = extract_ex_quants (Exists(x, fm)) in
     if is_safe_range xi then false else true
   | _ -> false;;
 
 (** apply three push-into procedures on a SRNF formula *)
-let rec push_into_subfm conj subfm =
+let push_into_subfm conj subfm =
   match subfm with
   (* Push-into-or *)
     Or(_,_) ->
@@ -562,7 +562,7 @@ let rec pure_dnf fm =
   | _ -> Prop.dnf fm;;
 
 (** take a FO formula and return its dnf *)
-let dnf fm = pure_dnf (Skolem.nnf(Skolem.simplify fm));;
+let [@warning "-32"] dnf fm = pure_dnf (Skolem.nnf(Skolem.simplify fm));;
 
 (* note that in order to preserve certain order and also show the conciseness of the implementation, no tail-recursive is used *)
 let ins_all_positions x l =
@@ -572,20 +572,20 @@ let ins_all_positions x l =
   in
   aux [] [] l
 
-let rec permutations = function
+let [@warning "-32"] rec permutations = function
   | [] -> []
   | x::[] -> [[x]] (* we must specify this edge case *)
   | x::xs -> List.fold_left (fun acc p -> acc @ ins_all_positions x p ) [] (permutations xs)
 
 let conj_trivial lits =
-  let pos,neg = partition positive lits in
+  let _pos, neg = partition positive lits in
   let power_set_pos = if (List.length lits < 11) then allnonemptysubsets lits else List.map (fun x -> [x]) lits in
   (* let power_set_with_permutation = List.fold_left (fun lst x -> lst@(permutations x) ) [] power_set_pos in *)
   (* List.iter (fun x -> print_endline (lean_string_of_fol_formula x)) (List.map list_disj power_set_with_permutation); *)
   intersect (List.map list_conj power_set_pos) (image negate neg) <> [];;
 
 let disj_trivial lits =
-  let pos,neg = partition positive lits in
+  let _pos, neg = partition positive lits in
   let power_set_pos = if (List.length lits < 11) then allnonemptysubsets lits else List.map (fun x -> [x]) lits in
   (* let power_set_with_permutation = List.fold_left (fun lst x -> lst@(permutations x) ) [] power_set_pos in *)
   (* List.iter (fun x -> print_endline (lean_string_of_fol_formula x)) (List.map list_disj power_set_with_permutation); *)
@@ -593,12 +593,12 @@ let disj_trivial lits =
 
 let remove_trivial1 fm =
   match fm with
-   And(p,q) ->
+   And(_p, _q) ->
     let conj = (to_conj_lst fm) in
     (* print_endline "checking conj :"; *)
     (* List.iter (fun x -> print_endline (lean_string_of_fol_formula x)) conj; *)
     if (conj_trivial conj) then False else simplify (list_conj conj)
-  | Or(p,q) ->
+  | Or(_p, _q) ->
     let disj = (to_dis_lst fm) in
     if (disj_trivial disj) then True else simplify (list_disj disj)
   | _ -> simplify fm;;
@@ -618,14 +618,14 @@ let rec remove_trivial fm =
 let rec is_superformula_of_view view fm = match fm with
     False -> false
   | True -> false
-  | Atom(R(r,args)) -> if r = view then true else false
+  | Atom(R(r, _args)) -> if r = view then true else false
   | Not(p) -> is_superformula_of_view view  p
   | And(p,q) -> (is_superformula_of_view view p ) || (is_superformula_of_view view q )
   | Or(p,q) -> (is_superformula_of_view view p ) || (is_superformula_of_view view q )
   | Imp(p,q) -> (is_superformula_of_view view p ) || (is_superformula_of_view view q )
   | Iff(p,q) -> (is_superformula_of_view view p ) || (is_superformula_of_view view q )
-  | Forall(x,p) -> is_superformula_of_view view p
-  | Exists(x,p) -> is_superformula_of_view view p
+  | Forall(_x, p) -> is_superformula_of_view view p
+  | Exists(_x, p) -> is_superformula_of_view view p
 
 (** take a RANF formula and view name to return the it in view-predicate normal form
 view-predicate normal form is represented in the form:
@@ -634,7 +634,7 @@ view-predicate normal form is represented in the form:
 
 let rec ranf2lvnf view fm = if not (is_superformula_of_view view fm) then (fm, []) else
     match fm with
-        | Atom(R(r,lst)) -> if r = view then (False, [([],fm, True)]) else (fm, [])
+        | Atom(R(r, _lst)) -> if r = view then (False, [([],fm, True)]) else (fm, [])
         | Or(p, q) ->
             let phi1, lst1 = ranf2lvnf view p in
             let phi2, lst2 = ranf2lvnf view q in

@@ -6,8 +6,3 @@
 (library
  (name birds)
  (libraries logic ocamlgraph num str))
-
-(env
- (dev
-  (flags
-   (:standard -warn-error -a))))

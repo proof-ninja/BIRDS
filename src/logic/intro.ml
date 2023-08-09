@@ -4,7 +4,7 @@
 (* Copyright (c) 2003-2007, John Harrison. (See "LICENSE.txt" for details.)  *)
 (* ========================================================================= *)
 
-type expression =
+type [@warning "-37"] expression =
    Var of string
  | Const of int
  | Add of expression * expression
@@ -20,13 +20,13 @@ let simplify1 expr =
   | Mul(Const(m),Const(n)) -> Const(m * n)
   | Add(Const(0),x) -> x
   | Add(x,Const(0)) -> x
-  | Mul(Const(0),x) -> Const(0)
-  | Mul(x,Const(0)) -> Const(0)
+  | Mul(Const(0), _x) -> Const(0)
+  | Mul(_x, Const(0)) -> Const(0)
   | Mul(Const(1),x) -> x
   | Mul(x,Const(1)) -> x
   | _ -> expr;;
 
-let rec simplify expr =
+let [@warning "-32"] rec simplify expr =
   match expr with
     Add(e1,e2) -> simplify1(Add(simplify e1,simplify e2))
   | Mul(e1,e2) -> simplify1(Mul(simplify e1,simplify e2))
@@ -36,7 +36,7 @@ let rec simplify expr =
 (* Conservatively bracketing first attempt at printer.                       *)
 (* ------------------------------------------------------------------------- *)
 
-let rec string_of_exp e =
+let [@warning "-32"] rec string_of_exp e =
   match e with
     Var s -> s
   | Const n -> string_of_int n
@@ -62,7 +62,7 @@ let rec string_of_exp pr e =
 (* Install it.                                                               *)
 (* ------------------------------------------------------------------------- *)
 
-let print_exp e = Format.print_string ("<<"^string_of_exp 0 e^">>");;
+let [@warning "-32"] print_exp e = Format.print_string ("<<"^string_of_exp 0 e^">>");;
 
 (* 
 (* ------------------------------------------------------------------------- *)
