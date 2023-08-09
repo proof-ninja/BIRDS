@@ -11,6 +11,7 @@ open Expr
 open Utils
 open Rule_preprocess
 open Stratification
+open Logic
 
 let rec lambda_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:symtkey)  =
     let rule_lst =

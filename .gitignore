@@ -1,36 +1,5 @@
-**/*.olean
-**/*.cmi
-**/*.cmt
-**/*.cmti
-**/*.cmo
 **/.DS_Store
-**/bin/
-**/release/
-**/_target/
-**/._d/
-
-src/lexer.ml
-src/parser.ml
-src/parser.mli
-src/*.cmt
-src/logic/*.cmt
-
-temp.smt2
 
 .idea/
 
-webpage/.sass-cache/
-
-webui/client/build/
-webui/server/public
-webui/coverage/
-webui/db/
-webui/dbtest/
-webui/node_modules/
-webui/client/node_modules/
-webui/server/node_modules/
-leanpkg.path
-
-depend
-
-webpage/.jekyll-cache/
+_build/

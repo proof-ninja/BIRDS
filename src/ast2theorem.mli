@@ -1,3 +1,4 @@
+open Logic
 
 type lean_type
 

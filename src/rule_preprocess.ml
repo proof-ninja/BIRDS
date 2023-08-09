@@ -3,6 +3,7 @@ Functions for preprocesing of IDB rules before
 SQL generation.
  *)
 
+open Logic
 open Expr
 open Lib
 open Utils
