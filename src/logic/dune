@@ -1,3 +1,8 @@
 (library
  (name logic)
   (libraries str num))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -a))))

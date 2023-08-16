@@ -24,7 +24,7 @@ type fol = R of string * term list;;
 (* Special case of applying a subfunction to the top *terms*.                *)
 (* ------------------------------------------------------------------------- *)
 
-let [@warning "-32"] onformula f = onatoms(fun (R(p,a)) -> Atom(R(p,map f a)));;
+let onformula f = onatoms(fun (R(p,a)) -> Atom(R(p,map f a)));;
 
 (* ------------------------------------------------------------------------- *)
 (* Printing of terms.                                                        *)
@@ -60,7 +60,7 @@ and print_infix_term isleft oldprec newprec sym p q =
   print_term (if isleft then newprec+1 else newprec) q;
   if oldprec > newprec then (close_box(); print_string ")") else ();;
 
-let [@warning "-32"] printert tm =
+let printert tm =
   open_box 0; print_string "<<|";
   open_box 0; print_term 0 tm; close_box();
   print_string "|>>"; close_box();;
@@ -76,7 +76,7 @@ let print_atom _prec (R(p,args)) =
   then print_infix_term false 12 12 (" "^p) (el 0 args) (el 1 args)
   else print_fargs p args;;
 
-let [@warning "-32"] print_fol_formula = print_qformula print_atom;;
+let print_fol_formula = print_qformula print_atom;;
 
 (* #install_printer print_fol_formula;; *)
 
@@ -89,7 +89,7 @@ let rec termval (_domain, func, _pred as m) v tm =
     Var(x) -> apply v x
   | Fn(f,args) -> func f (map (termval m v) args);;
 
-let [@warning "-32"] rec holds (domain, _func, pred as m) v fm =
+let rec holds (domain, _func, pred as m) v fm =
   match fm with
     False -> false
   | True -> true
@@ -106,7 +106,7 @@ let [@warning "-32"] rec holds (domain, _func, pred as m) v fm =
 (* Examples of particular interpretations.                                   *)
 (* ------------------------------------------------------------------------- *)
 
-let [@warning "-32"] bool_interp =
+let bool_interp =
   let func f args =
     match (f,args) with
       ("0",[]) -> false
@@ -120,7 +120,7 @@ let [@warning "-32"] bool_interp =
     | _ -> failwith "uninterpreted predicate" in
   ([false; true],func,pred);;
 
-let [@warning "-32"] mod_interp n =
+let mod_interp n =
   let func f args =
     match (f,args) with
       ("0",[]) -> 0
@@ -143,7 +143,7 @@ let rec fvt tm =
     Var x -> [x]
   | Fn(_f, args) -> unions (map fvt args);;
 
-let [@warning "-32"] rec var fm =
+let rec var fm =
    match fm with
     False | True -> []
   | Atom(R(_p, args)) -> unions (map fvt args)

@@ -70,7 +70,7 @@ let lambda_of_query (idb:symtable) (cnt:colnamtab) (query:rterm) =
         lambda_of_symtkey local_idb cnt (symtkey_of_rterm (rule_head qrule))
 
 (** Generate lambda expression from the ast, the goal is the query predicate of datalog program. *)
-let [@warning "-32"] lambda_of_stt (_debug:bool) prog =
+let lambda_of_stt (_debug:bool) prog =
     let edb = extract_edb prog in
     (* todo: need to check if prog is non-recursive *)
     let view_rt = get_schema_rterm (get_view prog) in
@@ -85,7 +85,7 @@ let [@warning "-32"] lambda_of_stt (_debug:bool) prog =
     lambda
 
 (* transform edb relations to a list of functions from product of n (the arity) types to Prop *)
-let [@warning "-32"] edb_to_func_types edb =
+let edb_to_func_types edb =
     (* currently just set all the types are int (ℤ) *)
     let rel_to_function rel = get_rterm_predname rel ^ ": " ^
         String.concat " → " ( List.map (fun _x -> "ℤ") (get_rterm_varlist rel)) ^ " → Prop" in
@@ -227,19 +227,19 @@ let lean_simp_theorem_of_putget (debug : bool) (prog : expr) : lean_theorem =
   }
 
 (* take a view update datalog program and generate the theorem of checking whether all delta relations are disjoint *)
-let [@warning "-32"] z3_assert_of_disjoint_delta (debug:bool) prog =
+let z3_assert_of_disjoint_delta (debug:bool) prog =
     if debug then (print_endline "==> generating z3 assert for disjoint deltas";) else ();
     String.concat "\n"  (source_view_to_z3_func_types prog) ^
     "\n (assert " ^ (Fol_ex.z3_string_of_fol_formula (Not (Imp (Ast2fol.constraint_sentence_of_stt debug prog,
     (Imp(Ast2fol.disjoint_delta_sentence_of_stt debug prog, False)))))) ^ ") \n (check-sat)"
 
-let [@warning "-32"] z3_assert_of_getput (debug:bool) prog =
+let z3_assert_of_getput (debug:bool) prog =
     if debug then (print_endline "==> generating z3 assert of getput property";) else ();
     String.concat "\n"  (source_to_z3_func_types prog) ^
      "\n(assert " ^ (Fol_ex.z3_string_of_fol_formula (Not (Imp (Ast2fol.non_view_constraint_sentence_of_stt debug prog,
      (Imp(Ast2fol.getput_sentence_of_stt debug prog, False)))))) ^") \n (check-sat)"
 
-let [@warning "-32"] z3_assert_of_putget (debug:bool) prog =
+let z3_assert_of_putget (debug:bool) prog =
     if debug then (print_endline "==> generating z3 assert of putget property";) else ();
     String.concat " " (source_view_to_z3_func_types prog) ^
     "\n (assert " ^ (Fol_ex.z3_string_of_fol_formula
@@ -267,7 +267,7 @@ let sourcestability_of_stt (debug:bool) prog =
     "theorem sourcestability " ^ String.concat " " (List.map (fun x -> "{"^x^"}") (source_view_to_lean_func_types prog)) ^ ": " ^ (String.concat " ∨ " (List.map (fun pred -> "(" ^ pred^ ")") delta_lambda_exp_lst)) ^ " → false"
 *)
 
-let [@warning "-32"] lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) : lean_theorem =
+let lean_simp_sourcestability_theorem_of_stt (debug : bool) (prog : expr) : lean_theorem =
   let statement =
     Fol_ex.lean_formula_of_fol_formula
       (Imp (Ast2fol.sourcestability_sentence_of_stt debug prog, False))

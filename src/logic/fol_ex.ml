@@ -321,7 +321,7 @@ let rec type_of_var varname fm =
   | Forall(x,p) -> type_of_var varname (let newx = variant x (varname::(fv fm)) in subst (x |=> Var newx) p)
   | Exists(x,p) -> type_of_var varname (let newx = variant x (varname::(fv fm)) in subst (x |=> Var newx) p)
 
-let [@warning "-32"] z3_logic_character name = match name with
+let z3_logic_character name = match name with
     | "false" -> "false"
     | "true" -> "true"
     | "not" -> "not"
@@ -334,14 +334,14 @@ let [@warning "-32"] z3_logic_character name = match name with
     | "quantifer_sep" -> failwith "unkown symbol of "^name
     | _ -> failwith "unkown symbol of "^name
 
-let [@warning "-32"] z3_character_of_operator o = match o with
+let z3_character_of_operator o = match o with
   | "<>" -> failwith "unkown symbol of "^o
   | ">="
   | "<="
   | "=" | "<"| ">" -> o
   | _ -> failwith "unkown symbol of "^o
 
-let [@warning "-32"] z3_string_of_string str =
+let z3_string_of_string str =
   try  (ignore(int_of_string str); str) with
     (* try test () with *)
     | Failure _e ->
@@ -398,8 +398,8 @@ let rec extract_ex_quants fm =
 (* Tranformation on formulas.                                                     *)
 (* ------------------------------------------------------------------------- *)
 
-let [@warning "-32"] rec pnf_dnf fm = dnf_of_pnf (Skolem.pnf fm)
-and [@warning "-32"] dnf_of_pnf fm =
+let rec pnf_dnf fm = dnf_of_pnf (Skolem.pnf fm)
+and dnf_of_pnf fm =
   match fm with
     Forall(x,p) -> Forall(x, dnf_of_pnf p)
   | Exists(x,p) -> Exists(x, dnf_of_pnf p)
@@ -562,7 +562,7 @@ let rec pure_dnf fm =
   | _ -> Prop.dnf fm;;
 
 (** take a FO formula and return its dnf *)
-let [@warning "-32"] dnf fm = pure_dnf (Skolem.nnf(Skolem.simplify fm));;
+let dnf fm = pure_dnf (Skolem.nnf(Skolem.simplify fm));;
 
 (* note that in order to preserve certain order and also show the conciseness of the implementation, no tail-recursive is used *)
 let ins_all_positions x l =
@@ -572,7 +572,7 @@ let ins_all_positions x l =
   in
   aux [] [] l
 
-let [@warning "-32"] rec permutations = function
+let rec permutations = function
   | [] -> []
   | x::[] -> [[x]] (* we must specify this edge case *)
   | x::xs -> List.fold_left (fun acc p -> acc @ ins_all_positions x p ) [] (permutations xs)

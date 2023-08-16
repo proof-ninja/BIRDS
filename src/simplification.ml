@@ -90,7 +90,7 @@ module VariableMap = Map.Make(String)
 type body_term_arguments = intermediate_body_var list
 
 
-let [@warning "-32"] string_of_body_term_arguments imbvars =
+let string_of_body_term_arguments imbvars =
   imbvars |> List.map (function
   | ImBodyNamedVar x -> x
   | ImBodyAnonVar    -> "_"
@@ -137,7 +137,7 @@ type intermediate_rule = {
   equations      : equation_map;
 }
 
-type [@warning "-37"] error =
+type error =
   | UnexpectedHeadVarForm   of var
   | UnexpectedBodyVarForm   of var
   | UnsupportedEquation     of eterm

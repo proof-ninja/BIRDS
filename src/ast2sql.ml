@@ -75,7 +75,7 @@ and sql_from_clause_entry =
 and sql_from_clause =
   | SqlFrom of sql_from_clause_entry list
 
-and [@warning "-37"] sql_constraint =
+and sql_constraint =
   | SqlConstraint of sql_vterm * sql_operator * sql_vterm
   | SqlNotExist   of sql_from_clause * sql_where_clause
   | SqlExist      of sql_from_clause * sql_where_clause

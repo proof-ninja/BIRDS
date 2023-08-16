@@ -66,7 +66,7 @@ type expr = {
 type conj_query =
   | Conj_query of var list * rterm list * rterm list
 
-val [@warning "-32"] get_empty_pred: rterm
+val get_empty_pred: rterm
 
 val get_empty_expr: expr
 

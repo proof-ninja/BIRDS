@@ -157,7 +157,7 @@ let rec specialize fm =
     Forall(_x, p) -> specialize p
   | _ -> fm;;
 
-let [@warning "-32"] skolemize fm = specialize(pnf(askolemize fm));;
+let skolemize fm = specialize(pnf(askolemize fm));;
 
 (* ------------------------------------------------------------------------- *)
 (* Example.                                                                  *)

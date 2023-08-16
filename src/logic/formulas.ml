@@ -71,9 +71,9 @@ let print_qformula pfn fm =
 (* ------------------------------------------------------------------------- *)
 
 let mk_and p q = And(p,q)
-and [@warning "-32"] mk_or p q = Or(p,q)
-and [@warning "-32"] mk_imp p q = Imp(p,q)
-and [@warning "-32"] mk_iff p q = Iff(p,q)
+and mk_or p q = Or(p,q)
+and mk_imp p q = Imp(p,q)
+and mk_iff p q = Iff(p,q)
 and mk_forall x p = Forall(x,p)
 and mk_exists x p = Exists(x,p);;
 
@@ -81,16 +81,16 @@ and mk_exists x p = Exists(x,p);;
 (* Destructors.                                                              *)
 (* ------------------------------------------------------------------------- *)
 
-let [@warning "-32"] dest_iff fm =
+let dest_iff fm =
   match fm with Iff(p,q) -> (p,q) | _ -> failwith "dest_iff";;
 
-let [@warning "-32"] dest_and fm =
+let dest_and fm =
   match fm with And(p,q) -> (p,q) | _ -> failwith "dest_and";;
 
-let [@warning "-32"] rec conjuncts fm =
+let rec conjuncts fm =
   match fm with And(p,q) -> conjuncts p @ conjuncts q | _ -> [fm];;
 
-let [@warning "-32"] dest_or fm =
+let dest_or fm =
   match fm with Or(p,q) -> (p,q) | _ -> failwith "dest_or";;
 
 let rec disjuncts fm =
@@ -99,8 +99,8 @@ let rec disjuncts fm =
 let dest_imp fm =
   match fm with Imp(p,q) -> (p,q) | _ -> failwith "dest_imp";;
 
-let [@warning "-32"] antecedent fm = fst(dest_imp fm);;
-let [@warning "-32"] consequent fm = snd(dest_imp fm);;
+let antecedent fm = fst(dest_imp fm);;
+let consequent fm = snd(dest_imp fm);;
 
 (* ------------------------------------------------------------------------- *)
 (* Apply a function to the atoms, otherwise keeping structure.               *)

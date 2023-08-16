@@ -471,7 +471,7 @@ and datalog_of_conj conj_lst freevars (goal_num:int) (last_goal_num:int)=
     ( (goal_predicate, rule_termlst))::prog, goal_predicate, new_last_goal_num
 
 (** Transform a safe range FO formula to a Datalog program. *)
-let [@warning "-32"] fol2datalog freevars fm =
+let fol2datalog freevars fm =
     if set_eq (setify freevars) (fv fm) then
         let lst, rt, _ = ranf2datalog (ranf (simplify (normalize_comparison fm))) freevars 0 0 in
         {get_empty_expr with query = Some rt; rules = lst}

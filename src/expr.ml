@@ -66,7 +66,7 @@ type expr = {
 type conj_query =
   | Conj_query of var list * rterm list * rterm list
 
-let [@warning "-32"] get_empty_pred = Pred ("⊥", [])
+let get_empty_pred = Pred ("⊥", [])
 
 let get_empty_expr = {
   rules= [];
