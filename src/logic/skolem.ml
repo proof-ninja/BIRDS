@@ -118,11 +118,11 @@ END_INTERACTIVE;; *)
 
 let rec funcs tm =
   match tm with
-    Var x -> []
+    Var _x -> []
   | Fn(f,args) -> itlist (union ** funcs) args [f,length args];;
 
 let functions fm =
-  atom_union (fun (R(p,a)) -> itlist (union ** funcs) a []) fm;;
+  atom_union (fun (R(_p, a)) -> itlist (union ** funcs) a []) fm;;
 
 (* ------------------------------------------------------------------------- *)
 (* Core Skolemization function.                                              *)
@@ -154,7 +154,7 @@ let askolemize fm =
 
 let rec specialize fm =
   match fm with
-    Forall(x,p) -> specialize p
+    Forall(_x, p) -> specialize p
   | _ -> fm;;
 
 let skolemize fm = specialize(pnf(askolemize fm));;

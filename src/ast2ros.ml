@@ -10,7 +10,6 @@ AST-to-Racket functions
 open Expr
 open Utils
 open Rule_preprocess
-open Stratification
 open Derivation
 open Logic
 
@@ -189,12 +188,12 @@ let rec non_rec_unfold_racket_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:sy
             let select_racket = get_select_clause vt eqtb head in
             let unfold_get_from_clause (idb:symtable) rterms =
                 if rterms == [] then "'(1)" else
-                let idb_alias pname arity n =
+                let idb_alias pname arity _n =
                     (* generate racket query for idb predicate *)
                     let idb_racket = non_rec_unfold_racket_of_symtkey idb cnt (pname,arity)  in
                     "("^idb_racket^")"
                 in
-                let edb_alias pname arity n = pname
+                let edb_alias pname _arity _n = pname
                 in
                 let set_alias rterm (a_lst,n) =
                     let pname = get_rterm_predname rterm in
@@ -238,7 +237,7 @@ let rec non_rec_unfold_racket_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:sy
                         let key = symtkey_of_rterm rt in
                         let pname = get_rterm_predname rt in
                         let arity = get_arity rt in
-                        let alias = pname^"_a"^(string_of_int arity) in
+                        let _alias = pname^"_a"^(string_of_int arity) in
                         let vlst = get_rterm_varlist rt in
                         if not (Hashtbl.mem cnt key) then raise (SemErr ("not found edb or idb predicate "^string_of_symtkey key)) else
                         (*Get the from racket of the rterm*)
@@ -292,8 +291,7 @@ let rec non_rec_unfold_racket_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:sy
                                 else
                                 List.fold_right (fun a b -> "(and " ^ a ^" "^b^")") const_lst "true"
                                 )^")" in
-                        (**Return the final string*)
-                        "(= 0 (length "^
+                        "(= 0 (length "^ (*Return the final string*)
                         (if (where_racket = "") then from_racket
                             else "("^where_racket^" "^from_racket^")")
                         ^"))"
@@ -310,7 +308,7 @@ let rec non_rec_unfold_racket_of_symtkey (idb:symtable) (cnt:colnamtab) (goal:sy
                         List.fold_right (fun a b -> "(and " ^ a ^" "^b^")") constraints "true"
                         )^")" in
             let where_racket = unfold_get_where_clause idb vt cnt eqtb ineqs n_rt in
-            let agg_racket = get_aggregation_racket vt cnt head agg_eqs agg_ineqs in
+            let _agg_racket = get_aggregation_racket vt cnt head agg_eqs agg_ineqs in
             if (where_racket = "") then select_racket ^ " "^from_racket
                 else select_racket ^ " ("^where_racket^" "^from_racket^")" in
             (* String.concat " " [select_racket;from_racket;where_racket;agg_racket] in *)
@@ -341,7 +339,7 @@ let non_rec_unfold_racket_of_query (idb:symtable) (cnt:colnamtab) (query:rterm) 
     "("^non_rec_unfold_racket_of_symtkey local_idb cnt (symtkey_of_rterm (rule_head qrule))^")"
 
 (** Generate racket functions from the ast, the goal is the query predicate, the query is a query over source relations. *)
-let unfold_query_racket_stt (debug:bool) (edb:symtable) prog =
+let unfold_query_racket_stt (_debug:bool) (edb:symtable) prog =
     let query_rt = get_query prog in
     (*Extract and pre-process the IDB from the program*)
     let idb = extract_idb prog in
@@ -361,7 +359,7 @@ let unfold_program_query (debug:bool) prog =
 
 
 (** Take a view update datalog program (containing both get and put directions) and generate racket query of constraints involving view. *)
-let view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) (optimize:bool) prog =
+let view_constraint_racket_of_stt (_dbschema:string) (debug:bool) (inc:bool) (optimize:bool) prog =
     let clean_prog = keep_only_constraint_of_view debug prog in
     if inc then
         let inc_prog = incrementalize_by_view debug clean_prog in
@@ -417,7 +415,7 @@ let view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) (opt
             preprocess_rules idb;
             (* let cnt = build_colnamtab edb idb in *)
             if Hashtbl.mem idb (symtkey_of_rterm get_empty_pred) then
-                let remain_rules = Hashtbl.fold (fun k rules lst -> rules@lst) idb [] in
+                let remain_rules = Hashtbl.fold (fun _k rules lst -> rules@lst) idb [] in
                 let prog3 = {get_empty_expr with view = prog2.view; sources = prog2.sources; rules = remain_rules} in
                 (* non_rec_unfold_racket_of_query dbschema idb cnt get_empty_pred *)
                 let prog4 = if (optimize) then (Ast2fol.optimize_query_datalog debug {prog3 with query = Some get_empty_pred} ) else {prog3 with query = Some get_empty_pred} in
@@ -430,7 +428,7 @@ let view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) (opt
 
 
 (** Take a view update datalog program (containing both get and put directions) and generate a racket query of constraints not involving view. *)
-let non_view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) (optimize:bool) prog =
+let non_view_constraint_racket_of_stt (_dbschema:string) (debug:bool) (inc:bool) (optimize:bool) prog =
     let clean_prog = remove_constraint_of_view debug prog in
     if inc then
         let inc_prog = incrementalize_by_view debug clean_prog in
@@ -486,7 +484,7 @@ let non_view_constraint_racket_of_stt (dbschema:string) (debug:bool) (inc:bool) 
             preprocess_rules idb;
             (* let cnt = build_colnamtab edb idb in *)
             if Hashtbl.mem idb (symtkey_of_rterm get_empty_pred) then
-                let remain_rules = Hashtbl.fold (fun k rules lst -> rules@lst) idb [] in
+                let remain_rules = Hashtbl.fold (fun _k rules lst -> rules@lst) idb [] in
                 let prog3 = {get_empty_expr with view = prog2.view; sources = prog2.sources; rules = remain_rules}  in
                 (* non_rec_unfold_racket_of_query dbschema idb cnt get_empty_pred *)
                 let prog4 = if (optimize) then (Ast2fol.optimize_query_datalog debug {prog3 with query = Some get_empty_pred} ) else {prog3 with query = Some get_empty_pred} in
@@ -510,7 +508,7 @@ let gen_symbolic_source size vocsize prog =
     let p_el sym_table_lst (name, lst) =
         let tup num =
         (( String.concat "\n" ( List.map (fun (col,typ) -> "(define-symbolic "^name^"$"^col^"$"^ string_of_int num ^" " ^ stype_to_racket_type typ^")" ^(if (typ = Sstring) then "\n (assert (and (< -1  "^name^"$"^col^"$"^ string_of_int num ^") (< " ^name^"$"^col^"$"^ string_of_int num ^ " "^ string_of_int vocsize^")))" else "") ) lst) )
-        ^ "\n\n(define "^name^"_tuple_"^ string_of_int num ^ " (list "^ String.concat " " ( List.map (fun (col,typ) -> name^"$"^col^"$"^ string_of_int num) lst)^")" ^")") in
+        ^ "\n\n(define "^name^"_tuple_"^ string_of_int num ^ " (list "^ String.concat " " ( List.map (fun (col, _typ) -> name^"$"^col^"$"^ string_of_int num) lst)^")" ^")") in
         let rec sym_tuples sz = if sz <= 0 then "" else sym_tuples (sz-1) ^ "\n\n" ^ (tup sz) in
         let rec sym_table sz = if sz <= 0 then "" else sym_table (sz-1) ^ " " ^name^"_tuple_" ^string_of_int sz in
         ((sym_tuples size) ^ "\n\n(define "^name^ " (list " ^ sym_table size ^ "))") ::sym_table_lst in
@@ -522,7 +520,7 @@ let gen_symbolic_source_view size vocsize prog =
     let p_el sym_table_lst (name, lst) =
         let tup num =
         (( String.concat "\n" ( List.map (fun (col,typ) -> "(define-symbolic "^name^"$"^col^"$"^ string_of_int num ^" " ^ stype_to_racket_type typ^")" ^(if (typ = Sstring) then "\n (assert (and (< -1  "^name^"$"^col^"$"^ string_of_int num ^") (< " ^name^"$"^col^"$"^ string_of_int num ^ " "^ string_of_int vocsize^")))" else "") ) lst) )
-        ^ "\n\n(define "^name^"_tuple_"^ string_of_int num ^ " (list "^ String.concat " " ( List.map (fun (col,typ) -> name^"$"^col^"$"^ string_of_int num) lst)^")" ^")") in
+        ^ "\n\n(define "^name^"_tuple_"^ string_of_int num ^ " (list "^ String.concat " " ( List.map (fun (col, _typ) -> name^"$"^col^"$"^ string_of_int num) lst)^")" ^")") in
         let rec sym_tuples sz = if sz <= 0 then "" else sym_tuples (sz-1) ^ "\n\n" ^ (tup sz) in
         let rec sym_table sz = if sz <= 0 then "" else sym_table (sz-1) ^ " " ^name^"_tuple_" ^string_of_int sz in
         ((sym_tuples size) ^ "\n\n(define "^name^ " (list " ^ sym_table size ^ "))") ::sym_table_lst in
@@ -767,13 +765,13 @@ let get_default_val_of_type t = match t with
 let const_of_string str =
     try  (Int (int_of_string str)) with
     (* try test () with *)
-    | Failure e ->
+    | Failure _e ->
         try  (Real (float_of_string str)) with
         (* try test () with *)
-        | Failure e ->
+        | Failure _e ->
             try  (Bool (bool_of_string str)) with
             (* try test () with *)
-            | Failure e | Invalid_argument e -> match str with
+            | Failure _e | Invalid_argument _e -> match str with
                 "null" -> Null
                 | "#t" -> (Bool true)
                 | "#f" -> (Bool false)
@@ -792,7 +790,7 @@ let instantiate_relation size string_adom (data:celltable) rel_chema =
                     let int_to_string i = List.nth string_adom i in
                     try  (int_to_string (int_of_string value)) with
                         (* try test () with *)
-                        | Failure e -> invalid_arg "Function instantiate_relation called with invalid data, tuple "^string_of_int id ^" of relation " ^ rel_name^" not valid"
+                        | Failure _e -> invalid_arg "Function instantiate_relation called with invalid data, tuple "^string_of_int id ^" of relation " ^ rel_name^" not valid"
                 )
                 else value
             else (get_default_val_of_type typ) (* given a default value for it *)

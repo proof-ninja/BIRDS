@@ -71,7 +71,7 @@ let printert tm =
 (* Printing of formulas.                                                     *)
 (* ------------------------------------------------------------------------- *)
 
-let print_atom prec (R(p,args)) =
+let print_atom _prec (R(p,args)) =
   if mem p ["="; "<"; "<="; ">"; ">="] && length args = 2
   then print_infix_term false 12 12 (" "^p) (el 0 args) (el 1 args)
   else print_fargs p args;;
@@ -84,12 +84,12 @@ let print_fol_formula = print_qformula print_atom;;
 (* Semantics, implemented of course for finite domains only.                 *)
 (* ------------------------------------------------------------------------- *)
 
-let rec termval (domain,func,pred as m) v tm =
+let rec termval (_domain, func, _pred as m) v tm =
   match tm with
     Var(x) -> apply v x
   | Fn(f,args) -> func f (map (termval m v) args);;
 
-let rec holds (domain,func,pred as m) v fm =
+let rec holds (domain, _func, pred as m) v fm =
   match fm with
     False -> false
   | True -> true
@@ -141,12 +141,12 @@ let mod_interp n =
 let rec fvt tm =
   match tm with
     Var x -> [x]
-  | Fn(f,args) -> unions (map fvt args);;
+  | Fn(_f, args) -> unions (map fvt args);;
 
 let rec var fm =
    match fm with
     False | True -> []
-  | Atom(R(p,args)) -> unions (map fvt args)
+  | Atom(R(_p, args)) -> unions (map fvt args)
   | Not(p) -> var p
   | And(p,q) | Or(p,q) | Imp(p,q) | Iff(p,q) -> union (var p) (var q)
   | Forall(x,p) | Exists(x,p) -> insert x (var p);;
@@ -154,7 +154,7 @@ let rec var fm =
 let rec fv fm =
   match fm with
     False | True -> []
-  | Atom(R(p,args)) -> unions (map fvt args)
+  | Atom(R(_p, args)) -> unions (map fvt args)
   | Not(p) -> fv p
   | And(p,q) | Or(p,q) | Imp(p,q) | Iff(p,q) -> union (fv p) (fv q)
   | Forall(x,p) | Exists(x,p) -> subtract (fv p) [x];;

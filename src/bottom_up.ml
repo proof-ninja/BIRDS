@@ -1245,12 +1245,16 @@ module Query = struct
   type set = {
     db : db;
     query : query;
-  } (** mutable set of term lists *)
+  }
+  (** mutable set of term lists *)
+
   and query = {
     q_expr : expr;                    (* relational expression *)
     q_vars : int array;               (* variables *)
     mutable q_table : table option;   (* answer table *)
-  } (** A query *)
+  }
+  (** A query *)
+
   and expr =
     | Match of literal * int array * int array  (* match with literal, then project *)
     | Join of query * query                 (* join on common variables *)
@@ -1260,7 +1264,8 @@ module Query = struct
   and table = {
     tbl_vars : int array;             (* vars labelling columns *)
     tbl_rows : unit RowTable.t;       (* set of rows *)
-  } (** A relational table; column are labelled with variables *)
+  }
+  (** A relational table; column are labelled with variables *)
 
   (* union of two sets of variable *)
   let union_vars l1 l2 =

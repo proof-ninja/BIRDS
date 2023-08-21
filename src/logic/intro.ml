@@ -20,8 +20,8 @@ let simplify1 expr =
   | Mul(Const(m),Const(n)) -> Const(m * n)
   | Add(Const(0),x) -> x
   | Add(x,Const(0)) -> x
-  | Mul(Const(0),x) -> Const(0)
-  | Mul(x,Const(0)) -> Const(0)
+  | Mul(Const(0), _x) -> Const(0)
+  | Mul(_x, Const(0)) -> Const(0)
   | Mul(Const(1),x) -> x
   | Mul(x,Const(1)) -> x
   | _ -> expr;;

@@ -1,7 +1,4 @@
 
-open Utils
-
-
 module type ElementType = sig
   type t
 

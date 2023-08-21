@@ -14,7 +14,7 @@ let pname(P s) = s;;
 (* Printer.                                                                  *)
 (* ------------------------------------------------------------------------- *)
 
-let print_propvar prec p = print_string(pname p);;
+let print_propvar _prec p = print_string(pname p);;
 
 let print_prop_formula = print_qformula print_propvar;;
 
@@ -97,7 +97,7 @@ let print_truthtable fm =
   let separator = String.make (width * length ats + 9) '-' in
   print_string(itlist (fun s t -> fixw(pname s) ^ t) ats "| formula");
   print_newline(); print_string separator; print_newline();
-  let _ = onallvaluations mk_row (fun x -> false) ats in
+  let _ = onallvaluations mk_row (fun _x -> false) ats in
   print_string separator; print_newline();;
 
 (* ------------------------------------------------------------------------- *)
@@ -127,7 +127,7 @@ END_INTERACTIVE;; *)
 (* ------------------------------------------------------------------------- *)
 
 let tautology fm =
-  onallvaluations (eval fm) (fun s -> false) (atoms fm);;
+  onallvaluations (eval fm) (fun _s -> false) (atoms fm);;
 
 (* ------------------------------------------------------------------------- *)
 (* Examples.                                                                 *)
@@ -204,7 +204,7 @@ let rec dual fm =
   match fm with
     False -> True
   | True -> False
-  | Atom(p) -> fm
+  | Atom(_p) -> fm
   | Not(p) -> Not(dual p)
   | And(p,q) -> Or(dual p,dual q)
   | Or(p,q) -> And(dual p,dual q)
@@ -227,11 +227,11 @@ let psimplify1 fm =
     Not False -> True
   | Not True -> False
   | Not(Not p) -> p
-  | And(p,False) | And(False,p) -> False
+  | And(_p, False) | And(False, _p) -> False
   | And(p,True) | And(True,p) -> p
   | Or(p,False) | Or(False,p) -> p
-  | Or(p,True) | Or(True,p) -> True
-  | Imp(False,p) | Imp(p,True) -> True
+  | Or(_p, True) | Or(True, _p) -> True
+  | Imp(False, _p) | Imp(_p, True) -> True
   | Imp(True,p) -> p
   | Imp(p,False) -> Not p
   | Iff(p,True) | Iff(True,p) -> p
@@ -261,7 +261,7 @@ END_INTERACTIVE;; *)
 (* Some operations on literals.                                              *)
 (* ------------------------------------------------------------------------- *)
 
-let negative = function (Not p) -> true | _ -> false;;
+let negative = function (Not _p) -> true | _ -> false;;
 
 let positive lit = not(negative lit);;
 
@@ -350,7 +350,7 @@ let rec allsatvaluations subfn v pvs =
 
 let dnf fm =
   let pvs = atoms fm in
-  let satvals = allsatvaluations (eval fm) (fun s -> false) pvs in
+  let satvals = allsatvaluations (eval fm) (fun _s -> false) pvs in
   list_disj (map (mk_lits (map (fun p -> Atom p) pvs)) satvals);;
 
 (* ------------------------------------------------------------------------- *)

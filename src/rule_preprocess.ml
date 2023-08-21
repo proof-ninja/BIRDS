@@ -5,7 +5,6 @@ SQL generation.
 
 open Logic
 open Expr
-open Lib
 open Utils
 
 (****************************************************)
@@ -154,7 +153,7 @@ let anonvar2namedvar (h, b) =
                             let nvars, newind = a2n_varlist varlst ind in
                             (Rel (Deltadelete (name, nvars))::lst, newind)
                         )
-            | Not rt -> (t::lst, ind)
+            | Not _rt -> (t::lst, ind)
             (* AnonVar in a negated predicate can not be converted to NamedVar because it make program unsafe *)
             | Equat _ -> (t::lst, ind)
             | Noneq _ -> (t::lst, ind) in
@@ -237,7 +236,7 @@ let extract_rules_adom rules =
     List.concat (List.map extract_rule_adom rules)
 
 let extract_rules_string_adom rules =
-    let lst = List.filter (function | String s -> true | _-> false) (extract_rules_adom rules) in
+    let lst = List.filter (function | String _s -> true | _-> false) (extract_rules_adom rules) in
     Lib.setify (List.map string_of_const lst)
 
 
@@ -255,7 +254,7 @@ let anon2named_rules (st:symtable) =
 (** Given a query, it returns a 'dummy' idb rule that calculates the desired output,
 for example tracks2_prime(TRACK,0,RATING,ALBUM,QUANTITY) will be converted to _dummy_(TRACK,_0,RATING,ALBUM,QUANTITY):- ...
  *)
-let rule_of_query query (idb:symtable) =
+let rule_of_query query (_idb:symtable) =
     let (q2,eqs) = extract_rterm_constants query in
     let dummy = Pred ("__dummy__", get_rterm_varlist q2) in
     (dummy, (Rel q2)::eqs)
@@ -264,10 +263,10 @@ let rule_of_query query (idb:symtable) =
 note that we take the difference of a deltainsert and its source
 and take the intersection of a deltadelete and its source.
 *)
-let rule_of_delta delta (idb:symtable) =
+let rule_of_delta delta (_idb:symtable) =
     let (q2,eqs) = extract_rterm_constants delta in
     let dummy = Pred ("__dummy__", get_rterm_varlist q2) in
     match delta with
-        Deltainsert (pname, varlst) ->  (dummy, (Rel q2)::(Not (Pred(pname, get_rterm_varlist q2)))::eqs)
-        | Deltadelete (pname, varlst) ->  (dummy, (Rel q2)::(Rel (Pred(pname, get_rterm_varlist q2)))::eqs)
+        Deltainsert (pname, _varlst) ->  (dummy, (Rel q2)::(Not (Pred(pname, get_rterm_varlist q2)))::eqs)
+        | Deltadelete (pname, _varlst) ->  (dummy, (Rel q2)::(Rel (Pred(pname, get_rterm_varlist q2)))::eqs)
         | _ -> raise (SemErr "the non_rec_unfold_sql_of_update is called without and delta predicate")

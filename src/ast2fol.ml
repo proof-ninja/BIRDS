@@ -16,7 +16,6 @@ open Fol_ex
 open Expr
 open Utils
 open Rule_preprocess
-open Stratification
 open Derivation
 
 
@@ -39,13 +38,13 @@ let rec folterm_of_vterm ae =
 let const_of_string str =
     try  (Int (int_of_string str)) with
     (* try test () with *)
-    | Failure e ->
+    | Failure _e ->
         try  (Real (float_of_string str)) with
         (* try test () with *)
-        | Failure e ->
+        | Failure _e ->
             try  (Bool (bool_of_string str)) with
             (* try test () with *)
-            | Failure e | Invalid_argument e -> if (str = "null") then  Null else  (String str)
+            | Failure _e | Invalid_argument _e -> if (str = "null") then  Null else  (String str)
 
 (** convert Fol.term into vterm*)
 let rec vterm_of_folterm ft =
@@ -121,8 +120,8 @@ and fol_of_eq eq = match eq with
     | Noneq (Equation("<>", exp1, exp2)) -> Atom(R("=",[folterm_of_vterm exp1; folterm_of_vterm exp2]))
     | _ -> failwith "not a equality"
 and fol_of_ineq ineq = match ineq with
-    Equat (Equation("=", exp1, exp2)) -> failwith "not a inequality"
-    | Noneq (Equation("<>", exp1, exp2)) -> failwith "not a inequality"
+    Equat (Equation("=", _exp1, _exp2)) -> failwith "not a inequality"
+    | Noneq (Equation("<>", _exp1, _exp2)) -> failwith "not a inequality"
     | Equat et -> fol_or_eterm et
     | Noneq et -> fol_or_eterm (negate_eq et)
     | _ -> failwith "not a inequality"
@@ -241,8 +240,8 @@ let sourcestability_sentence_of_stt (debug:bool) prog =
          let freevars, delta_fm = (fol_of_query idb cnt rel) in
          (* minimize the delta of relation *)
          let min_delta = (match rel with
-            | Deltadelete (predname,lst) ->  And(delta_fm, Atom(R(predname, (List.map (fun x -> Fol.Var x) freevars))) )
-            | Deltainsert (predname,lst) -> And(delta_fm, Not (Atom(R(predname, (List.map (fun x -> Fol.Var x) freevars)))))
+            | Deltadelete (predname, _lst) ->  And(delta_fm, Atom(R(predname, (List.map (fun x -> Fol.Var x) freevars))) )
+            | Deltainsert (predname, _lst) -> And(delta_fm, Not (Atom(R(predname, (List.map (fun x -> Fol.Var x) freevars)))))
             | _ -> invalid_arg @@ "predicate" ^ string_of_rterm rel ^"is not a delta predicate"
          ) in
         itlist mk_exists cols min_delta in
@@ -268,8 +267,8 @@ let getput_sentence_of_stt (debug:bool) prog =
          let freevars, delta_fm = (fol_of_query idb cnt rel) in
          (* minimize the delta of relation *)
          let min_delta = (match rel with
-            | Deltadelete (predname,lst) ->  And(delta_fm, Atom(R(predname, (List.map (fun x -> Fol.Var x) freevars))) )
-            | Deltainsert (predname,lst) -> And(delta_fm, Not (Atom(R(predname, (List.map (fun x -> Fol.Var x) freevars)))))
+            | Deltadelete (predname, _lst) ->  And(delta_fm, Atom(R(predname, (List.map (fun x -> Fol.Var x) freevars))) )
+            | Deltainsert (predname, _lst) -> And(delta_fm, Not (Atom(R(predname, (List.map (fun x -> Fol.Var x) freevars)))))
             | _ -> invalid_arg @@ "predicate" ^ string_of_rterm rel ^"is not a delta predicate"
          ) in
         itlist mk_exists cols min_delta in
@@ -387,7 +386,7 @@ let rec ranf2datalog fm freevars (goal_num:int) (last_goal_num:int)=
     | Atom(R(_,_))
     | Exists(_,_)
     | Formulas.Not _ -> datalog_of_conj [fm] freevars goal_num last_goal_num
-    | And(p,q) -> datalog_of_conj (to_conj_lst fm) freevars goal_num last_goal_num
+    | And(_p, _q) -> datalog_of_conj (to_conj_lst fm) freevars goal_num last_goal_num
     | Or(p,q) ->
         let prog1,_,last_goal_num1 =  ranf2datalog p freevars goal_num last_goal_num in
         let prog2,_,last_goal_num2 = ranf2datalog q freevars goal_num last_goal_num1 in
@@ -432,7 +431,7 @@ and datalog_of_conj conj_lst freevars (goal_num:int) (last_goal_num:int)=
                                 ((Rel (Pred(get_rterm_predname predicate, newvarlst)))::tail, t2, t3, t4)
                             | _ -> failwith ("can not obtain for datalog program of " ^ Fol_ex.string_of_fol_formula subfm )
                         )
-                    | And(p,q ) ->
+                    | And(_p, _q ) ->
                         let subfn = fpf quants (List.map (fun x -> Fol.Var (variant x freevars)) quants) in
                         let psi2 = subst subfn psi in
                         let local_conj_lst = to_conj_lst psi2 in

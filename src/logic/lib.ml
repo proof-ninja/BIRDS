@@ -63,12 +63,12 @@ let rev =
 
 let hd l =
   match l with
-   h::t -> h
+   h::_t -> h
   | _ -> failwith "hd";;
 
 let tl l =
   match l with
-   h::t -> t
+   _h::t -> t
   | _ -> failwith "tl";;
 
 let rec itlist f l b =
@@ -117,7 +117,7 @@ let length =
 let rec last l =
   match l with
     [x] -> x
-  | (h::t) -> last t
+  | (_h::t) -> last t
   | [] -> failwith "last";;
 
 let rec butlast l =
@@ -156,7 +156,7 @@ let rec chop_list n l =
   try let m,l' = chop_list (n-1) (tl l) in (hd l)::m,l'
   with Failure _ -> failwith "chop_list";;
 
-let replicate n a = map (fun x -> a) (1--n);;
+let replicate n a = map (fun _x -> a) (1--n);;
 
 let rec insertat i x l =
   if i = 0 then x::l else
@@ -285,10 +285,11 @@ let rec mapfilter f l =
 (* ------------------------------------------------------------------------- *)
 
 let optimize ord f l =
-  fst(end_itlist (fun (x,y as p) (x',y' as p') -> if ord y y' then p else p')
+  fst(end_itlist (fun (_x, y as p) (_x', y' as p') -> if ord y y' then p else p')
                  (map (fun x -> x,f x) l));;
 
-let maximize f l = optimize (>) f l and minimize f l = optimize (<) f l;;
+let maximize f l = optimize (>) f l
+and minimize f l = optimize (<) f l;;
 
 (* ------------------------------------------------------------------------- *)
 (* Set operations on ordered lists.                                          *)
@@ -316,8 +317,8 @@ let union =
 let intersect =
   let rec intersect l1 l2 =
     match (l1,l2) with
-        ([],l2) -> []
-      | (l1,[]) -> []
+        ([], _l2) -> []
+      | (_l1, []) -> []
       | ((h1::t1 as l1),(h2::t2 as l2)) ->
           if h1 = h2 then h1::(intersect t1 t2)
           else if h1 < h2 then intersect t1 l2
@@ -327,8 +328,8 @@ let intersect =
 let subtract =
   let rec subtract l1 l2 =
     match (l1,l2) with
-        ([],l2) -> []
-      | (l1,[]) -> l1
+        ([], _l2) -> []
+      | (l1, []) -> l1
       | ((h1::t1 as l1),(h2::t2 as l2)) ->
           if h1 = h2 then subtract t1 t2
           else if h1 < h2 then h1::(subtract t1 l2)
@@ -338,16 +339,16 @@ let subtract =
 let subset,psubset =
   let rec subset l1 l2 =
     match (l1,l2) with
-        ([],l2) -> true
-      | (l1,[]) -> false
+        ([], _l2) -> true
+      | (_l1, []) -> false
       | (h1::t1,h2::t2) ->
           if h1 = h2 then subset t1 t2
           else if h1 < h2 then false
           else subset l1 t2
   and psubset l1 l2 =
     match (l1,l2) with
-        (l1,[]) -> false
-      | ([],l2) -> true
+        (_l1, []) -> false
+      | ([], _l2) -> true
       | (h1::t1,h2::t2) ->
           if h1 = h2 then psubset t1 t2
           else if h1 < h2 then false
@@ -355,7 +356,7 @@ let subset,psubset =
   (fun s1 s2 -> subset (setify s1) (setify s2)),
   (fun s1 s2 -> psubset (setify s1) (setify s2));;
 
-let rec set_eq s1 s2 = (setify s1 = setify s2);;
+let set_eq s1 s2 = (setify s1 = setify s2);;
 
 let insert x s = union [x] s;;
 
@@ -476,8 +477,8 @@ let foldl =
   let rec foldl f a t =
     match t with
       Empty -> a
-    | Leaf(h,l) -> foldl_list f a l
-    | Branch(p,b,l,r) -> foldl f (foldl f a l) r in
+    | Leaf(_h, l) -> foldl_list f a l
+    | Branch(_p, _b, l, r) -> foldl f (foldl f a l) r in
   foldl;;
 
 let foldr =
@@ -488,8 +489,8 @@ let foldr =
   let rec foldr f t a =
     match t with
       Empty -> a
-    | Leaf(h,l) -> foldr_list f l a
-    | Branch(p,b,l,r) -> foldr f l (foldr f r a) in
+    | Leaf(_h, l) -> foldr_list f l a
+    | Branch(_p, _b, l, r) -> foldr f l (foldr f r a) in
   foldr;;
 
 (* ------------------------------------------------------------------------- *)
@@ -498,9 +499,9 @@ let foldr =
 
 let graph f = setify (foldl (fun a x y -> (x,y)::a) [] f);;
 
-let dom f = setify(foldl (fun a x y -> x::a) [] f);;
+let dom f = setify(foldl (fun a x _y -> x::a) [] f);;
 
-let ran f = setify(foldl (fun a x y -> y::a) [] f);;
+let ran f = setify(foldl (fun a _x y -> y::a) [] f);;
 
 (* ------------------------------------------------------------------------- *)
 (* Application.                                                              *)
@@ -522,9 +523,9 @@ let applyd =
       | _ -> d x in
     look f;;
 
-let apply f = applyd f (fun x -> failwith "apply");;
+let apply f = applyd f (fun _x -> failwith "apply");;
 
-let tryapplyd f a d = applyd f (fun x -> d) a;;
+let tryapplyd f a d = applyd f (fun _x -> d) a;;
 
 let tryapplyl f x = tryapplyd f x [];;
 
@@ -537,7 +538,7 @@ let defined f x = try apply f x; true with Failure _ -> false;;
 let undefine =
   let rec undefine_list x l =
     match l with
-      (a,b as ab)::t ->
+      (a, _b as ab)::t ->
           let c = Stdlib.compare x a in
           if c = 0 then t
           else if c < 0 then l else
@@ -576,9 +577,9 @@ let (|->),combine =
     let p = p1 land (b - 1) in
     if p1 land b = 0 then Branch(p,b,t1,t2)
     else Branch(p,b,t2,t1) in
-  let rec define_list (x,y as xy) l =
+  let rec define_list (x, _y as xy) l =
     match l with
-      (a,b as ab)::t ->
+      (a, _b as ab)::t ->
           let c = Stdlib.compare x a in
           if c = 0 then xy::t
           else if c < 0 then xy::l
@@ -616,7 +617,7 @@ let (|->),combine =
             let l = combine_list op z l1 l2 in
             if l = [] then Empty else Leaf(h1,l)
           else newbranch h1 t1 h2 t2
-    | (Leaf(k,lis) as lf),(Branch(p,b,l,r) as br) ->
+    | (Leaf(k, _lis) as lf),(Branch(p,b,l,r) as br) ->
           if k land (b - 1) = p then
             if k land b = 0 then
               (match combine op z lf l with
@@ -626,7 +627,7 @@ let (|->),combine =
                  Empty -> l | r' -> Branch(p,b,l,r'))
           else
             newbranch k lf p br
-    | (Branch(p,b,l,r) as br),(Leaf(k,lis) as lf) ->
+    | (Branch(p,b,l,r) as br),(Leaf(k, _lis) as lf) ->
           if k land (b - 1) = p then
             if k land b = 0 then
               (match combine op z l lf with
@@ -679,14 +680,14 @@ let fpf xs ys = itlist2 (|->) xs ys undefined;;
 let rec choose t =
   match t with
     Empty -> failwith "choose: completely undefined function"
-  | Leaf(h,l) -> hd l
-  | Branch(b,p,t1,t2) -> choose t1;;
+  | Leaf(_h, l) -> hd l
+  | Branch(_b, _p, t1, _t2) -> choose t1;;
 
 (* ------------------------------------------------------------------------- *)
 (* Install a (trivial) printer for finite partial functions.                 *)
 (* ------------------------------------------------------------------------- *)
 
-let print_fpf (f:('a,'b)func) = print_string "<func>";;
+let print_fpf (_f:('a,'b)func) = print_string "<func>";;
 
 (* #install_printer print_fpf;; *)
 
@@ -696,7 +697,7 @@ let print_fpf (f:('a,'b)func) = print_string "<func>";;
 
 let valmod a y f x = if x = a then y else f(x);;
 
-let undef x = failwith "undefined function";;
+let undef _x = failwith "undefined function";;
 
 (* ------------------------------------------------------------------------- *)
 (* Union-find algorithm.                                                     *)

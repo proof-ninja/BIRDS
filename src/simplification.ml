@@ -422,7 +422,7 @@ let has_only_one_occurrence (count_map : occurrence_count_map) (x : var_name) : 
 
 
 let fold_predicate_map_for_counting (predmap : predicate_map) (count_map : occurrence_count_map) : occurrence_count_map =
-  PredicateMap.fold (fun impred argsset count_map ->
+  PredicateMap.fold (fun _impred argsset count_map ->
     BodyTermArgumentsSet.fold (fun args count_map ->
       args |> List.fold_left (fun count_map arg ->
         match arg with
@@ -622,8 +622,7 @@ let are_alpha_equivalent_rules (imrule1 : intermediate_rule) (imrule2 : intermed
   in
   let
     {
-      head_predicate = hp2; head_arguments = hvars2;
-      positive_terms = poss2; negative_terms = negs2; equations = eqns2;
+      head_predicate = hp2; head_arguments = hvars2; _
     } = imrule2
   in
   if not (predicate_equal hp1 hp2) then

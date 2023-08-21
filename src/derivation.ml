@@ -7,11 +7,6 @@
 *)
 
 open Logic
-open Lib
-open Formulas
-open Fol
-open Skolem
-open Fol_ex
 open Expr
 open Utils
 open Rule_preprocess
@@ -21,9 +16,9 @@ open Lib
 (** Datalog normalization: convert Deltainsert and Deltadelete predicates to normal Pred with a name having prefix *)
 let deltapred_to_pred prefix expr =
   let rterm_to_pred rt = match rt with
-    | Pred (x, vl) -> rt
-    | Deltainsert (x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl)
-    | Deltadelete (x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl) in
+    | Pred (_x, _vl) -> rt
+    | Deltainsert (_x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl)
+    | Deltadelete (_x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl) in
   let term_map_to_pred tt = match tt with
     | Rel rt -> Rel (rterm_to_pred rt)
     | Equat _ -> tt
@@ -90,7 +85,7 @@ let build_schema_mapping (mapping:vartab) (col_names:colnamtab) (view:rterm) (he
     | _ -> ()
   in
   List.iter2 in_v cols vlst;
-  let rep_rule var_name lst =
+  let rep_rule _var_name lst =
     match lst with
       view_col ::head_col::_ -> (*print_string "view_col: "; print_endline view_col; print_string "head_col: "; print_endline head_col; *) vt_insert mapping head_col view_col
     | _ -> () in
@@ -149,9 +144,9 @@ let mapping_rterm (col_names:colnamtab) (mapping:vartab) (rt:rterm) =
       else AnonVar
     | _ -> AnonVar in
   match rt with
-  Pred (pname, vl) -> Pred(pname, List.map mapped_var varlist)
-  | Deltainsert (pname, vl) -> Deltainsert(pname, List.map mapped_var varlist)
-  | Deltadelete (pname, vl) -> Deltadelete(pname, List.map mapped_var varlist)
+  Pred (pname, _vl) -> Pred(pname, List.map mapped_var varlist)
+  | Deltainsert (pname, _vl) -> Deltainsert(pname, List.map mapped_var varlist)
+  | Deltadelete (pname, _vl) -> Deltadelete(pname, List.map mapped_var varlist)
 
 let get_neg_term (rt:rterm) = Not rt
 
@@ -165,7 +160,7 @@ let create_view_definition (view:rterm) (col_names:colnamtab) literals mapping =
 *)
 let transform_rule (view:rterm) (cnt:colnamtab) (rule) lst=
   match rule with
-  | (h, body) ->
+  | (_h, body) ->
     let negated_views = (List.filter (fun t -> match t with Not v -> (key_comp (symtkey_of_rterm v) (symtkey_of_rterm view) ==0) | _ -> false) body) in
     if (List.length negated_views > 0) then
       let negated_view = List.hd negated_views in
@@ -173,7 +168,7 @@ let transform_rule (view:rterm) (cnt:colnamtab) (rule) lst=
           Not view_lit -> view_lit
         | _ -> invalid_arg "negated view is invalid" in
       (* need to change variable which does not appear in the view to anonymous variable _ *)
-      let (p_rt,n_rt,all_eqs,all_ineqs) = split_terms body in
+      let (p_rt, n_rt, _all_eqs, _all_ineqs) = split_terms body in
       let vt = build_vartab cnt (p_rt@n_rt) in
       let is_anonimous_variable s = match s with
           NamedVar s ->  if Hashtbl.mem vt s then List.length (Hashtbl.find vt s)< 1 else true
@@ -213,7 +208,7 @@ let derive (log:bool) (edb:symtable) expr =
   deltapred_to_pred "_derived_" {get_empty_expr with rules = (transformed_lst@[view_def]); sources = expr.sources; view = expr.view}
 
 (* take a view update datalog program and generate datalog rules for applying delta relations to the source *)
-let datalog_of_delta_appliation (log:bool) prog =
+let datalog_of_delta_appliation (_log:bool) prog =
     (* get all pair of delta relations *)
     let delta_rt_lst = get_delta_rterms prog in
     (* get each pair of delta relations from the delta relation lst delta_rt_lst *)
@@ -241,12 +236,12 @@ let datalog_of_delta_appliation (log:bool) prog =
     lst2@lst1
 
 (** Take a view update datalog program and generate datalog rules for deriving the new source from deltas. *)
-let datalog_of_new_source (log:bool) prog =
+let datalog_of_new_source (_log:bool) prog =
     let source_lst = get_source_rterms prog in
     List.fold_left (fun lst src -> (get_new_source_rel_pred src, [Rel (src); Not (get_del_delta_pred src)]):: (get_new_source_rel_pred src, [Rel (get_ins_delta_pred src)]) :: (get_del_delta_pred src,[]) :: (get_ins_delta_pred src,[]) :: lst ) [] source_lst
 
 (** Take a view update datalog program and generate a datalog rule for computing a new view from the new source. *)
-let datalog_of_new_view (log:bool) prog =
+let datalog_of_new_view (_log:bool) prog =
   let edb = extract_edb prog in
   (* need to change the view (in query predicate) to a edb relation *)
   let idb = extract_idb prog in
@@ -337,7 +332,7 @@ let datalog_of_putget (log:bool) (full_deltas:bool) prog =
 let extract_projection rule ind= match rule with
     | (h, b) ->
         let extract_projection_of_neg t (termlst, rulelst, loc_ind) = match t with
-            | Rel rt -> (t::termlst, rulelst, loc_ind)
+            | Rel _rt -> (t::termlst, rulelst, loc_ind)
             | Not rt -> let varlst = (get_rterm_varlist rt) in
                 if (List.mem AnonVar varlst) then
                 let new_rt = Pred("_pi_proj_"^string_of_int loc_ind, (List.filter (non is_anon) varlst) ) in
@@ -361,7 +356,7 @@ let extract_projection rule ind= match rule with
 
 (** Take a view update datalog program and extract projections to other rules. *)
 let extract_projection_rules (st:symtable) =
-  let extract_rules key rules (lst,ind) =
+  let extract_rules _key rules (lst,ind) =
       let namedvar_rules = List.map anonvar2namedvar rules in
       let extract_rule (l,i) rule =
           let extracted_lst, new_i = extract_projection rule i in
@@ -424,7 +419,7 @@ let binarize rule ind= match rule with
 
 (** Take a list of rules and extract projections and transform it into an equivalent set of rules where a predicate is defined by at most two other predicates, in other words, the precedence graph is a binary tree. *)
 let binarize_rules (st:symtable) =
-  let extract_rules key rules (lst,ind) =
+  let extract_rules _key rules (lst,ind) =
       let namedvar_rules = List.map anonvar2namedvar rules in
       let extract_rule (l,head_rules,i) rule =
           let extracted_lst, hr, new_i = binarize rule i in

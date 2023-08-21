@@ -14,7 +14,7 @@ let init_vocabulary = ["'..aa..'"; "'..bb..'"; "'..cc..'"; "'..dd..'";"'..ee..'"
 
 
 (** get the string of a explanation tree *)
-let string_of_summary_explanation (fact, edb_facts, all_clauses, detail) =
+let string_of_summary_explanation (fact, edb_facts, all_clauses, _detail) =
       "  (Summary) explain "^(string_of_fact fact)^" by: \n    " ^
       String.concat " " (List.map string_of_fact edb_facts) ^
       "\n    ~~~~~~~~~~~~~~~~~~~~~\n"^
@@ -23,7 +23,7 @@ let string_of_summary_explanation (fact, edb_facts, all_clauses, detail) =
       "    ~~~~~~~~~~~~~~~~~~~~~\n"^
       "    "^ (string_of_fact fact)^ "\n"
 
-let string_of_detail_explanation (fact, edb_facts, all_clauses, detail) =
+let string_of_detail_explanation (fact, _edb_facts, _all_clauses, detail) =
       "\n  (Details) explain "^(string_of_fact fact)^" by: \n" ^
       String.concat "" (List.map (fun (fact, clause, premises) ->
         "    "^
@@ -121,9 +121,9 @@ let is_builtin_fact rt =
 
 (** get the predicate name of an rterm using +/- for delta predicates *)
 let get_rterm_relname rterm = match rterm with
-    | Pred (x, vl) -> x
-    | Deltainsert (x, vl) -> "+"^ x
-    | Deltadelete (x, vl) -> "-"^ x
+    | Pred (x, _vl) -> x
+    | Deltainsert (x, _vl) -> "+"^ x
+    | Deltadelete (x, _vl) -> "-"^ x
 
 
 let extract_facts facts relname =
@@ -148,7 +148,7 @@ let debug_getput (log:bool) prog =
         print_endline ">>> Debugging the getput property";
         print_endline "______Unexpected output_______";
         print_endline "The following derived tuples are wrong:";
-        print_endline (String.concat " " (List.map (fun x -> colored_string "red" (string_of_fact x)) (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) explanation)));
+        print_endline (String.concat " " (List.map (fun x -> colored_string "red" (string_of_fact x)) (List.map (fun (fact, _edb_facts, _all_clauses, _detail) -> fact) explanation)));
         print_endline "________________";
         print_endline "Please choose one to inspect";
         let (fact, edb_facts, all_clauses, detail) = List.hd explanation in
@@ -231,7 +231,7 @@ let explain_getput (log:bool) prog =
         print_endline "________________");
     let resulted_facts, explanation = Evaluation.eval log (get_delta_rterms buggy_prog) buggy_prog in
     (* filter the buggy delta tuple (insertion of new tuples, deletiong of existing tuple) *)
-    let explanation = List.filter (fun (fact, edb_facts, all_clauses, detail) ->
+    let explanation = List.filter (fun (fact, _edb_facts, _all_clauses, _detail) ->
                 let init_facts = buggy_prog.facts in
                 if ((string_of_fact fact).[0] = '-') then (
                     (* deletion: should delete the existing tuples *)
@@ -284,7 +284,7 @@ let explain_getput (log:bool) prog =
         ( print_endline "|      The following derived tuples are wrong:";
         List.iter (fun x -> print_string "|         ";
             print_string (colored_string "" (string_of_fact x)))
-        (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) explanation));
+        (List.map (fun (fact, _edb_facts, _all_clauses, _detail) -> fact) explanation));
         print_endline "+----------------------------------------------------+";
     )
 
@@ -296,7 +296,7 @@ let debug_disdelta (log:bool) prog =
             let del_rels = List.filter (is_delta_pair ins_rel) delta_rt_lst in
             if (List.length del_rels = 0) then lst else (ins_rel, (List.hd del_rels))::lst in
         List.fold_left pair_of_delta_insert [] delta_rt_lst in
-    let emptiness = Pred ("__emptiness",[]) in
+    let _emptiness = Pred ("__emptiness",[]) in
     let disdelta_rules = List.map (fun (r1,r2) -> (rename_rterm "±" (get_source_rel_pred r1),[ Rel r1; Rel r2])) delta_pair_lst in
     let buggy_prog = Expr.add_rules (disdelta_rules) (Expr.delete_rule_of_predname (get_rterm_predname (get_view_rterm prog)) prog) in
     let buggy_prog = Expr.view_schema_to_source_schema buggy_prog in
@@ -311,7 +311,7 @@ let debug_disdelta (log:bool) prog =
         print_endline ">>> Debugging the delta disjointness";
         print_endline "______Unexpected output_______";
         print_endline "The following derived tuples are wrong:";
-        print_endline (String.concat " " (List.map (fun x -> colored_string "red" (string_of_fact x)) (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) explanation)));
+        print_endline (String.concat " " (List.map (fun x -> colored_string "red" (string_of_fact x)) (List.map (fun (fact, _edb_facts, _all_clauses, _detail) -> fact) explanation)));
         print_endline "________________";
         print_endline "Please choose one to inspect";
         let (fact, edb_facts, all_clauses, detail) = List.hd explanation in
@@ -383,7 +383,7 @@ let explain_disdelta (log:bool) prog =
             let del_rels = List.filter (is_delta_pair ins_rel) delta_rt_lst in
             if (List.length del_rels = 0) then lst else (ins_rel, (List.hd del_rels))::lst in
         List.fold_left pair_of_delta_insert [] delta_rt_lst in
-    let emptiness = Pred ("__emptiness",[]) in
+    let _emptiness = Pred ("__emptiness",[]) in
     let disdelta_rules = List.map (fun (r1,r2) -> (rename_rterm "±" (get_source_rel_pred r1),[ Rel r1; Rel r2])) delta_pair_lst in
     let buggy_prog = Expr.add_rules (disdelta_rules) (Expr.delete_rule_of_predname (get_rterm_predname (get_view_rterm prog)) prog) in
     let buggy_prog = Expr.view_schema_to_source_schema buggy_prog in
@@ -418,7 +418,7 @@ let explain_disdelta (log:bool) prog =
         if (List.length explanation > 0) then
         ( print_endline "|      The following tuples are both inserted and deleted on a relation:";
           List.iter (fun x -> print_string "|         ";
-            print_endline (colored_string "" (string_of_fact x))) (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) explanation));
+            print_endline (colored_string "" (string_of_fact x))) (List.map (fun (fact, _edb_facts, _all_clauses, _detail) -> fact) explanation));
         print_endline "+------------------------------------------------------+";
     )
 
@@ -433,8 +433,8 @@ let debug_putget (log:bool) prog =
     let resulted_facts, explanation = Evaluation.eval log [rename_rterm "__dummy_new_" view_rt] buggy_putget_prog in
     let updated_view = List.map (rename_fact "__dummy_new_") (extract_facts buggy_putget_prog.facts (get_rterm_predname view_rt)) in
     (* find wrong tuples in new view which is not in updated_view *)
-    let wrong_tuples_explanation = List.filter (fun (fact, edb_facts, all_clauses, detail) -> List.length (List.filter (fun x -> string_of_fact x = string_of_fact fact) updated_view) = 0) explanation in
-    let new_view = (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) explanation) in
+    let wrong_tuples_explanation = List.filter (fun (fact, _edb_facts, _all_clauses, _detail) -> List.length (List.filter (fun x -> string_of_fact x = string_of_fact fact) updated_view) = 0) explanation in
+    let new_view = (List.map (fun (fact, _edb_facts, _all_clauses, _detail) -> fact) explanation) in
     let new_view_missing_facts = List.filter (fun fact -> List.length (List.filter (fun x -> string_of_fact x = string_of_fact fact) new_view) = 0)  updated_view in
     if ((List.length wrong_tuples_explanation + List.length new_view_missing_facts) = 0) then
         print_endline "The putget property is satisfied"
@@ -444,7 +444,7 @@ let debug_putget (log:bool) prog =
         print_endline "______Unexpected output_______";
         if (List.length wrong_tuples_explanation > 0) then
         ( print_endline "The following derived tuples are wrong:";
-            print_endline (String.concat " " (List.map (fun x -> colored_string "red" (string_of_fact x)) (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) wrong_tuples_explanation))));
+            print_endline (String.concat " " (List.map (fun x -> colored_string "red" (string_of_fact x)) (List.map (fun (fact, _edb_facts, _all_clauses, _detail) -> fact) wrong_tuples_explanation))));
         if (List.length new_view_missing_facts > 0) then
             (print_endline "The following tuples are missing:";
             print_endline (String.concat " " (List.map (fun x -> colored_string "purple" (string_of_fact x)) new_view_missing_facts)));
@@ -522,8 +522,8 @@ let explain_putget (log:bool) prog =
     let init_view = extract_facts buggy_putget_prog.facts (get_rterm_predname view_rt) in
     let updated_view = List.map (rename_fact "__dummy_new_") init_view in
     (* find wrong tuples in new view which is not in updated_view *)
-    let wrong_tuples_explanation = List.filter (fun (fact, edb_facts, all_clauses, detail) -> List.length (List.filter (fun x -> string_of_fact x = string_of_fact fact) updated_view) = 0) explanation in
-    let new_view = (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) explanation) in
+    let wrong_tuples_explanation = List.filter (fun (fact, _edb_facts, _all_clauses, _detail) -> List.length (List.filter (fun x -> string_of_fact x = string_of_fact fact) updated_view) = 0) explanation in
+    let new_view = (List.map (fun (fact, _edb_facts, _all_clauses, _detail) -> fact) explanation) in
     let new_view_missing_facts = List.filter (fun fact -> List.length (List.filter (fun x -> string_of_fact x = string_of_fact fact) new_view) = 0)  updated_view in
     if ((List.length wrong_tuples_explanation + List.length new_view_missing_facts) = 0) then
         print_endline "The putget property is satisfied"
@@ -572,7 +572,7 @@ let explain_putget (log:bool) prog =
         ( print_endline "|      The following derived tuples are wrong:";
             List.iter (fun x -> print_string "|         ";
             print_string (colored_string "" (String.sub (string_of_fact x) 12 (String.length (string_of_fact x) -12))))
-            (List.map (fun (fact, edb_facts, all_clauses, detail) -> fact) wrong_tuples_explanation));
+            (List.map (fun (fact, _edb_facts, _all_clauses, _detail) -> fact) wrong_tuples_explanation));
         if (List.length new_view_missing_facts > 0) then
             (print_endline "|      The following tuples are missing:";
             List.iter (fun x -> print_string "|         ";

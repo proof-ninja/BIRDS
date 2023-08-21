@@ -134,7 +134,7 @@ let build_creation_rule colvarmap colvarmap' column_and_vterms table_name column
         |> Option.to_result ~none:(InvalidColumnName column_name)
     ) >>= fun body ->
 
-  (** Create a rule corresponding to the operation to insert the record to be updated. *)
+  (* Create a rule corresponding to the operation to insert the record to be updated. *)
   columns
     |> ResultMonad.mapM (fun column ->
       let column_name = string_of_sql_column_ignore_instance (None, column) in
