@@ -4,7 +4,7 @@ open Utils
 
 
 (** The prefix used for variables generated during inlining. *)
-let generated_variable_prefix = "GenV"
+let generated_variable_prefix = "GENV"
 
 
 type named_var =

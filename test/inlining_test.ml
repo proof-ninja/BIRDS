@@ -92,8 +92,8 @@ let main () =
             bar(A, B) :- qux(A, B, _). *)
         expected =
           make_lines [
-            "+foo(X) :- qux(X, GenV1, GenV3).";
-            "bar(A, B) :- qux(A, B, GenV2).";
+            "+foo(X) :- qux(X, GENV1, GENV3).";
+            "bar(A, B) :- qux(A, B, GENV2).";
           ];
       };
       {
@@ -110,8 +110,8 @@ let main () =
             bar(A, B) :- qux(A, B, _). *)
         expected =
           make_lines [
-            "+foo(X, Y) :- qux(X, GenV1, GenV4) , qux(Y, GenV2, GenV5).";
-            "bar(A, B) :- qux(A, B, GenV3).";
+            "+foo(X, Y) :- qux(X, GENV1, GENV4) , qux(Y, GENV2, GENV5).";
+            "bar(A, B) :- qux(A, B, GENV3).";
           ];
       };
       {
@@ -127,10 +127,10 @@ let main () =
             bar(B) :- thud(_, B). *)
         expected =
           make_lines [
-            "+foo(X) :- qux(X, GenV3).";
-            "+foo(X) :- thud(GenV4, X).";
-            "bar(A) :- qux(A, GenV1).";
-            "bar(B) :- thud(GenV2, B).";
+            "+foo(X) :- qux(X, GENV3).";
+            "+foo(X) :- thud(GENV4, X).";
+            "bar(A) :- qux(A, GENV1).";
+            "bar(B) :- thud(GENV2, B).";
           ];
       };
       {
@@ -147,7 +147,7 @@ let main () =
              bar(B) :- qux(A, B), A = 42. *)
         expected =
           make_lines [
-            "+foo(X) :- qux(GenV1, X) , GenV1 = 42.";
+            "+foo(X) :- qux(GENV1, X) , GENV1 = 42.";
             "bar(B) :- qux(A, B) , A = 42.";
           ];
       };
