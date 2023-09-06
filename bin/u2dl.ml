@@ -10,7 +10,6 @@ let open_sql_ast filename =
   let chan = open_in filename in
   let lexbuf = Lexing.from_channel chan in
   let ast = Sql.Parser.update Sql.Lexer.token lexbuf in
-  print_endline @@ Sql.Ast.to_string ast; (* debug *)
   Result.Ok ast
 
 let open_view_ast filename =
@@ -18,7 +17,6 @@ let open_view_ast filename =
   let chan = open_in filename in
   let lexbuf = Lexing.from_channel chan in
   let ast = Parser.main Lexer.token lexbuf in
-  print_endline @@ Expr.to_string ast;
   Result.Ok ast
 
 let extract_schema expr =
