@@ -5,10 +5,14 @@ module Sql = Sql.Ast
 let ( >>= ) = ResultMonad.( >>= )
 
 type error =
+  | InvalidStatementType of { actual: string; expected: string }
   | InvalidColumnName of string
 
 let string_of_error = function
-  | InvalidColumnName name -> Printf.sprintf "Invalid Column Name: %s" name
+  | InvalidColumnName name ->
+      Printf.sprintf "Invalid Column Name: %s" name
+  | InvalidStatementType { actual; expected } ->
+      Printf.sprintf "Statement type '%s' was expected, but actually it was '%s'." actual expected
 
 (** Column Name (as String) to Expr.var *)
 module ColumnVarMap = Map.Make(String)
@@ -102,8 +106,7 @@ let build_creation_rule colvarmap colvarmap' column_and_vterms table_name column
 
 module ColumnSet = Set.Make(String)
 
-let update_to_datalog (update : Sql.update) (columns : Sql.column_name list) : (Expr.rule list, error) result =
-  let Sql.UpdateSet (table_name, column_and_vterms, where_clause) = update in
+let update_to_datalog table_name column_and_vterms where_clause (columns : Sql.column_name list) =
 
   (* Create (column name as String, Expr.var) list. *)
   let make_column_var_list make_var =
@@ -163,3 +166,9 @@ let update_to_datalog (update : Sql.update) (columns : Sql.column_name list) : (
   >>= fun insert ->
 
   ResultMonad.return (deletes @ [insert])
+
+let to_datalog (statement : Sql.statement) (columns : Sql.column_name list) : (Expr.rule list, error) result =
+  match statement with
+  | Sql.UpdateSet (table_name, column_and_vterms, where_clause) ->
+      update_to_datalog table_name column_and_vterms where_clause columns
+  | Sql.InsertInto _ -> Result.error (InvalidStatementType { expected= "UPDATE"; actual= "INSERT" })

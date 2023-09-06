@@ -5,7 +5,7 @@ module Sql = Sql.Ast
 
 type test_case = {
   title : string;
-  input : Sql.update * Sql.column_name list;
+  input : Sql.statement * Sql.column_name list;
   expected : Expr.rule list
 }
 
@@ -23,7 +23,7 @@ let run_test {input; expected; _} =
       |> String.concat "; "
   in
   let (update, columns) = input in
-  Sql2ast.update_to_datalog update columns >>= fun actual ->
+  Sql2ast.to_datalog update columns >>= fun actual ->
   let actual_str = string_of_rules actual in
   let expected_str = string_of_rules expected in
   if String.equal actual_str expected_str then
@@ -51,7 +51,6 @@ let run_tests (test_cases : test_case list) : bool =
   ) false
 
 let main () =
-  let open Sql2ast in
   let open Expr in
   run_tests [
     {

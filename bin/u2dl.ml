@@ -9,7 +9,7 @@ let check_arguments_count argv =
 let open_sql_ast filename =
   let chan = open_in filename in
   let lexbuf = Lexing.from_channel chan in
-  let ast = Sql.Parser.update Sql.Lexer.token lexbuf in
+  let ast = Sql.Parser.statement Sql.Lexer.token lexbuf in
   Result.Ok ast
 
 let open_view_ast filename =
@@ -25,7 +25,7 @@ let extract_schema expr =
   | None -> Result.Error "Invalid schema file. A view definition must be."
 
 let convert_to_dl sql cols =
-  match Sql2ast.update_to_datalog sql cols with
+  match Sql2ast.to_datalog sql cols with
   | Result.Ok _ as succ -> succ
   | Result.Error err -> Result.Error (Sql2ast.string_of_error err)
 
