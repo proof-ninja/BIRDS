@@ -235,5 +235,46 @@ let main () =
           ]
         )
       ]
+    };
+    {
+      title = "Basic INSERT";
+      (*
+       * SQL:
+       *   INSERT INTO
+       *     ced
+       *   VALUES
+       *   ( 'A', 'X' ),
+       *   ( 'B', 'Y' )
+       *
+       * datalog:
+       *   +ced(NAME, DEPT) :- NAME = 'A', DEPT = 'X'.
+       *   +ced(NAME, DEPT) :- NAME = 'B', DEPT = 'Y'.
+       *)
+      input = (
+        Sql.InsertInto (
+          "ced",
+          [
+            [Sql.Const (Sql.String "A"); Sql.Const (Sql.String "X")];
+            [Sql.Const (Sql.String "B"); Sql.Const (Sql.String "Y")]
+          ]
+        ),
+        ["NAME"; "DEPT"]
+      );
+      expected = [
+        (
+          Deltainsert ("ced", [NamedVar "NAME"; NamedVar "DEPT"]),
+          [
+            Equat (Equation ("=", (Var (NamedVar "NAME")), (Var (ConstVar (String "A")))));
+            Equat (Equation ("=", (Var (NamedVar "DEPT")), (Var (ConstVar (String "X")))));
+          ]
+        );
+        (
+          Deltainsert ("ced", [NamedVar "NAME"; NamedVar "DEPT"]),
+          [
+            Equat (Equation ("=", (Var (NamedVar "NAME")), (Var (ConstVar (String "B")))));
+            Equat (Equation ("=", (Var (NamedVar "DEPT")), (Var (ConstVar (String "Y")))));
+          ]
+        )
+      ]
     }
   ]
