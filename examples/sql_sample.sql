@@ -1,0 +1,7 @@
+UPDATE
+  ced
+SET
+  DEPT_NAME = 'R&D'
+WHERE
+  DEPT_NAME = 'Dev'
+;
