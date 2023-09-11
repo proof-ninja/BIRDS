@@ -30,6 +30,8 @@
         "SET", SET;
         "and", AND;
         "AND", AND;
+        "or", OR;
+        "OR", OR;
     ]
 }
 let digit = ['0'-'9']
@@ -56,7 +58,6 @@ rule token = parse
   | "NULL" | "null" { NULL }
   | '=' { EQUAL }
   | '*' { ASTERISK }
-  | "||" { CONCAT_OP }
   | '/' { NUM_DIV_OP }
   | "!=" | "<>" { NUM_NEQ_OP }
   | '+' { PLUS }

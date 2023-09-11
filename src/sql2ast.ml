@@ -42,17 +42,16 @@ let rec ast_vterm_of_sql_vterm colvarmap = function
       let op = Sql.string_of_binary_operator op in
       ResultMonad.return (Expr.BinaryOp (op, left, right))
 
-let ast_terms_of_sql_where_clause colvarmap = function
-  | Sql.Where sql_constraints ->
-    let ast_term_of_sql_constraint = function
-      | Sql.Constraint (left, op, right) ->
-          let op = Sql.string_of_operator op in
-          ast_vterm_of_sql_vterm colvarmap left >>= fun left ->
-          ast_vterm_of_sql_vterm colvarmap right >>= fun right ->
-          ResultMonad.return (Expr.Equat (Expr.Equation (op, left, right))) in
-    ResultMonad.mapM
-      ast_term_of_sql_constraint
-      sql_constraints
+let ast_terms_of_sql_where_clause colvarmap sql_constraints =
+  let ast_term_of_sql_constraint = function
+    | Sql.Constraint (left, op, right) ->
+        let op = Sql.string_of_operator op in
+        ast_vterm_of_sql_vterm colvarmap left >>= fun left ->
+        ast_vterm_of_sql_vterm colvarmap right >>= fun right ->
+        ResultMonad.return (Expr.Equat (Expr.Equation (op, left, right))) in
+  ResultMonad.mapM
+    ast_term_of_sql_constraint
+    sql_constraints
 
 let build_effects colvarmap column_and_vterms =
   (*
@@ -69,17 +68,20 @@ let build_effects colvarmap column_and_vterms =
         >>= fun var ->
       ResultMonad.return (Expr.Equat (Expr.Equation ("<>", Expr.Var var, vterm))))
 
-let build_deletion_rule colvarmap where_clause table_name varlist effect_term =
+let build_deletion_rules colvarmap where_clause table_name varlist effect_term =
   (* Constraints corresponding to the WHERE clause. May be empty. *)
   where_clause
-    |> Option.map (ast_terms_of_sql_where_clause colvarmap)
-    |> Option.value ~default:(Ok([]))
-    >>= fun body ->
+    |> ResultMonad.mapM (ast_terms_of_sql_where_clause colvarmap)
+    >>= fun bodies ->
 
   (* Create a rule corresponding to the operation to delete the record to be updated. *)
   let delete_pred = Expr.Deltadelete (table_name, varlist) in
   let from = Expr.Pred (table_name, varlist) in
-  ResultMonad.return (delete_pred, (Expr.Rel from :: body @ [effect_term]))
+  
+  ResultMonad.return (
+    bodies
+    |> List.map (fun body -> delete_pred, (Expr.Rel from :: body @ [effect_term]))
+  )
 
 let build_creation_rule colvarmap colvarmap' column_and_vterms table_name columns varlist =
   (* Create an expression equivalent to a SET clause in SQL. *)
@@ -191,7 +193,9 @@ let update_to_datalog table_name column_and_vterms where_clause (columns : Sql.c
 
   build_effects colvarmap column_and_vterms
   >>= fun effect_terms ->
-  ResultMonad.mapM (build_deletion_rule colvarmap where_clause table_name varlist) effect_terms
+  effect_terms
+  |> ResultMonad.mapM (build_deletion_rules colvarmap where_clause table_name varlist)
+  |> ResultMonad.map List.flatten
   >>= fun deletes ->
   build_creation_rule colvarmap colvarmap' column_and_vterms table_name columns varlist
   >>= fun insert ->

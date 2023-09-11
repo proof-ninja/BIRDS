@@ -73,13 +73,13 @@ let main () =
         Sql.UpdateSet (
           "ced",
           [(None, "dname"), Sql.Const (String "'R&D'")],
-          Some (Sql.Where ([
+          [[
             Sql.Constraint (
               Sql.Column (None, "dname"),
               Sql.RelEqual,
               Sql.Const (String "'Dev'")
             )
-          ]))
+          ]]
         ),
         ["ename"; "dname"]
       );
@@ -130,7 +130,7 @@ let main () =
             (None, "c3"), Sql.Const (String "'v3'");
             (None, "c5"), Sql.Const (String "'v5'")
           ],
-          Some (Sql.Where ([
+          [[
             Sql.Constraint (
               Sql.Column (None, "c2"),
               Sql.RelEqual,
@@ -141,7 +141,7 @@ let main () =
               Sql.RelEqual,
               Sql.Const (String "'v100'")
             )
-          ]))
+          ]]
         ),
         ["c1"; "c2"; "c3"; "c4"; "c5"; "c6"]
       );
@@ -207,7 +207,7 @@ let main () =
             (None, "c1"), Sql.Column (None, "c2");
             (None, "c2"), Sql.Column (None, "c3")
           ],
-          Some (Sql.Where ([]))
+          [[]]
         ),
         ["c1"; "c2"; "c3"; "c4"]
       );
@@ -232,6 +232,98 @@ let main () =
             Equat (Equation ("=", (Var (NamedVar "GENV1")), (Var (NamedVar "GENV2_2"))));
             Equat (Equation ("=", (Var (NamedVar "GENV2")), (Var (NamedVar "GENV3"))));
             Rel (Deltadelete ("t", [NamedVar "GENV1_2"; NamedVar "GENV2_2"; NamedVar "GENV3"; NamedVar "GENV4"]));
+          ]
+        )
+      ]
+    };
+    {
+      title = "Use OR condition.";
+      (*
+       * SQL:
+       *   UPDATE t
+       *   SET A = 'a', B = 'b'
+       *   WHERE C = 'x' AND D = 'y' OR E = 'z';
+       *
+       * datalog:
+       *   -t(GENV1, GENV2, GENV3, GENV4, GENV5) :- t(GENV1, GENV2, GENV3, GENV4, GENV5), GENV3 = 'x', GENV4 = 'y', GENV1 <> 'a'.
+       *   -t(GENV1, GENV2, GENV3, GENV4, GENV5) :- t(GENV1, GENV2, GENV3, GENV4, GENV5), GENV5 = 'z', GENV1 <> 'a'.
+       *   -t(GENV1, GENV2, GENV3, GENV4, GENV5) :- t(GENV1, GENV2, GENV3, GENV4, GENV5), GENV3 = 'x', GENV4 = 'y', GENV2 <> 'b'.
+       *   -t(GENV1, GENV2, GENV3, GENV4, GENV5) :- t(GENV1, GENV2, GENV3, GENV4, GENV5), GENV5 = 'z', GENV2 <> 'b'.
+       *   +t(GENV1, GENV2, GENV3, GENV4, GENV5) :- GENV1 = 'a', GENV2 = 'b', -t(GENV1_2, GENV2_2, GENV3, GENV4, GENV5)
+       *
+       *)
+      input = (
+        Sql.UpdateSet (
+          "t",
+          [
+            (None, "A"), Sql.Const (String "'a'");
+            (None, "B"), Sql.Const (String "'b'");
+          ],
+          [
+            [
+              Sql.Constraint (
+                Sql.Column (None, "C"),
+                Sql.RelEqual,
+                Sql.Const (String "'x'")
+              );
+              Sql.Constraint (
+                Sql.Column (None, "D"),
+                Sql.RelEqual,
+                Sql.Const (String "'y'")
+              )
+            ];
+            [
+              Sql.Constraint (
+                Sql.Column (None, "E"),
+                Sql.RelEqual,
+                Sql.Const (String "'z'")
+              )
+            ]
+          ]
+        ),
+        ["A"; "B"; "C"; "D"; "E"]
+      );
+      expected = [
+        (
+          Deltadelete ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]),
+          [
+            Rel (Pred ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]));
+            Equat (Equation ("=", (Var (NamedVar "GENV3")), (Var (ConstVar (String "'x'")))));
+            Equat (Equation ("=", (Var (NamedVar "GENV4")), (Var (ConstVar (String "'y'")))));
+            Equat (Equation ("<>", (Var (NamedVar "GENV1")), (Var (ConstVar (String "'a'")))))
+          ]
+        );
+        (
+          Deltadelete ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]),
+          [
+            Rel (Pred ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]));
+            Equat (Equation ("=", (Var (NamedVar "GENV5")), (Var (ConstVar (String "'z'")))));
+            Equat (Equation ("<>", (Var (NamedVar "GENV1")), (Var (ConstVar (String "'a'")))))
+          ]
+        );
+        (
+          Deltadelete ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]),
+          [
+            Rel (Pred ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]));
+            Equat (Equation ("=", (Var (NamedVar "GENV3")), (Var (ConstVar (String "'x'")))));
+            Equat (Equation ("=", (Var (NamedVar "GENV4")), (Var (ConstVar (String "'y'")))));
+            Equat (Equation ("<>", (Var (NamedVar "GENV2")), (Var (ConstVar (String "'b'")))))
+          ]
+        );
+        (
+          Deltadelete ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]),
+          [
+            Rel (Pred ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]));
+            Equat (Equation ("=", (Var (NamedVar "GENV5")), (Var (ConstVar (String "'z'")))));
+            Equat (Equation ("<>", (Var (NamedVar "GENV2")), (Var (ConstVar (String "'b'")))))
+          ]
+        );
+        (
+          Deltainsert ("t", [NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]),
+          [
+            Equat (Equation ("=", (Var (NamedVar "GENV1")), (Var (ConstVar (String "'a'")))));
+            Equat (Equation ("=", (Var (NamedVar "GENV2")), (Var (ConstVar (String "'b'")))));
+            Rel (Deltadelete ("t", [NamedVar "GENV1_2"; NamedVar "GENV2_2"; NamedVar "GENV3"; NamedVar "GENV4"; NamedVar "GENV5"]));
           ]
         )
       ]
