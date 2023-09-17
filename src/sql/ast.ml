@@ -101,7 +101,7 @@ let string_of_wheres wheres =
       |> String.concat " AND "
     )
     |> String.concat " OR\n"
-  ) ^ "\n"
+  )
 
 let to_string = function
   | InsertInto (table_name, values) ->
@@ -126,7 +126,7 @@ let to_string = function
       if List.length wheres = 0 then
         ""
       else
-        string_of_wheres wheres
+        string_of_wheres wheres ^ "\n"
     ) ^ ";"
   | UpdateSet (table_name, sets, wheres) ->
     let string_of_set (col, vterm) =
@@ -143,5 +143,5 @@ let to_string = function
       if List.length wheres = 0 then
         ""
       else
-        string_of_wheres wheres
+        string_of_wheres wheres ^ "\n"
     ) ^ ";"
