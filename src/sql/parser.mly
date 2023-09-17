@@ -2,10 +2,10 @@
 %token <string> IDENT TEXT
 %token <float> FLOAT
 %token LPAREN RPAREN COMMA EOF DOT NULL
-%token INSERT INTO VALUES UPDATE WHERE EQUAL ASTERISK SET AND CONCAT_OP
+%token INSERT INTO VALUES UPDATE WHERE EQUAL ASTERISK SET AND OR
 %token NUM_DIV_OP NUM_NEQ_OP PLUS MINUS
 
-%left CONCAT_OP
+%left OR
 %left AND
 %nonassoc EQUAL NUM_NEQ_OP
 %left PLUS MINUS
@@ -30,7 +30,7 @@
   ;
 
   update:
-  | UPDATE table=IDENT SET ss=commas(set_column) w=where? { Ast.UpdateSet (table, ss, w) }
+  | UPDATE table=IDENT SET ss=commas(set_column) ws=wheres? { Ast.UpdateSet (table, ss, Option.value ~default:[] ws) }
   ;
 
   set_column:
@@ -67,11 +67,14 @@
   | MINUS { Ast.Minus }
   | ASTERISK { Ast.Times }
   | NUM_DIV_OP { Ast.Divides }
-  | CONCAT_OP { Ast.Lor }
+  ;
+
+  wheres:
+  | WHERE ws=ors(where) { ws }
   ;
 
   where:
-  | WHERE cs=ands(sql_constraint) { Ast.Where cs }
+  | cs=ands(sql_constraint) { cs }
   ;
 
   sql_constraint:
@@ -85,4 +88,5 @@
   ;
 
 %inline commas(X): l=separated_nonempty_list(COMMA, X) { l }
+%inline ors(X): l=separated_nonempty_list(OR, X) { l }
 %inline ands(X): l=separated_nonempty_list(AND, X) { l }

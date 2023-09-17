@@ -4,7 +4,6 @@ type binary_operator =
   | Minus   (* - *)
   | Times   (* * *)
   | Divides (* / *)
-  | Lor     (* || *)
 
 type unary_operator =
   | Negate (* - *)
@@ -38,21 +37,20 @@ type vterm =
 type sql_constraint =
   | Constraint of vterm * operator * vterm
 
-type where_clause =
-  | Where of sql_constraint list
+type where_clause = sql_constraint list
 
 type insert_value = vterm list
 
+(** The WHERE clause combines multiple constraints joined by AND conditions with OR conditions. *)
 type statement =
   | InsertInto of table_name * insert_value list
-  | UpdateSet of table_name * (column * vterm) list * where_clause option
+  | UpdateSet of table_name * (column * vterm) list * where_clause list
 
 let string_of_binary_operator = function
   | Plus    -> "+"
   | Minus   -> "-"
   | Times   -> "*"
   | Divides -> "/"
-  | Lor     -> "||"
 
 let string_of_unary_operator = function
   | Negate -> "-"
@@ -120,12 +118,16 @@ let to_string = function
       |> List.map string_of_set
       |> String.concat "\n"
     ) ^
-    match where with
-    | None -> ""
-    | Some (Where cs) ->
+    if List.length where = 0 then
+      ""
+    else
       "\nWHERE\n" ^ (
-        cs
-        |> List.map (fun c -> "  " ^ string_of_constraint c)
-        |> String.concat "\n"
+        where
+        |> List.map (fun cs ->
+          cs
+          |> List.map (fun c -> "  " ^ string_of_constraint c)
+          |> String.concat " AND "
+        )
+        |> String.concat " OR\n"
       )
     ^ "\n;"
