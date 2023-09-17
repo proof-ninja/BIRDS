@@ -2,7 +2,7 @@
 %token <string> IDENT TEXT
 %token <float> FLOAT
 %token LPAREN RPAREN COMMA EOF DOT NULL
-%token UPDATE WHERE EQUAL ASTERISK SET AND CONCAT_OP
+%token INSERT INTO VALUES UPDATE WHERE EQUAL ASTERISK SET AND CONCAT_OP
 %token NUM_DIV_OP NUM_NEQ_OP PLUS MINUS
 
 %left CONCAT_OP
@@ -12,15 +12,24 @@
 %left ASTERISK NUM_DIV_OP
 %nonassoc UNARY_MINUS
 
-%start <Ast.update> update
+%start <Ast.statement> statement
 
 %%
 
-  update:
-  | update_stmt EOF { $1 }
+  statement:
+  | insert EOF { $1 }
+  | update EOF { $1 }
   ;
 
-  update_stmt:
+  insert:
+  | INSERT INTO table=IDENT VALUES vs=commas(values) { Ast.InsertInto (table, vs) }
+  ;
+
+  values:
+  | LPAREN es=commas(vterm) RPAREN { es }
+  ;
+
+  update:
   | UPDATE table=IDENT SET ss=commas(set_column) w=where? { Ast.UpdateSet (table, ss, w) }
   ;
 

@@ -16,6 +16,12 @@
       raise (LexErr (spec_error (lexeme lexbuf) (lexeme_start_p lexbuf) (lexeme_end_p lexbuf)))
 
     let keywords = [
+        "insert", INSERT;
+        "INSERT", INSERT;
+        "into", INTO;
+        "INTO", INTO;
+        "values", VALUES;
+        "VALUES", VALUES;
         "update", UPDATE;
         "UPDATE", UPDATE;
         "where", WHERE;

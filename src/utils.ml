@@ -645,6 +645,7 @@ module ResultMonad : sig
   val map_err : ('e1 -> 'e2) -> ('a, 'e1) result -> ('a, 'e2) result
   val foldM : ('a -> 'b -> ('a, 'e) result) -> 'a -> 'b list -> ('a, 'e) result
   val mapM : ('a -> ('b, 'e) result) -> 'a list -> ('b list, 'e) result
+  val sequence : (('a, 'e) result) list -> ('a list, 'e) result
   val ( >>= ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
 end = struct
 
@@ -680,6 +681,8 @@ end = struct
       return (y :: acc)
     ) [] >>= fun acc ->
     return (List.rev acc)
+
+  let sequence vs = mapM Fun.id vs
 end
 
 

@@ -3,3 +3,9 @@
  (name u2dl)
  (modules u2dl)
  (libraries birds sql))
+
+(executable
+ (public_name parse)
+ (name parse)
+ (modules parse)
+ (libraries birds sql))

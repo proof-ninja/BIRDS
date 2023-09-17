@@ -5,10 +5,14 @@ module Sql = Sql.Ast
 let ( >>= ) = ResultMonad.( >>= )
 
 type error =
+  | InvalidStatementType of { actual: string; expected: string }
   | InvalidColumnName of string
 
 let string_of_error = function
-  | InvalidColumnName name -> Printf.sprintf "Invalid Column Name: %s" name
+  | InvalidColumnName name ->
+      Printf.sprintf "Invalid Column Name: %s" name
+  | InvalidStatementType { actual; expected } ->
+      Printf.sprintf "Statement type '%s' was expected, but actually it was '%s'." actual expected
 
 (** Column Name (as String) to Expr.var *)
 module ColumnVarMap = Map.Make(String)
@@ -102,8 +106,37 @@ let build_creation_rule colvarmap colvarmap' column_and_vterms table_name column
 
 module ColumnSet = Set.Make(String)
 
-let update_to_datalog (update : Sql.update) (columns : Sql.column_name list) : (Expr.rule list, error) result =
-  let Sql.UpdateSet (table_name, column_and_vterms, where_clause) = update in
+let insert_to_datalog table_name values (columns : Sql.column_name list) =
+  let make_column_var_list make_var =
+    List.mapi (fun idx column_name ->
+      let var = make_var idx column_name in
+      (None, column_name), var
+    )
+  in
+  let make_colvarmap column_var_list = column_var_list
+    |> List.map (fun (col, var) -> Sql.string_of_column_ignore_instance col, var)
+    |> List.to_seq
+    |> ColumnVarMap.of_seq
+  in
+  let column_var_list = columns
+    |> make_column_var_list (fun idx _ -> Expr.NamedVar (Printf.sprintf "GENV%d" (idx + 1))) in
+  let colvarmap = make_colvarmap column_var_list in
+
+  values
+  |> ResultMonad.mapM (fun vs ->
+    let vars = columns |> List.map (fun col -> Expr.NamedVar col) in
+    let rterm = Expr.Deltainsert (table_name, vars) in
+    List.map2 (fun colvar value ->
+      let left = Expr.Var colvar in
+      ast_vterm_of_sql_vterm colvarmap value >>= fun right ->
+      ResultMonad.return (Expr.Equat (Expr.Equation ("=", left, right)))
+    ) vars vs
+    |> ResultMonad.sequence
+    >>= fun terms ->
+    ResultMonad.return (rterm, terms)
+  )
+
+let update_to_datalog table_name column_and_vterms where_clause (columns : Sql.column_name list) =
 
   (* Create (column name as String, Expr.var) list. *)
   let make_column_var_list make_var =
@@ -115,7 +148,8 @@ let update_to_datalog (update : Sql.update) (columns : Sql.column_name list) : (
   let make_colvarmap column_var_list = column_var_list
     |> List.map (fun (col, var) -> Sql.string_of_column_ignore_instance col, var)
     |> List.to_seq
-    |> ColumnVarMap.of_seq in
+    |> ColumnVarMap.of_seq
+  in
 
   (*
    * The column name and the name of the variable on the delta-datalog code corresponding to that column.
@@ -163,3 +197,10 @@ let update_to_datalog (update : Sql.update) (columns : Sql.column_name list) : (
   >>= fun insert ->
 
   ResultMonad.return (deletes @ [insert])
+
+let to_datalog (statement : Sql.statement) (columns : Sql.column_name list) : (Expr.rule list, error) result =
+  match statement with
+  | Sql.UpdateSet (table_name, column_and_vterms, where_clause) ->
+      update_to_datalog table_name column_and_vterms where_clause columns
+  | Sql.InsertInto (table_name, values) ->
+  insert_to_datalog table_name values columns

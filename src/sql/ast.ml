@@ -41,7 +41,10 @@ type sql_constraint =
 type where_clause =
   | Where of sql_constraint list
 
-type update =
+type insert_value = vterm list
+
+type statement =
+  | InsertInto of table_name * insert_value list
   | UpdateSet of table_name * (column * vterm) list * where_clause option
 
 let string_of_binary_operator = function
@@ -91,6 +94,21 @@ let string_of_constraint = function
         (string_of_vterm right)
 
 let to_string = function
+  | InsertInto (table_name, values) ->
+    let values = values
+      |> List.map (fun value ->
+      let value = value
+        |> List.map string_of_vterm
+        |> String.concat ", "
+      in
+      Printf.sprintf "( %s )" value
+      )
+      |> String.concat "\n"
+    in
+    "INSERT INTO\n" ^
+    "  " ^ table_name ^ "\n" ^
+    "VALUES\n" ^
+    values
   | UpdateSet (table_name, sets, where) ->
     let string_of_set (col, vterm) =
       Printf.sprintf "  %s = %s" (string_of_column col) (string_of_vterm vterm)

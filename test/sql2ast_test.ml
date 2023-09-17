@@ -5,7 +5,7 @@ module Sql = Sql.Ast
 
 type test_case = {
   title : string;
-  input : Sql.update * Sql.column_name list;
+  input : Sql.statement * Sql.column_name list;
   expected : Expr.rule list
 }
 
@@ -23,7 +23,7 @@ let run_test {input; expected; _} =
       |> String.concat "; "
   in
   let (update, columns) = input in
-  Sql2ast.update_to_datalog update columns >>= fun actual ->
+  Sql2ast.to_datalog update columns >>= fun actual ->
   let actual_str = string_of_rules actual in
   let expected_str = string_of_rules expected in
   if String.equal actual_str expected_str then
@@ -51,7 +51,6 @@ let run_tests (test_cases : test_case list) : bool =
   ) false
 
 let main () =
-  let open Sql2ast in
   let open Expr in
   run_tests [
     {
@@ -233,6 +232,47 @@ let main () =
             Equat (Equation ("=", (Var (NamedVar "GENV1")), (Var (NamedVar "GENV2_2"))));
             Equat (Equation ("=", (Var (NamedVar "GENV2")), (Var (NamedVar "GENV3"))));
             Rel (Deltadelete ("t", [NamedVar "GENV1_2"; NamedVar "GENV2_2"; NamedVar "GENV3"; NamedVar "GENV4"]));
+          ]
+        )
+      ]
+    };
+    {
+      title = "Basic INSERT";
+      (*
+       * SQL:
+       *   INSERT INTO
+       *     ced
+       *   VALUES
+       *   ( 'A', 'X' ),
+       *   ( 'B', 'Y' )
+       *
+       * datalog:
+       *   +ced(NAME, DEPT) :- NAME = 'A', DEPT = 'X'.
+       *   +ced(NAME, DEPT) :- NAME = 'B', DEPT = 'Y'.
+       *)
+      input = (
+        Sql.InsertInto (
+          "ced",
+          [
+            [Sql.Const (Sql.String "A"); Sql.Const (Sql.String "X")];
+            [Sql.Const (Sql.String "B"); Sql.Const (Sql.String "Y")]
+          ]
+        ),
+        ["NAME"; "DEPT"]
+      );
+      expected = [
+        (
+          Deltainsert ("ced", [NamedVar "NAME"; NamedVar "DEPT"]),
+          [
+            Equat (Equation ("=", (Var (NamedVar "NAME")), (Var (ConstVar (String "A")))));
+            Equat (Equation ("=", (Var (NamedVar "DEPT")), (Var (ConstVar (String "X")))));
+          ]
+        );
+        (
+          Deltainsert ("ced", [NamedVar "NAME"; NamedVar "DEPT"]),
+          [
+            Equat (Equation ("=", (Var (NamedVar "NAME")), (Var (ConstVar (String "B")))));
+            Equat (Equation ("=", (Var (NamedVar "DEPT")), (Var (ConstVar (String "Y")))));
           ]
         )
       ]
