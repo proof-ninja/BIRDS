@@ -1,0 +1,1 @@
+view ced('ID':int, 'DEPT_NAME':string).

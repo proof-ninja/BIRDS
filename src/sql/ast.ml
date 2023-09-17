@@ -44,6 +44,7 @@ type insert_value = vterm list
 (** The WHERE clause combines multiple constraints joined by AND conditions with OR conditions. *)
 type statement =
   | InsertInto of table_name * insert_value list
+  | DeleteFrom of table_name * where_clause list
   | UpdateSet of table_name * (column * vterm) list * where_clause list
 
 let string_of_binary_operator = function
@@ -91,6 +92,17 @@ let string_of_constraint = function
         (string_of_operator op)
         (string_of_vterm right)
 
+let string_of_wheres wheres =
+  "WHERE\n" ^ (
+    wheres
+    |> List.map (fun cs ->
+      cs
+      |> List.map (fun c -> "  " ^ string_of_constraint c)
+      |> String.concat " AND "
+    )
+    |> String.concat " OR\n"
+  ) ^ "\n"
+
 let to_string = function
   | InsertInto (table_name, values) ->
     let values = values
@@ -107,7 +119,16 @@ let to_string = function
     "  " ^ table_name ^ "\n" ^
     "VALUES\n" ^
     values
-  | UpdateSet (table_name, sets, where) ->
+  | DeleteFrom (table_name, wheres) ->
+    "DELETE FROM\n" ^
+    "  " ^ table_name ^ "\n" ^
+    (
+      if List.length wheres = 0 then
+        ""
+      else
+        string_of_wheres wheres
+    ) ^ ";"
+  | UpdateSet (table_name, sets, wheres) ->
     let string_of_set (col, vterm) =
       Printf.sprintf "  %s = %s" (string_of_column col) (string_of_vterm vterm)
     in
@@ -117,17 +138,10 @@ let to_string = function
       sets
       |> List.map string_of_set
       |> String.concat "\n"
-    ) ^
-    if List.length where = 0 then
-      ""
-    else
-      "\nWHERE\n" ^ (
-        where
-        |> List.map (fun cs ->
-          cs
-          |> List.map (fun c -> "  " ^ string_of_constraint c)
-          |> String.concat " AND "
-        )
-        |> String.concat " OR\n"
-      )
-    ^ "\n;"
+    ) ^ "\n" ^
+    (
+      if List.length wheres = 0 then
+        ""
+      else
+        string_of_wheres wheres
+    ) ^ ";"

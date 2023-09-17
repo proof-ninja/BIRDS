@@ -2,7 +2,7 @@
 %token <string> IDENT TEXT
 %token <float> FLOAT
 %token LPAREN RPAREN COMMA EOF DOT NULL
-%token INSERT INTO VALUES UPDATE WHERE EQUAL ASTERISK SET AND OR
+%token INSERT INTO VALUES DELETE FROM UPDATE WHERE EQUAL ASTERISK SET AND OR
 %token NUM_DIV_OP NUM_NEQ_OP PLUS MINUS
 
 %left OR
@@ -18,6 +18,7 @@
 
   statement:
   | insert EOF { $1 }
+  | delete EOF { $1 }
   | update EOF { $1 }
   ;
 
@@ -27,6 +28,10 @@
 
   values:
   | LPAREN es=commas(vterm) RPAREN { es }
+  ;
+
+  delete:
+  | DELETE FROM table=IDENT ws=wheres? { Ast.DeleteFrom (table, Option.value ~default:[] ws) }
   ;
 
   update:
