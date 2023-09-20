@@ -368,5 +368,72 @@ let main () =
           ]
         )
       ]
+    };
+    {
+      title = "Basic DELETE";
+      (*
+       * SQL:
+       * DELETE FROM
+       *   ced
+       * WHERE ID = 1
+       * AND DEPT_NAME = 'A'
+       * OR ID = 2
+       * AND DEPT_NAME = 'B'
+       * ;
+       *
+       * datalog:
+       *   -ced(GENV1, GENV2) :- ced(GENV1, GENV2), GENV1 = 1, GENV2 = 'A'.
+       *   -ced(GENV1, GENV2) :- ced(GENV1, GENV2), GENV1 = 2, GENV2 = 'B'.
+       *)
+      input = (
+        Sql.DeleteFrom (
+          "ced",
+          [
+            [
+              Sql.Constraint (
+                Sql.Column (None, "ID"),
+                Sql.RelEqual,
+                Sql.Const (Int 1)
+              );
+              Sql.Constraint (
+                Sql.Column (None, "DEPT_NAME"),
+                Sql.RelEqual,
+                Sql.Const (String "'A'")
+              )
+            ];
+            [
+              Sql.Constraint (
+                Sql.Column (None, "ID"),
+                Sql.RelEqual,
+                Sql.Const (Int 2)
+              );
+              Sql.Constraint (
+                Sql.Column (None, "DEPT_NAME"),
+                Sql.RelEqual,
+                Sql.Const (String "'B'")
+              )
+            ]
+          ]
+        ),
+        ["ID"; "DEPT_NAME"]
+      );
+      expected = [
+        (
+          Deltadelete ("ced", [NamedVar "GENV1"; NamedVar "GENV2"]),
+          [
+            Rel (Pred ("ced", [NamedVar "GENV1"; NamedVar "GENV2"]));
+            Equat (Equation ("=", (Var (NamedVar "GENV1")), (Var (ConstVar (Int 1)))));
+            Equat (Equation ("=", (Var (NamedVar "GENV2")), (Var (ConstVar (String "'A'")))))
+          ]
+        );
+        (
+          Deltadelete ("ced", [NamedVar "GENV1"; NamedVar "GENV2"]),
+          [
+            Rel (Pred ("ced", [NamedVar "GENV1"; NamedVar "GENV2"]));
+            Equat (Equation ("=", (Var (NamedVar "GENV1")), (Var (ConstVar (Int 2)))));
+            Equat (Equation ("=", (Var (NamedVar "GENV2")), (Var (ConstVar (String "'B'")))))
+          ]
+        )
+      ]
     }
   ]

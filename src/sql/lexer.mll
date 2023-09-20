@@ -22,6 +22,10 @@
         "INTO", INTO;
         "values", VALUES;
         "VALUES", VALUES;
+        "delete", DELETE;
+        "DELETE", DELETE;
+        "from", FROM;
+        "FROM", FROM;
         "update", UPDATE;
         "UPDATE", UPDATE;
         "where", WHERE;

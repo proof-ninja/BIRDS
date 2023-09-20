@@ -1,0 +1,7 @@
+DELETE FROM
+  ced
+WHERE ID = 1
+AND DEPT_NAME = 'A'
+OR ID = 2
+AND DEPT_NAME = 'B'
+;
