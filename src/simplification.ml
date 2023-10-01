@@ -8,7 +8,7 @@ module Const = struct
 
   let compare (c1 : const) (c2 : const) : int =
     match (c1, c2) with
-    | (Int n1, Int n2)       -> compare n1 n2 (* `Int.compare` can be used for OCaml >= 4.08 *)
+    | (Int n1, Int n2)       -> Int.compare n1 n2
     | (Int _, _)             -> 1
     | (_, Int _)             -> -1
     | (Real r1, Real r2)     -> Float.compare r1 r2
@@ -17,7 +17,7 @@ module Const = struct
     | (String s1, String s2) -> String.compare s1 s2
     | (String _, _)          -> 1
     | (_, String _)          -> -1
-    | (Bool b1, Bool b2)     -> compare b1 b2 (* `Bool.compare` can be used for OCaml >= 4.08 *)
+    | (Bool b1, Bool b2)     -> Bool.compare b1 b2
     | (Bool _, _)            -> 1
     | (_, Bool _)            -> -1
     | (Null, Null)           -> 0
@@ -101,21 +101,7 @@ module BodyTermArguments = struct
   type t = body_term_arguments
 
   let compare (args1 : t) (args2 : t) : int =
-    let rec aux args1 args2 =
-      match (args1, args2) with
-      | ([], [])     -> 0
-      | ([], _ :: _) -> 1
-      | (_ :: _, []) -> -1
-
-      | (x1 :: xs1, x2 :: xs2) ->
-          begin
-            match body_var_compare x1 x2 with
-            | 0       -> aux xs1 xs2
-            | nonzero -> nonzero
-          end
-    in
-    aux args1 args2
-      (* `List.compare` can be used for OCaml >= 4.12 *)
+    List.compare body_var_compare args1 args2
 end
 
 module BodyTermArgumentsSet = Set.Make(BodyTermArguments)
@@ -164,13 +150,7 @@ let predicate_map_equal : predicate_map -> predicate_map -> bool =
 
 
 let head_arguments_equal (args1 : intermediate_head_var list) (args2 : intermediate_head_var list) : bool =
-  try
-    List.fold_left2 (fun b x1 x2 ->
-      b && head_var_equal x1 x2
-    ) true args1 args2
-  with
-  | Invalid_argument _ -> false
-      (* `List.equal` can be used for OCaml >= 4.12 *)
+  List.equal head_var_equal args1 args2
 
 
 (* Checks that `imrule1` and `imrule2` are syntactically equal
@@ -390,7 +370,7 @@ let revert_rule (imrule : intermediate_rule) : rule =
     negative_terms |> PredicateMap.bindings |> List.map (revert_body_terms ~positive:false) |> List.concat
   in
   let terms_eq =
-    equations |> VariableMap.bindings |> List.map (fun (x, cr) ->
+    equations |> VariableMap.bindings |> List.concat_map (fun (x, cr) ->
       match cr with
       | EqualTo c ->
           [ Equat (Equation ("=", Var (NamedVar x), Const c)) ]
@@ -399,8 +379,7 @@ let revert_rule (imrule : intermediate_rule) : rule =
           cset |> ConstSet.elements |> List.map (fun c ->
             Noneq (Equation ("=", Var (NamedVar x), Const c))
           )
-    ) |> List.concat
-      (* `List.concat_map` can be used for OCaml >= 4.10 *)
+    )
   in
   let body = List.concat [ terms_pos; terms_neg; terms_eq ] in
   (head, body)
