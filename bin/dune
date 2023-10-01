@@ -9,6 +9,12 @@
  (name dl2u)
  (modules dl2u)
  (libraries birds))
+ 
+(executable
+  (public_name inlining)
+  (name inlining)
+  (modules inlining)
+  (libraries birds))
 
 (executable
  (public_name parse)
