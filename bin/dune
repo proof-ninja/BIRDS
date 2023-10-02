@@ -15,6 +15,12 @@
   (name inlining)
   (modules inlining)
   (libraries birds))
+ 
+(executable
+  (public_name simplification)
+  (name simplification)
+  (modules simplification)
+  (libraries birds))
 
 (executable
   (public_name simplification)
