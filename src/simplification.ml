@@ -666,3 +666,13 @@ let simplify (rules : rule list) : (rule list, error) result =
 
   let rules = imrules |> List.map revert_rule in
   return rules
+
+let string_of_error = function
+| UnexpectedHeadVarForm var ->
+    Printf.sprintf "Unexpected Head Var: %s" @@ Expr.string_of_var var
+| UnexpectedBodyVarForm var ->
+  Printf.sprintf "Unexpected Body Var: %s" @@ Expr.string_of_var var
+| UnsupportedEquation eterm ->
+  Printf.sprintf "Unexpected Equation: %s" @@ Expr.string_of_eterm eterm
+| NonequalityNotSupported eterm ->
+  Printf.sprintf "Nonequality Not Supported: %s" @@ Expr.string_of_eterm eterm
