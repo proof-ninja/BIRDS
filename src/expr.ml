@@ -256,7 +256,12 @@ module Alpha = struct
       | Equat eterm -> Equat (conv_eterm eterm)
       | Noneq eterm -> Noneq (conv_eterm eterm)
     in
-    rterm, List.map conv_term terms
+    let terms =
+      terms
+      |> List.map conv_term
+      |> List.sort Term.compare
+    in
+    rterm, terms
 end
 
 module RuleSet = struct

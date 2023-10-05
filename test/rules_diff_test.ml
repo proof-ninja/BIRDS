@@ -54,7 +54,7 @@ let main () =
   let open Expr in
   run_tests [
     {
-      title = "sample";
+      title = "Diff sample";
       (*
        * left:
        *   a(X) :- X = 1.
@@ -81,6 +81,32 @@ let main () =
         ];
       expected = [
         (Pred ("c", [NamedVar "X"]), [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+      ]
+    };
+    {
+      title = "To sort body";
+      (*
+       * left:
+       *   f(X, Y) :- X = 1, Y = 2.
+       *   g(X, Y) :- X = 1, Y = 1.
+       * right:
+       *   f(X, Y) :- Y = 2, X = 1.
+       *   g(X, Y) :- Y = 2, X = 2.
+       *
+       * expected:
+       *   g(X, Y) :- X = 1, Y = 1.
+       *)
+      input =
+        [
+          (Pred ("f", [NamedVar "X"; NamedVar "Y"]), [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1))); Equat (Equation ("=", Var (NamedVar "Y"), Const (Int 2)))]);
+          (Pred ("g", [NamedVar "X"; NamedVar "Y"]), [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1))); Equat (Equation ("=", Var (NamedVar "Y"), Const (Int 1)))]);
+        ],
+        [
+          (Pred ("f", [NamedVar "X"; NamedVar "Y"]), [Equat (Equation ("=", Var (NamedVar "Y"), Const (Int 2))); Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (Pred ("g", [NamedVar "Y"; NamedVar "Y"]), [Equat (Equation ("=", Var (NamedVar "Y"), Const (Int 2))); Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+        ];
+      expected = [
+        (Pred ("g", [NamedVar "X"; NamedVar "Y"]), [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1))); Equat (Equation ("=", Var (NamedVar "Y"), Const (Int 1)))]);
       ]
     }
   ]
