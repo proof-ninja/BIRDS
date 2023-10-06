@@ -1,0 +1,2 @@
+f(X) :- true.
+g(X) :- false.

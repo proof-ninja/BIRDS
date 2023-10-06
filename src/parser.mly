@@ -190,6 +190,8 @@
   | NOT predicate { Not $2 }
   | equation      { Equat $1 }
   | NOT equation  { Noneq $2 }
+  | TT            { ConstTerm true }
+  | FF            { ConstTerm false }
   | error         { spec_parse_error "invalid syntax for a literal" 1; }
   ;
 
