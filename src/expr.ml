@@ -180,12 +180,9 @@ module Term = struct
     | Equat _, _ -> 1
     | _, Equat _ -> -1
     | Noneq e1, Noneq e2 -> ETerm.compare e1 e2
-<<<<<<< HEAD
     | Noneq _, _ -> 1
     | _, Noneq _ -> -1
     | ConstTerm e1, ConstTerm e2 -> Bool.compare e1 e2
-=======
->>>>>>> ceb6b2c (Bump)
 end
 
 module Rule = struct
