@@ -156,7 +156,8 @@ let anonvar2namedvar (h, b) =
             | Not _rt -> (t::lst, ind)
             (* AnonVar in a negated predicate can not be converted to NamedVar because it make program unsafe *)
             | Equat _ -> (t::lst, ind)
-            | Noneq _ -> (t::lst, ind) in
+            | Noneq _ -> (t::lst, ind)
+            | ConstTerm _ -> (t::lst, ind) in
         let newb,_ = List.fold_right a2n_term b ([], 0) in
         (* print_endline (string_of_stt (Rule(h,newb)));  *)
         (h,newb)
@@ -184,7 +185,8 @@ let string2int mapping (h, b) =
             | Rel rt -> Rel (s2i_rterm rt)
             | Not rt -> Not (s2i_rterm rt)
             | Equat e -> Equat (s2i_eterm e)
-            | Noneq e -> Noneq (s2i_eterm e) in
+            | Noneq e -> Noneq (s2i_eterm e)
+            | ConstTerm b as ct -> ct in
 
         let newb  = List.map s2i_term b in
         let newh  = s2i_rterm h in

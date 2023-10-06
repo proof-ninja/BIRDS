@@ -1898,6 +1898,10 @@ let decompose_body ~(error_detail : error_detail) (body : term list) : (positive
         let op_dual = negate_comparison_operator op in
         return (pos_acc, neg_acc, Comparison (op_dual, t1, t2) :: comp_acc)
 
+    | ConstTerm b ->
+        let var = Expr.ConstVar (Expr.Bool b) in
+        err (InvalidArgInBody { var; error_detail })
+
   ) ([], [], []) >>= fun (pos_acc, neg_acc, comp_acc) ->
   return (List.rev pos_acc, List.rev neg_acc, List.rev comp_acc)
 

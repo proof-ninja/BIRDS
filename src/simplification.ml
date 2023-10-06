@@ -313,6 +313,12 @@ let convert_rule (rule : rule) : (intermediate_rule option, error) result =
                 | Some eqnmap ->
                     return (Some (predmap_pos, predmap_neg, eqnmap))
               end
+
+          | ConstTerm bool ->
+            if bool then
+              return (Some (predmap_pos, predmap_neg, eqnmap))
+            else
+              return None
         end
   ) (Some (PredicateMap.empty, PredicateMap.empty, VariableMap.empty)) >>= function
   | None ->

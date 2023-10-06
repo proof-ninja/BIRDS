@@ -18,14 +18,17 @@ let deltapred_to_pred prefix expr =
   let rterm_to_pred rt = match rt with
     | Pred (_x, _vl) -> rt
     | Deltainsert (_x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl)
-    | Deltadelete (_x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl) in
+    | Deltadelete (_x, vl) -> Pred (prefix ^ get_rterm_predname rt, vl)
+  in
   let term_map_to_pred tt = match tt with
     | Rel rt -> Rel (rterm_to_pred rt)
     | Equat _ -> tt
     | Noneq _ -> tt
-    | Not rt -> Not (rterm_to_pred rt) in
+    | Not rt -> Not (rterm_to_pred rt)
+    | ConstTerm _ -> tt
+  in
   let in_stt (head,body) = (rterm_to_pred head, List.map term_map_to_pred body) in
-  {expr with rules = (List.map in_stt expr.rules)}
+  { expr with rules = (List.map in_stt expr.rules) }
 
 let check_neg_view (view:rterm) rule_body = List.mem view rule_body
 
@@ -330,28 +333,32 @@ let datalog_of_putget (log:bool) (full_deltas:bool) prog =
 
 (** Given a rule, extract the projection operator of the rule and do the projections in other rules. *)
 let extract_projection rule ind= match rule with
-    | (h, b) ->
-        let extract_projection_of_neg t (termlst, rulelst, loc_ind) = match t with
-            | Rel _rt -> (t::termlst, rulelst, loc_ind)
-            | Not rt -> let varlst = (get_rterm_varlist rt) in
-                if (List.mem AnonVar varlst) then
-                let new_rt = Pred("_pi_proj_"^string_of_int loc_ind, (List.filter (non is_anon) varlst) ) in
-                let new_rule = ( new_rt , [Rel rt]) in
-                ((Not new_rt):: termlst, (anonvar2namedvar new_rule) ::rulelst, (loc_ind+1))
-                else (t:: termlst, rulelst, loc_ind)
-            (* AnonVar in a negated predicate can not be converted to NamedVar because it make program unsafe *)
-            | Equat _ -> (t::termlst, rulelst, loc_ind)
-            | Noneq _ -> (t::termlst, rulelst, loc_ind) in
-        let new_b, new_rules, new_ind = List.fold_right extract_projection_of_neg b ([], [], ind) in
-        let body_varset = setify (get_termlst_vars new_b) in
-        let h_varset = setify (get_rterm_varlist h) in
-        if (set_eq h_varset body_varset) || ((List.length new_b) = 1) then
-            (* no more projection *)
-            (new_rules@ [(h, new_b)] , new_ind)
-        else
-            (* there is a projection *)
-            let new_h = Pred("_pi_proj_"^string_of_int new_ind,  body_varset) in
-            (new_rules@ [(new_h, new_b); (h, [Rel new_h])], (new_ind+1))
+  | (h, b) ->
+    let extract_projection_of_neg t (termlst, rulelst, loc_ind) = match t with
+      | Rel _rt -> (t::termlst, rulelst, loc_ind)
+      | Not rt ->
+          let varlst = (get_rterm_varlist rt) in
+          if (List.mem AnonVar varlst) then
+            let new_rt = Pred("_pi_proj_"^string_of_int loc_ind, (List.filter (non is_anon) varlst) ) in
+            let new_rule = ( new_rt , [Rel rt]) in
+            ((Not new_rt):: termlst, (anonvar2namedvar new_rule) ::rulelst, (loc_ind+1))
+          else
+            (t:: termlst, rulelst, loc_ind)
+      (* AnonVar in a negated predicate can not be converted to NamedVar because it make program unsafe *)
+      | Equat _ -> (t::termlst, rulelst, loc_ind)
+      | Noneq _ -> (t::termlst, rulelst, loc_ind)
+      | ConstTerm _ -> (t::termlst, rulelst, loc_ind)
+    in
+    let new_b, new_rules, new_ind = List.fold_right extract_projection_of_neg b ([], [], ind) in
+    let body_varset = setify (get_termlst_vars new_b) in
+    let h_varset = setify (get_rterm_varlist h) in
+    if (set_eq h_varset body_varset) || ((List.length new_b) = 1) then
+        (* no more projection *)
+        (new_rules@ [(h, new_b)] , new_ind)
+    else
+        (* there is a projection *)
+        let new_h = Pred("_pi_proj_"^string_of_int new_ind,  body_varset) in
+        (new_rules@ [(new_h, new_b); (h, [Rel new_h])], (new_ind+1))
 
 
 (** Take a view update datalog program and extract projections to other rules. *)

@@ -77,6 +77,7 @@ type error =
   | UnexpectedBodyVarForm  of var
   | PredicateArityMismatch of int * int
   | CyclicDependency       of predicate_definition list
+  | UnsupportedTerm of term
 
 
 let string_of_intermediate_predicate = function
@@ -102,6 +103,9 @@ let string_of_error = function
         ) |> String.concat ", "
       in
       Printf.sprintf "cyclic dependency found among %s" s
+  
+  | UnsupportedTerm term ->
+      Printf.sprintf "This type of term is unsupported: %s" @@ Expr.string_of_term term
 
 
 let separate_predicate_and_vars (rterm : rterm) : intermediate_predicate * var list =
@@ -176,6 +180,9 @@ let convert_body_clause (state : state) (term : term) : (state * intermediate_cl
 
   | Noneq eterm ->
       return (state, ImNonequation eterm)
+
+  | ConstTerm _ as term ->
+      Result.error (UnsupportedTerm term)
 
 
 let convert_rule (state : state) (rule : rule) : (state * intermediate_predicate * rule_abstraction, error) result =
