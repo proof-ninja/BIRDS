@@ -1,0 +1,4 @@
++ced(E, D) :- false.
+-eed(E, D) :- +ced(E, D) , eed(E, D).
++ed(E, D) :- +ced(E, D) , not ed(E, D).
++eed(E, D) :- ed(E, D) , ed(E, D) , not eed(E, D) , E = 'Joe' , not eed(E, D).

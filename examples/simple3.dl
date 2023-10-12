@@ -1,0 +1,3 @@
+-eed(E, D) :- false , eed(E, D).
++ed(E, D) :- false , not ed(E, D).
++eed(E, D) :- ed(E, D) , ed(E, D) , not eed(E, D) , E = 'Joe' , not eed(E, D).

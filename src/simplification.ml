@@ -128,6 +128,7 @@ type error =
   | UnexpectedBodyVarForm   of var
   | UnsupportedEquation     of eterm
   | NonequalityNotSupported of eterm
+  | RuleWithoutBody         of rterm
 
 
 let constant_requirement_equal (cr1 : constant_requirement) (cr2 : constant_requirement) : bool =
@@ -366,7 +367,7 @@ let revert_body_terms ~(positive : bool) ((impred, argsset) : intermediate_predi
   argss |> List.map (revert_body_term ~positive impred)
 
 
-let revert_rule (imrule : intermediate_rule) : rule =
+let revert_rule (imrule : intermediate_rule) : (rule, error) result =
   let { head_predicate; head_arguments; positive_terms; negative_terms; equations } = imrule in
   let head = revert_head head_predicate head_arguments in
   let terms_pos =
@@ -388,7 +389,10 @@ let revert_rule (imrule : intermediate_rule) : rule =
     )
   in
   let body = List.concat [ terms_pos; terms_neg; terms_eq ] in
-  (head, body)
+  if List.length body = 0 then
+    Result.error (RuleWithoutBody head)
+  else
+    Result.ok (head, body)
 
 
 type occurrence_count_map = int VariableMap.t
@@ -670,15 +674,17 @@ let simplify (rules : rule list) : (rule list, error) result =
   (* Removes duplicate rules here *)
   let imrules = imrules |> remove_duplicate_rules in
 
-  let rules = imrules |> List.map revert_rule in
+  imrules |> mapM revert_rule >>= fun rules ->
   return rules
 
 let string_of_error = function
-| UnexpectedHeadVarForm var ->
-    Printf.sprintf "Unexpected Head Var: %s" @@ Expr.string_of_var var
-| UnexpectedBodyVarForm var ->
-  Printf.sprintf "Unexpected Body Var: %s" @@ Expr.string_of_var var
-| UnsupportedEquation eterm ->
-  Printf.sprintf "Unexpected Equation: %s" @@ Expr.string_of_eterm eterm
-| NonequalityNotSupported eterm ->
-  Printf.sprintf "Nonequality Not Supported: %s" @@ Expr.string_of_eterm eterm
+  | UnexpectedHeadVarForm var ->
+      Printf.sprintf "Unexpected Head Var: %s" @@ Expr.string_of_var var
+  | UnexpectedBodyVarForm var ->
+      Printf.sprintf "Unexpected Body Var: %s" @@ Expr.string_of_var var
+  | UnsupportedEquation eterm ->
+      Printf.sprintf "Unexpected Equation: %s" @@ Expr.string_of_eterm eterm
+  | NonequalityNotSupported eterm ->
+      Printf.sprintf "Nonequality Not Supported: %s" @@ Expr.string_of_eterm eterm
+  | RuleWithoutBody rterm ->
+      Printf.sprintf "Rule must have non-empty body: %s" @@ Expr.string_of_rterm rterm

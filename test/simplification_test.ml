@@ -182,4 +182,33 @@ let main () =
         ]);
       ];
     };
+    {
+      title = "Boolean body";
+      input = [
+        (* Boolean body:
+             -eed(E, D) :- false , eed(E, D).
+             +ed(E, D) :- false , not ed(E, D).
+             +eed(E, D) :- ed(E, D) , ed(E, D) , not eed(E, D) , E = 'Joe' , not eed(E, D).
+        *)
+        (Deltadelete ("eed", [NamedVar "E"; NamedVar "D"]), [ConstTerm false; Rel (Pred ("eed", [NamedVar "E"; NamedVar "D"]))]);
+        (Deltainsert ("ed", [NamedVar "E"; NamedVar "D"]), [ConstTerm false; Not (Pred ("ed", [NamedVar "E"; NamedVar "D"]))]);
+        (Deltainsert ("eed", [NamedVar "E"; NamedVar "D"]), [
+          Rel (Pred ("ed", [NamedVar "E"; NamedVar "D"]));
+          Rel (Pred ("ed", [NamedVar "E"; NamedVar "D"]));
+          Not (Pred ("eed", [NamedVar "E"; NamedVar "D"]));
+          Equat (Equation ("=", (Var (NamedVar "E")), (Const (String "Joe"))));
+          Not (Pred ("eed", [NamedVar "E"; NamedVar "D"]));
+        ]);
+      ];
+      expected = [
+        (* Boolean body simplified:
+          +eed(E, D) :- ed(E, D) , not eed(E, D) , E = 'Joe'.
+         *)
+         (Deltainsert ("eed", [NamedVar "E"; NamedVar "D"]), [
+          Rel (Pred ("ed", [NamedVar "E"; NamedVar "D"]));
+          Not (Pred ("eed", [NamedVar "E"; NamedVar "D"]));
+          Equat (Equation ("=", (Var (NamedVar "E")), (Const (String "Joe"))));
+        ]);
+      ];
+    };
   ]
