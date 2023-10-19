@@ -166,6 +166,25 @@ let main () =
             "bar(A, B) :- qux(A, B, 57).";
           ];
       };
+      {
+        title = "inlining rules with boolean in bodies";
+        input = [
+          (!+ "f" ["X"], [ Rel (Pred ("g", [ NamedVar "X" ])) ]);
+          (!: "g" ["Y"], [
+            Equat (Equation ("=", Var (NamedVar "Y"), Const (Int 42)));
+            ConstTerm true
+          ])
+        ];
+        (* Input:
+         *   +f(X) :- g(X).
+         *   g(Y) :- Y = 42, true.
+         *)
+        expected =
+          make_lines [
+            "+f(X) :- X = 42 , true.";
+            "g(Y) :- Y = 42 , true."
+          ]
+      }
     ]
   in
   run_tests test_cases
