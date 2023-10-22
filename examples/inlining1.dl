@@ -1,0 +1,12 @@
+source ed('EMP_NAME':string,'DEPT_NAME':string).
+source eed('EMP_NAME':string,'DEPT_NAME':string).
+view ced('EMP_NAME':string, 'DEPT_NAME':string).
+
+cedp(E,D) :- +ced(E,D).
+cedp(E,D) :- ced(E,D), not -ced(E,D).
+
++ed(E, D) :- cedp(E, D), NOT ed(E, D).
+-eed(E, D) :- cedp(E, D), eed(E, D).
++eed(E, D) :- ed(E, D), NOT cedp(E, D), NOT eed(E, D).
+
+-ced(E,D) :- false.
