@@ -211,4 +211,54 @@ let main () =
         ]);
       ];
     };
+    {
+      title = "Unused and undefined rules";
+      input = [
+        (* Unused and undefined rules:
+          f(X) :- X = 1.
+          g(X) :- X = 1.
+          h(X) :- X = 1.
+
+          +f(X) :- f(X).
+          -g(X) :- g(X).
+
+          +a(X) :- n(X), X = 42.
+          -b(X) :- NOT n(X), X = 42.
+          +c(X) :- +n(X), X = 42.
+          -d(X) :- NOT -n(X), X = 42.
+         *)
+        (Deltadelete ("d", [NamedVar "X"]), [
+          Not (Deltadelete ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
+        ]);
+        (Deltainsert ("c", [NamedVar "X"]), [
+          Rel (Deltainsert ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
+        ]);
+        (Deltadelete ("b", [NamedVar "X"]), [
+          Not (Pred ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
+        ]);
+        (Deltainsert ("a", [NamedVar "X"]), [
+          Rel (Pred ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
+        ]);
+
+        (Deltadelete ("g", [NamedVar "X"]), [Rel (Pred ("g", [NamedVar "X"]))]);
+        (Deltainsert ("f", [NamedVar "X"]), [Rel (Pred ("f", [NamedVar "X"]))]);
+
+        (Pred ("h", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
+        (Pred ("g", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
+        (Pred ("f", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
+      ];
+      expected = [
+        (Deltadelete ("d", [NamedVar "X"]), [ Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42)))) ]);
+        (Deltadelete ("b", [NamedVar "X"]), [
+          Not (Pred ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
+        ]);
+        (Deltainsert ("a", [NamedVar "X"]), [
+          Rel (Pred ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
+        ]);
+        (Deltadelete ("g", [NamedVar "X"]), [Rel (Pred ("g", [NamedVar "X"]))]);
+        (Deltainsert ("f", [NamedVar "X"]), [Rel (Pred ("f", [NamedVar "X"]))]);
+        (Pred ("g", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
+        (Pred ("f", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
+      ];
+    };
   ]
