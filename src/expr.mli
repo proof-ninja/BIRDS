@@ -63,6 +63,24 @@ type expr = {
   primary_keys: primary_key list;
 }
 
+module Const : sig
+  type t = const
+
+  val compare : t -> t -> int
+  val equal : t -> t -> bool
+end
+
+module Rule : sig
+  type t = rule
+
+  val compare : t -> t -> int
+  val equal : t -> t -> bool
+end
+
+module RuleSet : sig
+  include module type of Set.Make(Rule)
+end
+
 type conj_query =
   | Conj_query of var list * rterm list * rterm list
 

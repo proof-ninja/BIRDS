@@ -63,6 +63,235 @@ type expr = {
   primary_keys: primary_key list;
 }
 
+let compare_multi = List.fold_left (fun a b -> if a = 0 then b else a) 0
+
+module Const = struct
+  type t = const
+
+  let compare (c1 : const) (c2 : const) : int =
+    match (c1, c2) with
+    | (Int n1, Int n2)       -> Int.compare n1 n2
+    | (Int _, _)             -> 1
+    | (_, Int _)             -> -1
+    | (Real r1, Real r2)     -> Float.compare r1 r2
+    | (Real _, _)            -> 1
+    | (_, Real _)            -> -1
+    | (String s1, String s2) -> String.compare s1 s2
+    | (String _, _)          -> 1
+    | (_, String _)          -> -1
+    | (Bool b1, Bool b2)     -> Bool.compare b1 b2
+    | (Bool _, _)            -> 1
+    | (_, Bool _)            -> -1
+    | (Null, Null)           -> 0
+
+  let equal (c1 : const) (c2 : const) : bool =
+    compare c1 c2 = 0
+end
+
+module Var = struct
+  type t = var
+
+  let compare v1 v2 =
+    match v1, v2 with
+    | NamedVar v1, NamedVar v2 -> String.compare v1 v2
+    | NamedVar _, _ -> 1
+    | _, NamedVar _ -> -1
+    | NumberedVar v1, NumberedVar v2 -> Int.compare v1 v2
+    | NumberedVar _, _ -> 1
+    | _, NumberedVar _ -> -1
+    | ConstVar v1, ConstVar v2 -> Const.compare v1 v2
+    | ConstVar _, _ -> 1
+    | _, ConstVar _ -> -1
+    | AnonVar, AnonVar -> 0
+    | AnonVar, _ -> 1
+    | _, AnonVar -> -1
+    | AggVar (v11, v12), AggVar (v21, v22) -> compare_multi [String.compare v11 v21; String.compare v12 v22]
+
+    let equal v1 v2 =
+      compare v1 v2 = 0
+end
+
+module VTerm = struct
+  type t = vterm
+
+  let rec compare v1 v2 =
+    match v1, v2 with
+    | Const c1, Const c2 -> Const.compare c1 c2
+    | Const _, _ -> 1
+    | _, Const _ -> -1
+    | Var v1, Var v2 -> Var.compare v1 v2
+    | Var _, _ -> 1
+    | _, Var _ -> -1
+    | BinaryOp (op1, v11, v12), BinaryOp (op2, v21, v22) ->
+        compare_multi [String.compare op1 op2; compare v11 v12; compare v21 v22]
+    | BinaryOp _, _ -> 1
+    | _, BinaryOp _ -> -1
+    | UnaryOp (op1, v1), UnaryOp (op2, v2) ->
+        compare_multi [String.compare op1 op2; compare v1 v2]
+  
+  let equal v1 v2 =
+    compare v1 v2 = 0
+end
+
+module RTerm = struct
+  type t = rterm
+
+  let compare r1 r2 =
+    match r1, r2 with
+    | Pred (n1, vs1), Pred (n2, vs2) -> compare_multi [String.compare n1 n2; List.compare Var.compare vs1 vs2]
+    | Pred _, _ -> 1
+    | _, Pred _ -> -1
+    | Deltainsert (n1, vs1), Deltainsert (n2, vs2) -> compare_multi [String.compare n1 n2; List.compare Var.compare vs1 vs2]
+    | Deltainsert _, _ -> 1
+    | _, Deltainsert _ -> -1
+    | Deltadelete (n1, vs1), Deltadelete (n2, vs2) -> compare_multi [String.compare n1 n2; List.compare Var.compare vs1 vs2]
+    
+  let equal r1 r2 =
+    compare r1 r2 = 0
+end
+
+module ETerm = struct
+  let compare e1 e2 =
+    match e1, e2 with
+    | Equation (r1, v11, v12), Equation (r2, v21, v22) ->
+        compare_multi [
+          String.compare r1 r2;
+          VTerm.compare v11 v21;
+          VTerm.compare v12 v22
+        ]
+  
+  let equal e1 e2 =
+    compare e1 e2 = 0
+end
+
+module Term = struct
+  type t = term
+
+  let compare t1 t2 =
+    match t1, t2 with
+    | Rel r1, Rel r2 -> RTerm.compare r1 r2
+    | Rel _, _ -> 1
+    | _, Rel _ -> -1
+    | Not r1, Not r2 -> RTerm.compare r1 r2
+    | Not _, _ -> 1
+    | _, Not _ -> -1
+    | Equat e1, Equat e2 -> ETerm.compare e1 e2
+    | Equat _, _ -> 1
+    | _, Equat _ -> -1
+    | Noneq e1, Noneq e2 -> ETerm.compare e1 e2
+end
+
+module Rule = struct
+  type t = rule
+
+  let compare (r1, ts1) (r2, ts2) =
+    compare_multi [
+      RTerm.compare r1 r2;
+      List.compare Term.compare ts1 ts2
+    ]
+  
+  let equal r1 r2 =
+    compare r1 r2 = 0
+end
+
+module Alpha = struct
+  module VarMap = Map.Make(String)
+
+  let getvar state =
+    let state = state + 1 in
+    state, Printf.sprintf "GENV%d" state
+
+  let convert (rterm, terms) =
+    let conv_vars vars =
+      let map, _, vars =
+        List.fold_left (fun (map, state, vars) var ->
+          match var with
+          | NamedVar name ->
+              let state, name' = getvar state in
+              (VarMap.add name name' map), state, (NamedVar name') :: vars
+          | other ->
+              map, state, other :: vars
+        ) (VarMap.empty, 0, []) vars
+      in
+      map, List.rev vars
+    in
+    let conv_rterm = function
+      | Pred (name, vars) ->
+          let map, vars = conv_vars vars in
+          map, Pred (name, vars)
+      | Deltainsert (name, vars) ->
+          let map, vars = conv_vars vars in
+          map, Deltainsert (name, vars)
+      | Deltadelete (name, vars) ->
+          let map, vars = conv_vars vars in
+          map, Deltadelete (name, vars)
+    in
+    let map, rterm = conv_rterm rterm in
+
+    let conv_var = function
+      | NamedVar name as var ->
+          begin match VarMap.find_opt name map with
+          | Some name -> NamedVar name
+          | None -> var
+          end
+      | var -> var
+    in
+    let rec conv_vterm = function
+      | Var var -> Var (conv_var var)
+      | BinaryOp (op, v1, v2) -> BinaryOp (op, conv_vterm v1, conv_vterm v2)
+      | UnaryOp (op, v) -> UnaryOp (op, conv_vterm v)
+      | vterm -> vterm
+    in
+    let conv_eterm = function
+      | Equation (op, v1, v2) -> Equation (op, conv_vterm v1, conv_vterm v2)
+    in
+    let conv_rterm = function
+      | Pred (name, vs) -> Pred (name, List.map conv_var vs)
+      | Deltainsert (name, vs) -> Deltainsert (name, List.map conv_var vs)
+      | Deltadelete (name, vs) -> Deltadelete (name, List.map conv_var vs)
+    in
+    let conv_term = function
+      | Rel rterm -> Rel (conv_rterm rterm)
+      | Not rterm -> Not (conv_rterm rterm)
+      | Equat eterm -> Equat (conv_eterm eterm)
+      | Noneq eterm -> Noneq (conv_eterm eterm)
+    in
+    let terms =
+      terms
+      |> List.map conv_term
+      |> List.sort Term.compare
+    in
+    rterm, terms
+end
+
+module RuleSet = struct
+  include Set.Make(Rule)
+
+  module RuleMap = Map.Make(Rule)
+
+  (* let string_of_rules (rules: t): string =
+    rules
+      |> to_seq
+      |> List.of_seq
+      |> List.map string_of_rule
+      |> String.concat "; "
+  ;; *)
+
+  let diff rs1 rs2 =
+    let rs1, rule_map =
+      fold (fun r (rs, map) ->
+        let r' = Alpha.convert r in
+        add r' rs, RuleMap.add r' r map
+      ) rs1 (empty, RuleMap.empty)
+    in
+    let rs2 = map Alpha.convert rs2 in
+    (* Printf.printf "%s\n" @@ string_of_rules rs1;
+    Printf.printf "%s\n" @@ string_of_rules rs2; *)
+    let result = diff rs1 rs2 in
+    map (fun x -> RuleMap.find x rule_map) result
+end
+
+
 type conj_query =
   | Conj_query of var list * rterm list * rterm list
 

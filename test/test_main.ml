@@ -5,6 +5,7 @@ let () =
       Simplification_test.main ();
       Inlining_test.main ();
       Sql2ast_test.main ();
+      Rules_diff_test.main();
       (* You can add more tests here *)
     ]
   in

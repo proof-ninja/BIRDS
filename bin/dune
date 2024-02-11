@@ -9,11 +9,23 @@
  (name dl2u)
  (modules dl2u)
  (libraries birds))
- 
+
 (executable
   (public_name inlining)
   (name inlining)
   (modules inlining)
+  (libraries birds))
+
+(executable
+  (public_name simplification)
+  (name simplification)
+  (modules simplification)
+  (libraries birds))
+
+(executable
+  (public_name rulesdiff)
+  (name rulesdiff)
+  (modules rulesdiff)
   (libraries birds))
 
 (executable
