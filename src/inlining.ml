@@ -24,6 +24,7 @@ type intermediate_clause =
   | ImNegative    of intermediate_predicate * intermediate_argument list
   | ImEquation    of eterm
   | ImNonequation of eterm
+  | ImConstTerm   of bool
 
 (** The type for rule abstractions,
     i.e. data of the form `(X_1, ..., X_n) -> C_1, ..., C_m.` *)
@@ -77,6 +78,7 @@ type error =
   | UnexpectedBodyVarForm  of var
   | PredicateArityMismatch of int * int
   | CyclicDependency       of predicate_definition list
+  | UnsupportedTerm of term
 
 
 let string_of_intermediate_predicate = function
@@ -102,6 +104,9 @@ let string_of_error = function
         ) |> String.concat ", "
       in
       Printf.sprintf "cyclic dependency found among %s" s
+  
+  | UnsupportedTerm term ->
+      Printf.sprintf "This type of term is unsupported: %s" @@ Expr.string_of_term term
 
 
 let separate_predicate_and_vars (rterm : rterm) : intermediate_predicate * var list =
@@ -177,6 +182,9 @@ let convert_body_clause (state : state) (term : term) : (state * intermediate_cl
   | Noneq eterm ->
       return (state, ImNonequation eterm)
 
+  | ConstTerm bool ->
+      return (state, ImConstTerm bool)
+
 
 let convert_rule (state : state) (rule : rule) : (state * intermediate_predicate * rule_abstraction, error) result =
   let open ResultMonad in
@@ -232,7 +240,7 @@ let resolve_dependencies_among_predicates (improg : intermediate_program) : (pre
                     graph
               end
 
-          | ImEquation _ | ImNonequation _ ->
+          | ImEquation _ | ImNonequation _ | ImConstTerm _ ->
               graph
         ) graph
       ) graph
@@ -324,6 +332,9 @@ let substitute_clause (state : state) (subst : substitution) (clause : intermedi
       let (state, subst, eterm_to) = eterm |> substitute_eterm state subst in
       (state, subst, ImNonequation eterm_to)
 
+  | ImConstTerm bool ->
+      (state, subst, ImConstTerm bool)
+
 
 (** Basically, `reduce_rule state ((X_1, ..., X_n) -> C_1, ..., C_m.) [Y_1, ..., Y_n]` returns
     an array of clauses `{Y_n/X_n, ..., Y_1/X_1}(C_1, ..., C_m)`
@@ -407,6 +418,7 @@ let inject_clause (clause : intermediate_clause) : term =
   | ImNegative (impred, imargs) -> Not (inject_rterm impred imargs)
   | ImEquation eterm            -> Equat eterm
   | ImNonequation eterm         -> Noneq eterm
+  | ImConstTerm bool            -> ConstTerm bool
 
 
 let inject_rule (impred : intermediate_predicate) (ruleabs : rule_abstraction) : rule =

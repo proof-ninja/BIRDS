@@ -32,6 +32,7 @@ type term = (* term is one of predicate (positive or negative), equation, non-eq
   | Not of rterm (* negative predicate *)
   | Equat of eterm  (* for example x = 5 *)
   | Noneq of eterm (* for example NOT x = 5 *)
+  | ConstTerm of bool (* true/false *)
 
 type stype = (* data type in schema *)
   | Sint
@@ -179,6 +180,9 @@ module Term = struct
     | Equat _, _ -> 1
     | _, Equat _ -> -1
     | Noneq e1, Noneq e2 -> ETerm.compare e1 e2
+    | Noneq _, _ -> 1
+    | _, Noneq _ -> -1
+    | ConstTerm e1, ConstTerm e2 -> Bool.compare e1 e2
 end
 
 module Rule = struct
@@ -255,6 +259,7 @@ module Alpha = struct
       | Not rterm -> Not (conv_rterm rterm)
       | Equat eterm -> Equat (conv_eterm eterm)
       | Noneq eterm -> Noneq (conv_eterm eterm)
+      | ConstTerm _ as c -> c
     in
     let terms =
       terms
@@ -437,11 +442,12 @@ let rec get_vterm_varlist e = match e with
     | UnaryOp (_op, ae) -> get_vterm_varlist ae
 
 (** Get the list of variables of a term. *)
-let get_term_varlist t = match t with
-    | Rel r            -> get_rterm_varlist r
-    | Equat (Equation (_op, e1, e2)) -> (get_vterm_varlist e1) @ (get_vterm_varlist e2)
-    | Noneq (Equation (_op,e1, e2))  -> (get_vterm_varlist e1) @ (get_vterm_varlist e2)
-    | Not r            -> get_rterm_varlist r
+let get_term_varlist = function
+  | Rel r -> get_rterm_varlist r
+  | Equat (Equation (_op, e1, e2)) -> (get_vterm_varlist e1) @ (get_vterm_varlist e2)
+  | Noneq (Equation (_op,e1, e2))  -> (get_vterm_varlist e1) @ (get_vterm_varlist e2)
+  | Not r -> get_rterm_varlist r
+  | ConstTerm _ -> []
 
 (** Given a schema declaration (source and view), returns the rterm that is defined inside. *)
 let get_schema_rterm (name, lst) =  Pred(name, (List.map (fun (col, _typ) -> NamedVar col) lst))
@@ -518,11 +524,12 @@ let extract_aggvar_tuple = function
     | _ -> invalid_arg "function extract_aggvar_tuple called without an aggregated var"
 
 (* Given an term, returns the equivalent negative form of it. *)
-let negate_term term= match term with
-    Rel (rt) -> Not (rt)
-  | Not (rt) -> Rel (rt)
-  | Equat (e) -> Noneq e
-  | Noneq (e) -> Equat e
+let negate_term = function
+  | Rel rt -> Not rt
+  | Not rt -> Rel rt
+  | Equat e -> Noneq e
+  | Noneq e -> Equat e
+  | ConstTerm b -> ConstTerm (not b)
 
 (** Return true if the provided argument is an aggregate variable. *)
 let is_aggvar = function
@@ -612,11 +619,12 @@ let string_of_eterm r = match r with
     | Equation (op, e1,e2) -> (string_of_vterm e1) ^ " " ^ op ^ " " ^ (string_of_vterm e2)
 
 (** support function for smart stringify of the AST - see to_string below *)
-let string_of_term t = match t with 
-    | Rel r             -> string_of_rterm r
-    | Equat e      -> string_of_eterm e
-    | Noneq e    -> "not " ^string_of_eterm e
-    | Not rt            -> "not " ^ string_of_rterm rt
+let string_of_term = function
+  | Rel r -> string_of_rterm r
+  | Equat e -> string_of_eterm e
+  | Noneq e -> "not " ^ string_of_eterm e
+  | Not rt -> "not " ^ string_of_rterm rt
+  | ConstTerm b -> Bool.to_string b
 
 let string_of_stype t = match t with 
     Sint -> "int"

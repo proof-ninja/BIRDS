@@ -1635,19 +1635,25 @@ let rterm_of_literal lit=
   | Var i -> Expr.NumberedVar i in
   Expr.Pred ( Symbol.to_string predname, List.map  var_of_term args )
 
-let literal_of_term ?(tbl=mk_vartbl 100) t = match t with
-  | Expr.Rel rt -> literal_of_rterm false ~tbl rt
+let literal_of_term ?(tbl=mk_vartbl 100) = function
+  | Expr.Rel rt ->
+      literal_of_rterm false ~tbl rt
   | Expr.Not rt ->
-    let delta_to_pred r = match r with
-      | Expr.Pred (pn,vars) -> Expr.Pred (pn,vars)
-      | Expr.Deltainsert (pn,vars) -> Expr.Pred ("+"^ pn,vars)
-      | Expr.Deltadelete (pn,vars) -> Expr.Pred ("-"^ pn,vars) in
-    literal_of_rterm true ~tbl (Utils.rename_rterm "!" (delta_to_pred rt))  (* negative predicate *)
-  | Expr.Equat (Equation(op,vt1, vt2)) -> literal_of_rterm false ~tbl (Pred(op,[Expr.vterm2var vt1 ;Expr.vterm2var vt2]))
+      let delta_to_pred = function
+        | Expr.Pred (pn,vars) -> Expr.Pred (pn,vars)
+        | Expr.Deltainsert (pn,vars) -> Expr.Pred ("+"^ pn,vars)
+        | Expr.Deltadelete (pn,vars) -> Expr.Pred ("-"^ pn,vars)
+      in
+      literal_of_rterm true ~tbl (Utils.rename_rterm "!" (delta_to_pred rt))  (* negative predicate *)
+  | Expr.Equat (Equation(op,vt1, vt2)) ->
+      literal_of_rterm false ~tbl (Pred(op,[Expr.vterm2var vt1 ;Expr.vterm2var vt2]))
   | Expr.Noneq e ->
-    let neg_e = Expr.negate_eq e in
-    (match neg_e with
-    (Equation(op,vt1, vt2)) -> literal_of_rterm false ~tbl (Pred(op,[Expr.vterm2var vt1 ;Expr.vterm2var vt2])) )
+      begin match Expr.negate_eq e with
+        | (Equation (op,vt1, vt2)) ->
+            literal_of_rterm false ~tbl (Pred(op,[Expr.vterm2var vt1 ;Expr.vterm2var vt2]))
+      end
+  | Expr.ConstTerm b ->
+      [| mk_const @@ Bool.to_string b |]
   (* | _ -> invalid_arg ("function literal_of_term called with: "^(Expr.string_of_term t)) *)
 
 let term_of_literal lit=

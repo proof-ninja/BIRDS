@@ -32,6 +32,7 @@ type term = (* term is one of predicate (positive or negative), equation, non-eq
   | Not of rterm (* negative predicate *)
   | Equat of eterm  (* for example x = 5 *)
   | Noneq of eterm (* for example NOT x = 5 *)
+  | ConstTerm of bool (* true/false *)
 
 type stype = (* data type in schema *)
   | Sint
