@@ -523,7 +523,6 @@ let inject_rule (impred : intermediate_predicate) (ruleabs : rule_abstraction) :
   let terms = body |> List.map inject_clause in
   (rterm, terms)
 
-
 let inline_rules (rules : rule list) : (rule list, error) result =
   let open ResultMonad in
 
@@ -557,5 +556,28 @@ let inline_rules (rules : rule list) : (rule list, error) result =
         rule :: acc
       ) acc
     ) improg_inlined []
+  in
+  return (List.rev acc)
+
+let sort_rules (rules : rule list) : (rule list, error) result =
+  let open ResultMonad in
+
+  let state = { current_max = 0 } in
+  rules |> foldM (fun (state, improg) rule ->
+    convert_rule state rule >>= fun (state, impred, ruleabs) ->
+    return (state, improg |> add_rule_abstraction impred ruleabs)
+  ) (state, PredicateMap.empty) >>= fun (_, improg) ->
+
+  resolve_dependencies_among_predicates improg >>= fun sorted_rules ->
+
+  let acc =
+    sorted_rules
+    |> List.map (fun (impred, ruleabss) ->
+      let ruleabss = RuleAbstractionSet.elements ruleabss in
+      ruleabss |> List.map (fun ruleabs ->
+        inject_rule impred ruleabs
+      )
+    )
+    |> List.concat
   in
   return (List.rev acc)

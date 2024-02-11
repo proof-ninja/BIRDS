@@ -248,17 +248,81 @@ let main () =
         (Pred ("f", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
       ];
       expected = [
-        (Deltadelete ("d", [NamedVar "X"]), [ Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42)))) ]);
-        (Deltadelete ("b", [NamedVar "X"]), [
-          Not (Pred ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
-        ]);
+        (Pred ("f", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
+        (Pred ("g", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
+        (Deltainsert ("f", [NamedVar "X"]), [Rel (Pred ("f", [NamedVar "X"]))]);
+        (Deltadelete ("g", [NamedVar "X"]), [Rel (Pred ("g", [NamedVar "X"]))]);
         (Deltainsert ("a", [NamedVar "X"]), [
           Rel (Pred ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
         ]);
-        (Deltadelete ("g", [NamedVar "X"]), [Rel (Pred ("g", [NamedVar "X"]))]);
-        (Deltainsert ("f", [NamedVar "X"]), [Rel (Pred ("f", [NamedVar "X"]))]);
-        (Pred ("g", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
-        (Pred ("f", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
+        (Deltadelete ("b", [NamedVar "X"]), [
+          Not (Pred ("n", [NamedVar "X"])); Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42))))
+        ]);
+        (Deltadelete ("d", [NamedVar "X"]), [ Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 42)))) ]);
       ];
     };
+    {
+      title = "anonymous variables in body";
+      input = [
+        (* anonymous variables in body
+          v(A) :- s(A,B).
+          -v(GV1) :- v(GV1) , GV1 = 1 , GV1 <> 4.
+          +v(GV1) :- GV1 = 4 , -v(V12).
+          -s(A,B) :- s(A,B), -v(A).
+          +s(A,B) :- +v(A), not s(A,_), not -s(_,_), B=-1.
+          +s(A,B) :- +v(A), not s(A,_), -s(_,B).
+         *)
+          (Deltainsert ("s", [NamedVar "A"; NamedVar "B"]), [
+            Rel (Deltainsert ("v", [NamedVar "A"]));
+            Not (Pred ("s", [NamedVar "A"; AnonVar]));
+            Not (Deltadelete ("s", [AnonVar; NamedVar "B"]))
+          ]);
+          (Deltainsert ("s", [NamedVar "A"; NamedVar "B"]), [
+            Rel (Deltainsert ("v", [NamedVar "A"]));
+            Not (Pred ("s", [NamedVar "A"; AnonVar]));
+            Not (Deltadelete ("s", [AnonVar; AnonVar]));
+            Equat (Equation ("=", (Var (NamedVar "B")), (Const (Int (-1)))))
+          ]);
+          (Deltadelete ("s", [NamedVar "A"; NamedVar "B"]), [
+            Rel (Pred ("s", [NamedVar "A"; NamedVar "B"]));
+            Rel (Deltadelete ("v", [NamedVar "A"]))
+          ]);
+          (Deltainsert ("v", [NamedVar "GV1"]), [
+            Equat (Equation ("=", (Var (NamedVar "GV1")), (Const (Int 4))));
+            Rel (Deltadelete ("v", [NamedVar "V12"]))
+          ]);
+          (Deltadelete ("v", [NamedVar "GV1"]), [
+            Rel (Pred ("v", [NamedVar "GV1"]));
+            Equat (Equation ("=", (Var (NamedVar "GV1")), (Const (Int 1))));
+            Equat (Equation ("<>", (Var (NamedVar "GV1")), (Const (Int 4))))
+          ]);
+          (Pred ("v", [NamedVar "A"]), [Rel (Pred ("s", [NamedVar "A"; NamedVar "B"]))]);
+      ];
+      expected = [
+        (Pred ("v", [NamedVar "A"]), [Rel (Pred ("s", [NamedVar "A"; AnonVar]))]);
+        (Deltadelete ("v", [NamedVar "GV1"]), [
+          Rel (Pred ("v", [NamedVar "GV1"]));
+          Equat (Equation ("=", (Var (NamedVar "GV1")), (Const (Int 1))));
+        ]);
+         (Deltainsert ("v", [NamedVar "GV1"]), [
+           Rel (Deltadelete ("v", [AnonVar]));
+           Equat (Equation ("=", (Var (NamedVar "GV1")), (Const (Int 4))));
+         ]);
+         (Deltadelete ("s", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Deltadelete ("v", [NamedVar "A"]));
+           Rel (Pred ("s", [NamedVar "A"; NamedVar "B"]));
+         ]);
+         (Deltainsert ("s", [NamedVar "A"; NamedVar "B"]), [
+           Rel (Deltainsert ("v", [NamedVar "A"]));
+           Not (Deltadelete ("s", [AnonVar; AnonVar]));
+           Not (Pred ("s", [NamedVar "A"; AnonVar]));
+           Equat (Equation ("=", (Var (NamedVar "B")), (Const (Int (-1)))))
+         ]);
+         (Deltainsert ("s", [NamedVar "A"; NamedVar "B"]), [
+           Rel (Deltainsert ("v", [NamedVar "A"]));
+           Not (Deltadelete ("s", [AnonVar; NamedVar "B"]));
+           Not (Pred ("s", [NamedVar "A"; AnonVar]));
+         ]);
+      ]
+    }
   ]

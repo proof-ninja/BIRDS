@@ -123,6 +123,44 @@ type intermediate_rule = {
   equations      : equation_map;
 }
 
+module Debug = struct
+  let string_of_predicate_map predmap =
+    predmap
+    |> PredicateMap.bindings
+    |> List.map (fun (impred, argsset) ->
+      Printf.sprintf "%s(%s)" (match impred with
+      | ImPred t        -> t
+      | ImDeltaInsert t -> Printf.sprintf "+%s" t
+      | ImDeltaDelete t -> Printf.sprintf "-%s" t
+      ) (argsset |> BodyTermArgumentsSet.elements |> List.map string_of_body_term_arguments |> String.concat ", ")
+    )
+    |> String.concat ", "
+
+  let string_of_equation_map eqnmap =
+    eqnmap
+    |> VariableMap.bindings
+    |> List.map (fun (x, cr) ->
+      match cr with
+      | EqualTo c    -> Printf.sprintf "%s = %s" x (Expr.string_of_const c)
+      | NotEqualTo cset ->
+          Printf.sprintf "%s <> {%s}" x (cset |> ConstSet.elements |> List.map Expr.string_of_const |> String.concat ", ")
+    )
+    |> String.concat ", "
+  
+  let string_of_intermediate_rule imrule =
+    let { head_predicate; head_arguments; positive_terms; negative_terms; equations } = imrule in
+    Printf.sprintf "{ head_predicate = %s; head_arguments = [%s]; positive_terms = %s; negative_terms = %s; equations = %s }"
+      (match head_predicate with
+      | ImPred t        -> t
+      | ImDeltaInsert t -> Printf.sprintf "+%s" t
+      | ImDeltaDelete t -> Printf.sprintf "-%s" t
+      )
+      (head_arguments |> List.map (function ImHeadVar x -> x) |> String.concat ", ")
+      (positive_terms |> string_of_predicate_map)
+      (negative_terms |> string_of_predicate_map)
+      (equations |> string_of_equation_map)
+end
+
 type error =
   | UnexpectedHeadVarForm   of var
   | UnexpectedBodyVarForm   of var
@@ -588,8 +626,7 @@ module TableNameSet = Set.Make(String)
 
 
 let remove_unused_rules (imrules : intermediate_rule list) : intermediate_rule list =
-  imrules
-  |> List.fold_left (fun (table_name_set, acc) imrule ->
+  List.fold_right (fun imrule (table_name_set, acc) ->
     let { positive_terms; negative_terms; _ } = imrule in
     let terms = PredicateMap.union (fun _ x _ -> Some x) positive_terms negative_terms in
     let table_names =
@@ -619,9 +656,8 @@ let remove_unused_rules (imrules : intermediate_rule list) : intermediate_rule l
     | ImPred _ ->
         (table_name_set, acc)
 
-  ) (TableNameSet.empty, [])
+  ) imrules (TableNameSet.empty, [])
   |> snd
-  |> List.rev
 
 
 let has_contradicting_body (imrule : intermediate_rule) : bool =
@@ -717,7 +753,7 @@ let are_alpha_equivalent_rules (imrule1 : intermediate_rule) (imrule2 : intermed
         ]
 
 
-let remove_duplicate_rules (imrules : intermediate_rule list) : intermediate_rule list =
+(* let remove_duplicate_rules (imrules : intermediate_rule list) : intermediate_rule list =
   let rec aux acc imrules =
     match imrules with
     | [] ->
@@ -731,8 +767,18 @@ let remove_duplicate_rules (imrules : intermediate_rule list) : intermediate_rul
         in
         aux (imrule_head :: acc) imrules_tail
   in
-  aux [] imrules
+  aux [] imrules *)
 
+let remove_duplicate_rules (rules : rule list) : rule list =
+  match
+    List.fold_right (fun rule (acc, memo) ->
+      if RuleSet.mem rule memo then
+        (acc, memo)
+      else
+        (rule :: acc, RuleSet.add rule memo)
+    ) rules ([], RuleSet.empty)
+  with
+  | (rules, _) -> rules
 
 let simplify (rules : rule list) : (rule list, error) result =
   let open ResultMonad in
@@ -742,12 +788,11 @@ let simplify (rules : rule list) : (rule list, error) result =
     convert_rule rule >>= function
     | None        -> return imrule_acc
     | Some imrule -> return (imrule :: imrule_acc)
-  ) [] >>= fun imrule_acc ->
-  let imrules = List.rev imrule_acc in
+  ) [] >>= fun imrules ->
 
   (* Performs per-rule simplification: *)
   let imrules = imrules |> List.map simplify_rule_recursively in
-  
+
   (* Removes predicates that are not defined: *)
   let imrules = imrules |> resolve_undefined_predicates in
 
@@ -758,9 +803,13 @@ let simplify (rules : rule list) : (rule list, error) result =
   let imrules = imrules |> List.filter (fun imrule -> not (has_contradicting_body imrule)) in
 
   (* Removes duplicate rules here *)
-  let imrules = imrules |> remove_duplicate_rules in
+  (* let imrules = imrules |> remove_duplicate_rules in *)
 
   imrules |> mapM revert_rule >>= fun rules ->
+
+  (* Removes duplicate rules here *)
+  let rules = rules |> remove_duplicate_rules in
+
   return rules
 
 let string_of_error = function

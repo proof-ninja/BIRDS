@@ -191,7 +191,9 @@
   | equation      { Equat $1 }
   | NOT equation  { Noneq $2 }
   | TT            { ConstTerm true }
+  | NOT TT        { ConstTerm false }
   | FF            { ConstTerm false }
+  | NOT FF        { ConstTerm true }
   | error         { spec_parse_error "invalid syntax for a literal" 1; }
   ;
 
