@@ -1,0 +1,7 @@
+f(X, Y) :- X = 1, Y = 2.
+f(A, B) :- A = 3, B = 4.
+
+g(X, Y) :- X = 5, Y = 6.
+g(Z, W) :- Z = 7, W = 8.
+
+x(S, T) :- NOT f(S, T), g(T, S), NOT S = 42, T = 8.

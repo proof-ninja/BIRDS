@@ -363,6 +363,80 @@ let reduce_rule (state : state) (ruleabs : rule_abstraction) (imargs : intermedi
       in
       return (state, List.rev clause_to_acc)
 
+let negate_clauses_list (clasuses_list : intermediate_clause list list) : intermediate_clause list list =
+  clasuses_list
+  |> List.map (List.map (function
+      | ImPositive (impred, imargs) -> ImNegative (impred, imargs)
+      | ImNegative (impred, imargs) -> ImPositive (impred, imargs)
+      | ImEquation eterm            -> ImNonequation eterm
+      | ImNonequation eterm         -> ImEquation eterm
+      | ImConstTerm bool            -> ImConstTerm (not bool)
+  ))
+  |> (function
+      | [] -> []
+      | c :: clasuses_list ->
+          let init = c |> List.map (fun c -> [c]) in
+          clasuses_list
+          |> List.fold_left (fun acc clauses ->
+            clauses |> List.concat_map (fun c ->
+              acc |> List.map (fun acc_c -> c :: acc_c)
+            )
+          ) init
+          |> List.map List.rev
+  )
+
+let negate_rule_abstractions (state : state) (ruleabss : rule_abstraction list) : state * rule_abstraction list =
+  match ruleabss with
+  | [] -> (state, [])
+  | ruleabs :: _ ->
+      let { binder; _ } = ruleabs in
+      if ruleabss |> List.for_all (fun ruleabs -> ruleabs.binder = binder) then
+        (
+          state,
+          ruleabss
+          |> List.map (fun ruleabs -> ruleabs.body)
+          |> negate_clauses_list
+          |> List.map (fun body -> { binder; body })
+        )
+      else
+        let state, genbinder =
+          binder
+          |> List.fold_left (fun (state, acc) _ ->
+            let state, genvar = generate_fresh_name state in
+            (state, (ImNamedVarArg genvar) :: acc)
+          ) (state, [])
+        in
+        let genbinder = genbinder |> List.rev in
+        let state, bodies =
+          ruleabss
+          |> List.fold_left (fun (state, acc) { binder; body } ->
+            let subst =
+              binder
+              |> List.combine genbinder
+              |> List.fold_left (fun subst (genvar, ImNamedVar x) ->
+                subst |> Subst.add x genvar
+              ) Subst.empty
+            in
+            let state, body =
+              body
+              |> List.fold_left (fun (state, acc) clause ->
+                let state, _, clause = clause |> substitute_clause state subst in
+                (state, clause :: acc)
+              ) (state, [])
+            in
+            (state, body :: acc)
+          ) (state, [])
+        in
+        let binder = genbinder |> List.map (function
+          | ImNamedVarArg genvar -> genvar
+          | _ -> assert false
+        ) in
+        (
+          state,
+          bodies
+          |> negate_clauses_list
+          |> List.map (fun body -> { binder; body })
+        )
 
 (** `inline_rule_abstraction state improg_inlined ruleabs` performs inlining of `ruleabs`
     by using `improg_inlined`, which consists of "already inlined" definitions. *)
@@ -390,6 +464,28 @@ let inline_rule_abstraction (state : state) (improg_inlined : intermediate_progr
             (* If `impred` is not an IDB predicate: *)
               return (state, accs |> List.map (fun acc -> clause :: acc))
         end
+
+    | ImNegative (impred, imargs) ->
+      begin
+        match improg_inlined |> PredicateMap.find_opt impred with
+        | Some ruleabsset ->
+            let state, ruleabss =
+              ruleabsset
+              |> RuleAbstractionSet.elements
+              |> negate_rule_abstractions state
+            in
+            ruleabss |> foldM (fun (state, clauses_acc) ruleabs ->
+              reduce_rule state ruleabs imargs >>= fun (state, clauses) ->
+              return (state, clauses :: clauses_acc)
+            ) (state, []) >>= fun (state, clauses_acc) ->
+            let clausess = List.rev clauses_acc in
+            return (state, accs |> List.map (fun acc ->
+              clausess |> List.map (fun clauses -> List.rev_append clauses acc)
+            ) |> List.concat)
+
+        | None ->
+            return (state, accs |> List.map (fun acc -> clause :: acc))
+      end
 
     | _ ->
       (* Clauses other than positive applications are not inlined: *)
