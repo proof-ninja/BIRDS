@@ -33,3 +33,10 @@
  (name parse)
  (modules parse)
  (libraries birds sql))
+
+(executable
+  (public_name incrementalization)
+  (name incrementalization)
+  (modules incrementalization)
+  (libraries birds))
+
