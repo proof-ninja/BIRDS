@@ -1,0 +1,21 @@
+source b('B':string, 'C':real).
+source a('A':real, 'B':string).
+view v('A':real, 'B':string, 'C':real).
+
+% primary key
+% A -> B on view v
+_|_ :- v(A, B1, _), v(A, B2, _), B1 <> B2.
+% B -> C on view v
+_|_ :- v(_, B, C1), v(_, B, C2), C1 <> C2.
+
+% foreign key
+_|_ :- a(_, B), not b(B, _).
+
+% view definition
+v(A, B, C) :- a(A, B), b(B, C).
+
+% update strategy
+-a(A, B) :- a(A, B), not v(A, B, _).
+-b(B, C) :- b(B, C), v(_, B, _), not v(_, B, C).
++a(A, B) :- v(A, B, _), not a(A, B).
++b(B, C) :- v(_, B, C), not b(B, C).
