@@ -35,8 +35,8 @@
  (libraries birds sql))
 
 (executable
-  (public_name incrementalization)
-  (name incrementalization)
-  (modules incrementalization)
+  (public_name s2e)
+  (name s2e)
+  (modules s2e)
   (libraries birds))
 
