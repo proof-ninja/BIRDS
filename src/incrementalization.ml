@@ -1,77 +1,17 @@
 
 open Expr
 open Utils
+open Rule_abstraction
+open Sorted_rules
 
 (** The prefix used for variables generated during incrementalization. *)
 let updated_variable_prefix = "__updated__"
-
-type named_var =
-  | ImNamedVar of string
-
-type intermediate_predicate =
-  | ImPred        of table_name
-  | ImDeltaInsert of table_name
-  | ImDeltaDelete of table_name
-
-type intermediate_argument =
-  | ImNamedVarArg of named_var
-  | ImConstArg    of const
-  | ImAnonVarArg
-
-type intermediate_clause =
-  | ImPositive    of intermediate_predicate * intermediate_argument list
-  | ImNegative    of intermediate_predicate * intermediate_argument list
-  | ImEquation    of eterm
-  | ImNonequation of eterm
-  | ImConstTerm   of bool
-
-(** The type for rule abstractions,
-    i.e. data of the form `(X_1, ..., X_n) -> C_1, ..., C_m.` *)
-type rule_abstraction = {
-  binder: named_var list;
-  body  : intermediate_clause list;
-}
-
-module RuleAbstraction = struct
-  type t = rule_abstraction
-
-  let compare = compare
-end
-
-module RuleAbstractionSet = Set.Make(RuleAbstraction)
-
-type predicate_definition =
-  intermediate_predicate * RuleAbstractionSet.t
-
-module Predicate = struct
-  type t = intermediate_predicate
-
-  let compare (impred1: t) (impred2: t): int =
-    match (impred1, impred2) with
-    | (ImPred t1, ImPred t2)               -> String.compare t1 t2
-    | (ImPred _, _)                        -> 1
-    | (_, ImPred _)                        -> -1
-    | (ImDeltaInsert t1, ImDeltaInsert t2) -> String.compare t1 t2
-    | (ImDeltaInsert _, _)                 -> 1
-    | (_, ImDeltaInsert _)                 -> -1
-    | (ImDeltaDelete t1, ImDeltaDelete t2) -> String.compare t1 t2
-end
-
-module PredicateMap = Map.Make(Predicate)
-
-module PredicateDependencyGraph = Dependency_graph.Make(Predicate)
-
-type intermediate_program = RuleAbstractionSet.t PredicateMap.t
 
 type view_parameters = (bool list) PredicateMap.t
 
 type pararell_occurrence_counts = int PredicateMap.t
 
-type error =
-  | UnexpectedHeadVarForm  of var
-  | UnexpectedBodyVarForm  of var
-  | NoViewVariable
-  | CyclicDependency       of predicate_definition list
+type error = Rule_abstraction.error
 
 let string_of_intermediate_predicate = function
   | ImPred table        -> Printf.sprintf "%s" table
@@ -92,143 +32,6 @@ let string_of_error = function
       ) |> String.concat ", "
     in
     Printf.sprintf "cyclic dependency found among %s" s
-
-let separate_predicate_and_vars (rterm: rterm): intermediate_predicate * var list =
-  match rterm with
-  | Pred (t, vars)        -> (ImPred t, vars)
-  | Deltainsert (t, vars) -> (ImDeltaInsert t, vars)
-  | Deltadelete (t, vars) -> (ImDeltaDelete t, vars)
-
-let convert_head_var (var: var): (named_var, error) result =
-  let open ResultMonad in
-  match var with
-  | NamedVar x -> return (ImNamedVar x)
-  | _          -> err (UnexpectedHeadVarForm var)
-
-let convert_head_rterm (rterm: rterm): (intermediate_predicate * named_var list, error) result =
-  let open ResultMonad in
-  let (impred, vars) = separate_predicate_and_vars rterm in
-  vars |> mapM convert_head_var >>= fun imvars ->
-  return (impred, imvars)
-
-let convert_body_var (var: var): (intermediate_argument, error) result =
-  let open ResultMonad in
-  match var with
-  | NamedVar x ->
-      return (ImNamedVarArg (ImNamedVar x))
-
-  | AnonVar ->
-      return ImAnonVarArg
-
-  | ConstVar const ->
-      return (ImConstArg const)
-
-  | _ ->
-      err (UnexpectedBodyVarForm var)
-
-let convert_body_rterm (rterm: rterm): (intermediate_predicate * intermediate_argument list, error) result =
-  let open ResultMonad in
-  let (impred, vars) = separate_predicate_and_vars rterm in
-  vars |> foldM (fun imarg_acc var ->
-    convert_body_var var >>= fun imarg ->
-    return (imarg :: imarg_acc)
-  ) [] >>= fun imarg_acc ->
-  return (impred, List.rev imarg_acc)
-
-let convert_body_clause (term: term): (intermediate_clause, error) result =
-  let open ResultMonad in
-  match term with
-  | Rel rterm ->
-      convert_body_rterm rterm >>= fun (impred, imargs) ->
-      return (ImPositive (impred, imargs))
-
-  | Not rterm ->
-      convert_body_rterm rterm >>= fun (impred, imvars) ->
-      return (ImNegative (impred, imvars))
-
-  | Equat eterm ->
-      return (ImEquation eterm)
-
-  | Noneq eterm ->
-      return (ImNonequation eterm)
-
-  | ConstTerm bool ->
-      return (ImConstTerm bool)
-
-
-let convert_rule (rule: rule): (intermediate_predicate * rule_abstraction, error) result =
-  let open ResultMonad in
-  let (head, body) = rule in
-  convert_head_rterm head >>= fun (impred, binder) ->
-  body |> foldM (fun imclause_acc term ->
-    convert_body_clause term >>= fun imclause ->
-    return (imclause :: imclause_acc)
-  ) [] >>= fun imclause_acc ->
-  let body = List.rev imclause_acc in
-  let ruleabs = { binder; body } in
-  return (impred, ruleabs)
-    
-(** Adds a mapping `(impred |-> ruleabs)` to `improg`. *)
-let add_rule_abstraction (impred: intermediate_predicate) (ruleabs: rule_abstraction) (improg: intermediate_program): intermediate_program =
-  match improg |> PredicateMap.find_opt impred with
-  | None ->
-      improg |> PredicateMap.add impred (RuleAbstractionSet.singleton ruleabs)
-
-  | Some ruleabsset ->
-      improg |> PredicateMap.add impred (ruleabsset |> RuleAbstractionSet.add ruleabs)
-
-(** Performs topological sorting of IDB predicates based on the dependencies among them. *)
-let resolve_dependencies_among_predicates (improg: intermediate_program): (predicate_definition list, error) result =
-  (* Adds vertices corresponding to IDB predicates to the graph: *)
-  let (graph, acc) =
-    PredicateMap.fold (fun impred ruleabsset (graph, acc) ->
-      match graph |> PredicateDependencyGraph.add_vertex impred ruleabsset with
-      | Error _            -> assert false
-      | Ok (graph, vertex) -> (graph, (impred, vertex, ruleabsset) :: acc)
-    ) improg (PredicateDependencyGraph.empty, [])
-  in
-
-  (* Adds directed edges that represent dependencies among IDB predicates.
-     Here, `impred_to` depends on `impred_from`: *)
-  let graph =
-    acc |> List.rev |> List.fold_left (fun graph (_impred_to, vertex_to, ruleabsset) ->
-      let ruleabss = RuleAbstractionSet.elements ruleabsset in
-      ruleabss |> List.fold_left (fun graph ruleabs ->
-        ruleabs.body |> List.fold_left (fun graph clause ->
-          match clause with
-          | ImPositive (impred_from, _) | ImNegative (impred_from, _) ->
-              begin
-                match graph |> PredicateDependencyGraph.get_vertex impred_from with
-                | Some vertex_from ->
-                    (* If `impred_to` is an IDB predicate and thus registered to `graph` as `vertex_to`: *)
-                    graph |> PredicateDependencyGraph.add_edge ~from:vertex_from ~to_:vertex_to
-
-                | None ->
-                    (* If `impred_to` is NOT an IDB predicate: *)
-                    graph
-              end
-
-          | ImEquation _ | ImNonequation _ | ImConstTerm _ ->
-              graph
-        ) graph
-      ) graph
-    ) graph
-  in
-
-  (* Performs topological sorting according to the dependency graph: *)
-  PredicateDependencyGraph.topological_sort graph
-    |> Result.map_error (fun cycle -> CyclicDependency cycle)
-
-let sort_rules (rules: rule list): (predicate_definition list, error) result =
-  let open ResultMonad in
-
-  rules |> foldM (fun improg rule ->
-    convert_rule rule >>= fun (impred, ruleabs) ->
-    return (improg |> add_rule_abstraction impred ruleabs)
-  ) PredicateMap.empty >>= fun improg ->
-
-  (* Extracts dependencies among IDB predicates and perform a topological sorting: *)
-  resolve_dependencies_among_predicates improg
 
 let incrementalization_ast (ast: expr): (rule list, error) result =
   let open ResultMonad in
