@@ -428,7 +428,10 @@ let revert_rule (imrule : intermediate_rule) : (rule, error) result =
   in
   let body = List.concat [ terms_pos; terms_neg; terms_eq ] in
   if List.length body = 0 then
-    Result.error (RuleWithoutBody head)
+    if List.is_empty head_arguments then
+      Result.ok (head, ConstTerm true :: [])
+    else
+      Result.error (RuleWithoutBody head)
   else
     Result.ok (head, body)
 
