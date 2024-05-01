@@ -1,0 +1,15 @@
+source a('AA':int, 'BB':string).
+source b('BB':string, 'CC':int).
+
+v(A,B,C) :- a(A,B), b(B,C).
+
+-v(GENV1, GENV2, GENV3) :- v(GENV1, GENV2, GENV3) , GENV3 = 3 , GENV1 <> 4.
++v(GENV1, GENV2, GENV3) :- GENV1 = 4 , -v(GENV1_2, GENV2, GENV3).
+
+uv(A,B,C) :- v(A, B, C), not -v(A,B,C).
+uv(A,B,C) :- +v(A,B,C).
+
+-a(A, B) :- a(A, B), not uv(A, B, _).
+-b(B, C) :- b(B, C), uv(_, B, _), not uv(_, B, C).
++a(A, B) :- uv(A, B, _), not a(A, B).
++b(B, C) :- uv(_, B, C), not b(B, C).
