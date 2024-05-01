@@ -1,0 +1,7 @@
+v(A) :- s(A,B).
+-v(GV1) :- v(GV1) , GV1 = 1 , GV1 <> 4.
++v(GV1) :- GV1 = 4 , -v(V12).
+-s(A,B) :- s(A,B), -v(A).
++s(A,B) :- +v(A), not s(A,_), not -s(_,_), B=-1.
++s(A,B) :- +v(A), not s(A,_), -s(_,B).
+

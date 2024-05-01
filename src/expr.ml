@@ -294,6 +294,12 @@ module RuleSet = struct
     Printf.printf "%s\n" @@ string_of_rules rs2; *)
     let result = diff rs1 rs2 in
     map (fun x -> RuleMap.find x rule_map) result
+  
+  (* This implementation is hopelessly inefficient and should be improved if heavily used.
+   * It would be better to have the alpha-transformed rule in Set.
+   *)
+  let mem elm set =
+    mem (Alpha.convert elm) (map Alpha.convert set)
 end
 
 

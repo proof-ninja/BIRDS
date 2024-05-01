@@ -9,10 +9,14 @@ let _ =
     let lexbuf = Lexing.from_channel chan in
     let ast = Parser.main Lexer.token lexbuf in
     let rules = ast.rules in
-    match Simplification.simplify rules with
+    match Inlining.sort_rules rules with
     | Result.Error err ->
-      print_endline @@ Simplification.string_of_error err
+      print_endline @@ Inlining.string_of_error err
     | Result.Ok rules ->
-      let ast = Expr.{ ast with rules } in
-      print_endline @@ Expr.to_string ast
+      match Simplification.simplify rules with
+      | Result.Error err ->
+        print_endline @@ Simplification.string_of_error err
+      | Result.Ok rules ->
+        let ast = Expr.{ ast with rules } in
+        print_endline @@ Expr.to_string ast
   end
