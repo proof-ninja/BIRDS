@@ -1781,7 +1781,9 @@ exception TempError of error
 let get_column_names_from_table ~(error_detail : error_detail) (table_env : table_environment) (table : table_name) : (column_name list, error) result =
   let open ResultMonad in
   match table_env |> TableEnv.find_opt table with
-  | None      -> raise (TempError (UnknownTable { table; error_detail }))
+  | None      ->
+      Printf.printf "table: %s\n" table;
+      raise (TempError (UnknownTable { table; error_detail }))
   | Some cols -> return cols
 
 
