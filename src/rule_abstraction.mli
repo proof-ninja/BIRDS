@@ -64,3 +64,5 @@ val convert_rule: rule -> (intermediate_predicate * rule_abstraction, error) res
     
 (** Adds a mapping `(impred |-> ruleabs)` to `improg`. *)
 val add_rule_abstraction: intermediate_predicate -> rule_abstraction -> intermediate_program -> intermediate_program
+
+val inject_rule: intermediate_predicate -> rule_abstraction -> rule

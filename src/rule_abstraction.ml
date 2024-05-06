@@ -147,3 +147,41 @@ let add_rule_abstraction (impred: intermediate_predicate) (ruleabs: rule_abstrac
 
   | Some ruleabsset ->
       improg |> PredicateMap.add impred (ruleabsset |> RuleAbstractionSet.add ruleabs)
+
+let inject_rterm (impred: intermediate_predicate) (imargs: intermediate_argument list): rterm =
+  let vars =
+    imargs |> List.map (function
+    | ImNamedVarArg (ImNamedVar x) -> NamedVar x
+    | ImConstArg const -> ConstVar const
+    | ImAnonVarArg -> AnonVar
+    )
+  in
+  match impred with
+  | ImPred table -> Pred (table, vars)
+  | ImDeltaInsert table -> Deltainsert (table, vars)
+  | ImDeltaDelete table -> Deltadelete (table, vars)
+
+
+let inject_clause (clause: intermediate_clause): term =
+  match clause with
+  | ImPositive (impred, imargs) -> Rel (inject_rterm impred imargs)
+  | ImNegative (impred, imargs) -> Not (inject_rterm impred imargs)
+  | ImEquation eterm  -> Equat eterm
+  | ImNonequation eterm -> Noneq eterm
+  | ImConstTerm bool -> ConstTerm bool
+
+
+let inject_rule (impred: intermediate_predicate) (ruleabs: rule_abstraction): rule =
+  let { binder; body } = ruleabs in
+  let rterm = binder |> List.map (fun var -> ImNamedVarArg var) |> inject_rterm impred in
+  let terms = body |> List.map inject_clause in
+  (rterm, terms)
+      
+let inject_rules (improg: intermediate_program): rule list =
+    PredicateMap.fold (fun impred ruleabsset acc ->
+      let ruleabss = RuleAbstractionSet.elements ruleabsset in
+      ruleabss |> List.fold_left (fun acc ruleabs ->
+        let rule = inject_rule impred ruleabs in
+        rule :: acc
+      ) acc
+    ) improg []
