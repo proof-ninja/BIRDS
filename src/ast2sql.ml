@@ -2447,9 +2447,9 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
   let rules = List.rev expr.rules in (* `expr` holds its rules in the reversed order *)
   divide_rules_into_groups table_env rules >>= fun rule_groups ->
 
-  print_endline @@ (rule_groups |> List.map Debug.string_of_rule_group |> String.concat "\n");
+  print_endline @@ (rule_groups |> List.map Debug.string_of_rule_group |> String.concat "\n");  (* DEBUG *)
 
-  rule_groups |> foldM (fun (i, sql_acc, delta_env, table_env) rule_group ->
+  rule_groups |> foldM (fun (i, creation_acc, update_acc, delta_env, table_env) rule_group ->
     let temporary_table = Printf.sprintf "temp%d" i in
     match rule_group with
     | ViewGroup (table, headless_rule) ->
@@ -2462,7 +2462,7 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
         in
         convert_rule_to_operation_based_sql ~error_detail table_env delta_env headless_rule >>= fun sql_query ->
         let creation = SqlCreateView (table, sql_query) in
-        return (i + 1, creation :: sql_acc, delta_env, table_env)
+        return (i + 1, creation :: creation_acc, update_acc, delta_env, table_env)
 
     | PredGroup (table, headless_rules) ->
       headless_rules |> mapM (fun headless_rule ->
@@ -2475,10 +2475,10 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
         in
         convert_rule_to_operation_based_sql ~error_detail table_env delta_env headless_rule >>= fun sql_query ->
         return (SqlCreateTemporaryTable (temporary_table, sql_query))
-      ) >>= fun sql_queries ->
+      ) >>= fun creations ->
       get_column_names_from_table ~error_detail:(InPred table) table_env table >>= fun cols ->
       let table_env = table_env |> TableEnv.add table cols in
-      return (i + 1, List.concat [ sql_queries; sql_acc ], delta_env, table_env)
+      return (i + 1, List.concat [ creations; creation_acc ], update_acc, delta_env, table_env)
 
     | DeltaGroup (delta_key, headless_rules) ->
         let (delta_kind, table) = delta_key in
@@ -2520,7 +2520,7 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
               in
               SqlDeleteFrom (table, sql_where)
         in
-        return (i + 1, update :: creation :: sql_acc, delta_env, table_env)
+        return (i + 1, creation :: creation_acc, update :: update_acc, delta_env, table_env)
 
-  ) (0, [], DeltaEnv.empty, table_env) >>= fun (_, sql_acc, _, _) ->
-  return @@ List.rev sql_acc
+  ) (0, [], [], DeltaEnv.empty, table_env) >>= fun (_, creation_acc, update_acc, _, _) ->
+  return @@ List.concat @@ List.map List.rev [creation_acc; update_acc]

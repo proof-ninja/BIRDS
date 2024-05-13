@@ -580,4 +580,4 @@ let sort_rules (rules : rule list) : (rule list, error) result =
     )
     |> List.concat
   in
-  return (List.rev acc)
+  return @@ List.rev acc

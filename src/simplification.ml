@@ -810,7 +810,7 @@ let simplify (rules : rule list) : (rule list, error) result =
   (* Removes duplicate rules here *)
   let rules = rules |> remove_duplicate_rules in
 
-  return rules
+  return @@ List.rev rules
 
 let string_of_error = function
   | UnexpectedHeadVarForm var ->
