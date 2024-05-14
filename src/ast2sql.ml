@@ -2309,25 +2309,80 @@ type grouping_state =
   | NoneState
 
 
-let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule list) : (rule_group list, error) result =
+module ArgMap = Map.Make(String)
+
+
+let update_table_env (head : rterm) (body : term list) (table_env : table_environment) : (table_environment, error) result =
   let open ResultMonad in
-  rules |> foldM (fun (state_opt, already_handled_delta, already_handled_pred, group_acc) rule ->
+  let table, args =
+    match head with
+    | Pred (table, args) -> table, args
+    | Deltainsert (table, args) -> table, args
+    | Deltadelete (table, args) -> table, args
+  in
+  if TableEnv.mem table table_env then
+    return table_env
+  else
+    args |> List.rev |> foldM (fun (colmns, arg_map) arg ->
+      match arg with
+      | NamedVar x -> return (x :: colmns, arg_map |> ArgMap.add x None)
+      | _          -> err @@ InvalidArgInHead { var = arg; error_detail = InRule (head, body) }
+    ) ([], ArgMap.empty) >>= fun (colmns, arg_map) ->
+    body |> foldM (fun arg_map term ->
+      match term with
+      | Rel (Pred (target, args))
+      | Rel (Deltainsert (target, args))
+      | Rel (Deltadelete (target, args)) ->
+          begin match TableEnv.find_opt target table_env with
+          | None ->
+              err @@ UnknownTable { table = target; error_detail = InRule (head, body) }
+          | Some cols ->
+              List.combine cols args |> foldM (fun arg_map (col, arg) ->
+                match arg with
+                | NamedVar x ->
+                    begin match arg_map |> ArgMap.find_opt x with
+                    | None                             -> err @@ InvalidArgInBody { var = arg; error_detail = InRule (head, body) }
+                    | Some None                        -> return (arg_map |> ArgMap.add x (Some col))
+                    | Some (Some col0) when col = col0 -> return arg_map
+                    | Some (Some _)                    -> err @@ InvalidArgInBody { var = arg; error_detail = InRule (head, body) }
+                    end
+
+                | _          ->
+                    err @@ InvalidArgInBody { var = arg; error_detail = InRule (head, body) }
+              ) arg_map
+          end
+
+      | _ -> return arg_map
+    ) arg_map >>= fun arg_map ->
+    colmns |> List.rev |> foldM (fun columns col ->
+      match arg_map |> ArgMap.find_opt col with
+      | None       -> err @@ HeadVariableDoesNotOccurInBody col
+      | Some None  -> err @@ HeadVariableDoesNotOccurInBody col
+      | Some Some col -> return (col :: columns)
+    ) [] >>= fun columns ->
+    return @@ TableEnv.add table columns table_env
+
+
+let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule list) : (rule_group list * table_environment, error) result =
+  let open ResultMonad in
+  rules |> foldM (fun (table_env, state_opt, already_handled_delta, already_handled_pred, group_acc) rule ->
     let (head, body) = rule in
+    update_table_env head body table_env >>= fun table_env ->
     get_spec_from_head ~error_detail:(InRule rule) table_env head >>= function
     | ViewHead (table, columns_and_vars) ->
         let group = ViewGroup (table, { columns_and_vars; body }) in
         begin
           match state_opt with
           | NoneState ->
-              return (NoneState, already_handled_delta, already_handled_pred, group :: group_acc)
+              return (table_env, NoneState, already_handled_delta, already_handled_pred, group :: group_acc)
 
           | PredGrouping state ->
               let group_prev = PredGroup (state.current_pred_target, List.rev state.current_accumulated) in
-              return (NoneState, already_handled_delta, already_handled_pred, group :: group_prev :: group_acc)
+              return (table_env, NoneState, already_handled_delta, already_handled_pred, group :: group_prev :: group_acc)
 
           | DeltaGrouping state ->
               let group_prev = DeltaGroup (state.current_delta_target, List.rev state.current_accumulated) in
-              return (NoneState, already_handled_delta, already_handled_pred, group :: group_prev :: group_acc)
+              return (table_env, NoneState, already_handled_delta, already_handled_pred, group :: group_prev :: group_acc)
         end
 
     | PredHead (table, columns_and_vars) ->
@@ -2335,7 +2390,8 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
         begin
           match state_opt with
           | NoneState ->
-              return (PredGrouping {
+              return (table_env,
+              PredGrouping {
                 current_pred_target = table;
                 current_accumulated = [ intermediate ];
               }, already_handled_delta, already_handled_pred, group_acc)
@@ -2344,12 +2400,14 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
               if already_handled_pred |> TableSet.mem state.current_pred_target then
                 err @@ HasMoreThanOnePredRuleGroup state.current_pred_target
               else if state.current_pred_target = table then
-                return (PredGrouping { state with
+                return (table_env,
+                PredGrouping { state with
                   current_accumulated = intermediate :: state.current_accumulated;
                 }, already_handled_delta, already_handled_pred, group_acc)
               else
                 let group = PredGroup (state.current_pred_target, List.rev state.current_accumulated) in
-                return (PredGrouping {
+                return (table_env,
+                PredGrouping {
                   current_pred_target = table;
                   current_accumulated = [ intermediate ];
                 },
@@ -2362,7 +2420,8 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
                 err @@ HasMoreThanOneRuleGroup state.current_delta_target
               else
                 let group = DeltaGroup (state.current_delta_target, List.rev state.current_accumulated) in
-                return (PredGrouping {
+                return (table_env,
+                PredGrouping {
                   current_pred_target = table;
                   current_accumulated  = [ intermediate ];
                 },
@@ -2377,7 +2436,8 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
         begin
           match state_opt with
           | NoneState ->
-              return (DeltaGrouping {
+              return (table_env,
+              DeltaGrouping {
                 current_delta_target = delta_key;
                 current_accumulated  = [ intermediate ];
               }, already_handled_delta, already_handled_pred, group_acc)
@@ -2387,7 +2447,8 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
                 err @@ HasMoreThanOnePredRuleGroup state.current_pred_target
               else
                 let group = PredGroup (state.current_pred_target, List.rev state.current_accumulated) in
-                return (DeltaGrouping {
+                return (table_env,
+                DeltaGrouping {
                   current_delta_target = delta_key;
                   current_accumulated  = [ intermediate ];
                 },
@@ -2399,12 +2460,14 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
               if already_handled_delta |> DeltaKeySet.mem delta_key then
                 err @@ HasMoreThanOneRuleGroup delta_key
               else if delta_key = state.current_delta_target then
-                return (DeltaGrouping { state with
+                return (table_env,
+                DeltaGrouping { state with
                   current_accumulated = intermediate :: state.current_accumulated;
                 }, already_handled_delta, already_handled_pred, group_acc)
               else
                 let group = DeltaGroup (state.current_delta_target, List.rev state.current_accumulated) in
-                return (DeltaGrouping {
+                return (table_env,
+                DeltaGrouping {
                   current_delta_target = delta_key;
                   current_accumulated  = [ intermediate ];
                 },
@@ -2413,25 +2476,23 @@ let divide_rules_into_groups (table_env : table_environment) (rules : Expr.rule 
                 group :: group_acc)
         end
 
-  ) (NoneState, DeltaKeySet.empty, TableSet.empty, []) >>= fun (state_opt, _, _, group_acc) ->
+  ) (table_env, NoneState, DeltaKeySet.empty, TableSet.empty, []) >>= fun (table_env, state_opt, _, _, group_acc) ->
   match state_opt with
   | NoneState ->
-      return (List.rev group_acc)
+      return ((List.rev group_acc), table_env)
 
   | PredGrouping state ->
       let group_last = PredGroup (state.current_pred_target, List.rev state.current_accumulated) in
       let groups = List.rev (group_last :: group_acc) in
-      return groups
+      return (groups, table_env)
 
   | DeltaGrouping state ->
       let group_last = DeltaGroup (state.current_delta_target, List.rev state.current_accumulated) in
       let groups = List.rev (group_last :: group_acc) in
-      return groups
+      return (groups, table_env)
 
 
 let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, error) result =
-  print_endline @@ Expr.to_string expr; (* DEBUG *)
-
   let open ResultMonad in
   let table_env =
     let defs =
@@ -2444,10 +2505,9 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
       table_env |> TableEnv.add table cols
     ) TableEnv.empty
   in
+  let existent_tables = table_env |> TableEnv.to_list |> List.map fst |> TableSet.of_list in
   let rules = List.rev expr.rules in (* `expr` holds its rules in the reversed order *)
-  divide_rules_into_groups table_env rules >>= fun rule_groups ->
-
-  print_endline @@ (rule_groups |> List.map Debug.string_of_rule_group |> String.concat "\n");  (* DEBUG *)
+  divide_rules_into_groups table_env rules >>= fun (rule_groups, table_env) ->
 
   rule_groups |> foldM (fun (i, creation_acc, update_acc, delta_env, table_env) rule_group ->
     let temporary_table = Printf.sprintf "temp%d" i in
@@ -2473,12 +2533,13 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
           in
           InRule rule
         in
-        convert_rule_to_operation_based_sql ~error_detail table_env delta_env headless_rule >>= fun sql_query ->
-        return (SqlCreateTemporaryTable (temporary_table, sql_query))
-      ) >>= fun creations ->
+        convert_rule_to_operation_based_sql ~error_detail table_env delta_env headless_rule
+      ) >>= fun sql_queries ->
+        let sql_query = SqlUnion (SqlUnionOp, sql_queries) in
+        let creation = SqlCreateTemporaryTable (table, sql_query) in
       get_column_names_from_table ~error_detail:(InPred table) table_env table >>= fun cols ->
       let table_env = table_env |> TableEnv.add table cols in
-      return (i + 1, List.concat [ creations; creation_acc ], update_acc, delta_env, table_env)
+      return (i, creation :: creation_acc, update_acc, delta_env, table_env)
 
     | DeltaGroup (delta_key, headless_rules) ->
         let (delta_kind, table) = delta_key in
@@ -2498,29 +2559,33 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
         get_column_names_from_table ~error_detail:(InGroup delta_key) table_env table >>= fun cols ->
         let delta_env = delta_env |> DeltaEnv.add delta_key (temporary_table, cols) in
         let creation = SqlCreateTemporaryTable (temporary_table, sql_query) in
-        let update =
-          match delta_kind with
-          | Insert ->
-              SqlInsertInto (table,
-                SqlFrom [ (SqlFromTable (None, temporary_table), None) ])
+        if TableSet.mem table existent_tables then
+          let update =
+            match delta_kind with
+            | Insert ->
+                SqlInsertInto (table,
+                  SqlFrom [ (SqlFromTable (None, temporary_table), None) ])
 
-          | Delete ->
-              let sql_where =
-                let cols =
-                  match table_env |> TableEnv.find_opt table with
-                  | None      -> assert false
-                  | Some cols -> cols
+            | Delete ->
+                let sql_where =
+                  let cols =
+                    match table_env |> TableEnv.find_opt table with
+                    | None      -> assert false
+                    | Some cols -> cols
+                  in
+                  let constraints =
+                    cols |> List.map (fun col ->
+                      SqlConstraint (SqlColumn (Some table, col), SqlRelEqual, SqlColumn (Some temporary_table, col))
+                    )
+                  in
+                  SqlWhere { using = [ (SqlFromTable (None, temporary_table), None) ]; constraints }
                 in
-                let constraints =
-                  cols |> List.map (fun col ->
-                    SqlConstraint (SqlColumn (Some table, col), SqlRelEqual, SqlColumn (Some temporary_table, col))
-                  )
-                in
-                SqlWhere { using = [ (SqlFromTable (None, temporary_table), None) ]; constraints }
-              in
-              SqlDeleteFrom (table, sql_where)
-        in
-        return (i + 1, creation :: creation_acc, update :: update_acc, delta_env, table_env)
+                SqlDeleteFrom (table, sql_where)
+          in
+          return (i + 1, creation :: creation_acc, update :: update_acc, delta_env, table_env)
+        else
+          return (i + 1, creation :: creation_acc, update_acc, delta_env, table_env)
 
   ) (0, [], [], DeltaEnv.empty, table_env) >>= fun (_, creation_acc, update_acc, _, _) ->
+
   return @@ List.concat @@ List.map List.rev [creation_acc; update_acc]
