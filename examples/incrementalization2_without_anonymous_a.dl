@@ -1,0 +1,7 @@
+source s('A':int, 'B':string).
+view v('A':int).
+
+%view definition
+v(A) :- s(A,B).
+
+-s(A,B) :- s(A,B), not v(A).
