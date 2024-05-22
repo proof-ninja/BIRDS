@@ -44,8 +44,9 @@ let run_tests (test_cases : test_case list) : bool =
         Printf.printf "got:\n\"%s\"\n" got;
         true
 
-    | Error _ ->
-        Printf.printf "! %s: FAILED (error)\n" title;
+    | Error err ->
+        Printf.printf "! %s: FAILED\n" title;
+        Printf.printf "error: %s\n" (Ast2sql.show_error err);
         true
   ) false
 
@@ -134,6 +135,111 @@ let main () =
             "INSERT INTO ed SELECT * FROM temp2;";
           ]
       };
+      {
+        title =
+          "non LVGN-Datalog";
+        (*
+          source a('AA':int, 'BB':string).
+          source b('BB':string, 'CC':int).
+
+          v(A,B,C) :- a(A,B), b(B,C).
+
+          -v(GENV1, GENV2, GENV3) :- v(GENV1, GENV2, GENV3) , GENV3 = 3 , GENV1 <> 4.
+          +v(GENV1, GENV2, GENV3) :- GENV1 = 4 , -v(GENV1_2, GENV2, GENV3).
+
+          uv(A,B,C) :- v(A, B, C), not -v(A,B,C).
+          uv(A,B,C) :- +v(A,B,C).
+
+          -a(A, B) :- a(A, B), not uv(A, B, _).
+          -b(B, C) :- b(B, C), uv(_, B, _), not uv(_, B, C).
+          +a(A, B) :- uv(A, B, _), not a(A, B).
+          +b(B, C) :- uv(_, B, C), not b(B, C).
+        *)
+        expr =
+          {
+            rules = begin
+              let v = Pred ("v", [ NamedVar "A"; NamedVar "B"; NamedVar "C" ]), [
+                Rel (Pred ("a", [ NamedVar "A"; NamedVar "B" ]));
+                Rel (Pred ("b", [ NamedVar "B"; NamedVar "C" ]));
+              ]
+              in
+              let mv = Deltadelete ("v", [ NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3" ]), [
+                Rel (Pred ("v", [ NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3" ]));
+                Equat (Equation ("=", Var (NamedVar "GENV3"), Const (Int 3)));
+                Equat (Equation ("<>", Var (NamedVar "GENV1"), Const (Int 4)));
+              ]
+              in
+              let pv = Deltainsert ("v", [ NamedVar "GENV1"; NamedVar "GENV2"; NamedVar "GENV3" ]), [
+                Equat (Equation ("=", Var (NamedVar "GENV1"), Const (Int 4)));
+                Rel (Deltadelete ("v", [ NamedVar "GENV1_2"; NamedVar "GENV2"; NamedVar "GENV3" ]));
+              ]
+              in
+              let uv1 = Pred ("uv", [ NamedVar "A"; NamedVar "B"; NamedVar "C" ]), [
+                Rel (Pred ("v", [ NamedVar "A"; NamedVar "B"; NamedVar "C" ]));
+                Not (Deltadelete ("v", [ NamedVar "A"; NamedVar "B"; NamedVar "C" ]));
+              ]
+              in
+              let uv2 = Pred ("uv", [ NamedVar "A"; NamedVar "B"; NamedVar "C" ]), [
+                Rel (Deltainsert ("v", [ NamedVar "A"; NamedVar "B"; NamedVar "C" ]));
+              ]
+              in
+              let ma = Deltadelete ("a", [ NamedVar "A"; NamedVar "B" ]), [
+                Rel (Pred ("a", [ NamedVar "A"; NamedVar "B" ]));
+                Not (Pred ("uv", [ NamedVar "A"; NamedVar "B"; AnonVar ]));
+              ]
+              in
+              let mb = Deltadelete ("b", [ NamedVar "B"; NamedVar "C" ]), [
+                Rel (Pred ("b", [ NamedVar "B"; NamedVar "C" ]));
+                Rel (Pred ("uv", [ AnonVar; NamedVar "B"; AnonVar ]));
+                Not (Pred ("uv", [ AnonVar; NamedVar "B"; NamedVar "C" ]));
+              ]
+              in
+              let pa = Deltainsert ("a", [ NamedVar "A"; NamedVar "B" ]), [
+                Rel (Pred ("uv", [ NamedVar "A"; NamedVar "B"; AnonVar ]));
+                Not (Pred ("a", [ NamedVar "A"; NamedVar "B" ]));
+              ]
+              in
+              let pb = Deltainsert ("b", [ NamedVar "B"; NamedVar "C" ]), [
+                Rel (Pred ("uv", [ AnonVar; NamedVar "B"; NamedVar "C" ]));
+                Not (Pred ("b", [ NamedVar "B"; NamedVar "C" ]));
+              ]
+              in
+              match Inlining.sort_rules [ v; mv; pv; uv1; uv2; ma; mb; pa; pb ] with
+              | Error err ->
+                  Printf.printf "Error: %s\n" (Inlining.string_of_error err);
+                  assert false
+              | Ok rules ->
+                match Simplification.simplify rules with
+                | Error err ->
+                    Printf.printf "Error: %s\n" (Simplification.string_of_error err);
+                    assert false
+                | Ok rules -> rules
+            end;
+            facts = [];
+            query = None;
+            sources = [
+              ("a", [ ("AA", Sstring); ("BB", Sint) ]);
+              ("b", [ ("BB", Sint); ("CC", Sstring) ]);
+            ];
+            view = None;
+            constraints = [];
+            primary_keys = [];
+          };
+        expected = String.concat " " [
+          "CREATE TEMPORARY TABLE v AS SELECT a_0.AA AS AA, a_0.BB AS BB, b_1.CC AS CC FROM a AS a_0, b AS b_1 WHERE b_1.BB = a_0.BB;";
+          "CREATE TEMPORARY TABLE temp0 AS SELECT v_0.AA AS AA, v_0.BB AS BB, 3 AS CC FROM v AS v_0 WHERE v_0.CC = 3 AND v_0.AA <> 4;";
+          "CREATE TEMPORARY TABLE temp1 AS SELECT 4 AS AA, temp0.BB AS BB, temp0.CC AS CC FROM temp0 AS temp0;";
+          "CREATE TEMPORARY TABLE uv AS SELECT v_0.AA AS AA, v_0.BB AS BB, v_0.CC AS CC FROM v AS v_0 WHERE NOT EXISTS ( SELECT * FROM temp0 AS t WHERE t.AA = v_0.AA AND t.BB = v_0.BB AND t.CC = v_0.CC ) UNION SELECT temp1.AA AS AA, temp1.BB AS BB, temp1.CC AS CC FROM temp1 AS temp1;";
+          "CREATE TEMPORARY TABLE temp2 AS SELECT uv_0.BB AS BB, uv_0.CC AS CC FROM uv AS uv_0 WHERE NOT EXISTS ( SELECT * FROM b AS t WHERE t.BB = uv_0.BB AND t.CC = uv_0.CC );";
+          "CREATE TEMPORARY TABLE temp3 AS SELECT uv_0.AA AS AA, uv_0.BB AS BB FROM uv AS uv_0 WHERE NOT EXISTS ( SELECT * FROM a AS t WHERE t.AA = uv_0.AA AND t.BB = uv_0.BB );";
+          "CREATE TEMPORARY TABLE temp4 AS SELECT b_0.BB AS BB, b_0.CC AS CC FROM b AS b_0, uv AS uv_1 WHERE uv_1.BB = b_0.BB AND NOT EXISTS ( SELECT * FROM uv AS t WHERE t.BB = b_0.BB AND t.CC = b_0.CC );";
+          "CREATE TEMPORARY TABLE temp5 AS SELECT a_0.AA AS AA, a_0.BB AS BB FROM a AS a_0 WHERE NOT EXISTS ( SELECT * FROM uv AS t WHERE t.AA = a_0.AA AND t.BB = a_0.BB );";
+          "INSERT INTO b SELECT * FROM temp2;";
+          "INSERT INTO a SELECT * FROM temp3;";
+          "DELETE FROM b USING temp4 WHERE b.BB = temp4.BB AND b.CC = temp4.CC;";
+          "DELETE FROM a USING temp5 WHERE a.AA = temp5.AA AND a.BB = temp5.BB;";
+        ]
+      }
     ]
   in
   run_tests test_cases
