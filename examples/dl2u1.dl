@@ -1,0 +1,5 @@
+source ed('EMP_NAME':string,'DEPT_NAME':string).
+source eed('EMP_NAME':string,'DEPT_NAME':string).
++eed(E, D) :- ed(E, D), D = 'A', E <> 'Joe', ¬eed(E, D).
+-eed(E, D) :- ed(V1, D), eed(E, D), E = 'Joe', D = 'A', V1 <> 'Joe', ¬eed(V1, D).
++ed(E, D) :- ed(V1, D), E = 'Joe', D = 'A', V1 <> 'Joe', ¬ed(E, D), ¬eed(V1, D).

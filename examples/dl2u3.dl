@@ -1,0 +1,6 @@
+source x('A':int, 'B':string).
+source y('A':int, 'B':string).
+
++y(D, E) :- D <> 2, D <> 3, +x(D, E), y(D, E).
+-x(A, B) :- A = 1, x(A, B).
++x(A, B) :- A <> 1, x(A, B).
