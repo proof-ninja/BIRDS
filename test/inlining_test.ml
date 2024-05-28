@@ -185,7 +185,7 @@ let main () =
             "g(Y) :- Y = 42 , true."
           ]
       };
-      {
+      (* {
         title = "inlining negative predications";
         input = [
           (!: "cedp" ["E"; "D"], [ Rel (Deltainsert ("ced", [ NamedVar "E"; NamedVar "D" ])) ]);
@@ -220,7 +220,7 @@ let main () =
             "cedp(E, D) :- ced(E, D) , true.";
             "cedp(E, D) :- +ced(E, D).";
           ]
-      }
+      } *)
     ]
   in
   run_tests test_cases

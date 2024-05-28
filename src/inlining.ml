@@ -465,7 +465,7 @@ let inline_rule_abstraction (state : state) (improg_inlined : intermediate_progr
               return (state, accs |> List.map (fun acc -> clause :: acc))
         end
 
-    | ImNegative (impred, imargs) ->
+    (* | ImNegative (impred, imargs) ->
       begin
         match improg_inlined |> PredicateMap.find_opt impred with
         | Some ruleabsset ->
@@ -485,7 +485,7 @@ let inline_rule_abstraction (state : state) (improg_inlined : intermediate_progr
 
         | None ->
             return (state, accs |> List.map (fun acc -> clause :: acc))
-      end
+      end *)
 
     | _ ->
       (* Clauses other than positive applications are not inlined: *)

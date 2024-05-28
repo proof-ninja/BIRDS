@@ -1,0 +1,2 @@
+cp_v() :- +v(N,T), T <> 'A', T <> B.
++a(N) :- +v(N,T), not a(N), T='A', not cp_v().
