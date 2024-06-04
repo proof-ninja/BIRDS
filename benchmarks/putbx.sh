@@ -21,6 +21,7 @@ function print_log() {
 
 mkdir -p $RESULTS
 mkdir -p $RESULTS/gensql
+mkdir -p $RESULTS/genlean
 mkdir -p $RESULTS/compile
 
 # rm $RESULTS/$LOGFILE || true
@@ -28,11 +29,11 @@ mkdir -p $RESULTS/compile
 
 for FILE in $(cat dl_list)
 do
-    print_log "==> running on $FILE.dl" 
-    echo "==> running on $FILE.dl" 
+    print_log "==> running on $FILE.dl"
+    echo "==> running on $FILE.dl"
     mkdir -p $RESULTS/compile/$FILE
     mkdir -p $RESULTS/gensql/$FILE
-    /usr/bin/time -a -f "$FILE , %e" -o $RESULTS/$RESULTSFILE birds -f $FILE.dl -o $RESULTS/gensql/$FILE.sql -v -u > $RESULTS/compile/$FILE.log 2>> $RESULTS/compile/$FILE.err
+    mkdir -p $RESULTS/genlean/$FILE
+    /usr/bin/time -a -f "$FILE , %e" -o $RESULTS/$RESULTSFILE birds -f $FILE.dl -o $RESULTS/gensql/$FILE.sql -v -u -l $RESULTS/genlean/$FILE.lean > $RESULTS/compile/$FILE.log 2>> $RESULTS/compile/$FILE.err
     sleep 10
 done
-
