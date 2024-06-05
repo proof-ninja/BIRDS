@@ -185,42 +185,6 @@ let main () =
             "g(Y) :- Y = 42 , true."
           ]
       };
-      (* {
-        title = "inlining negative predications";
-        input = [
-          (!: "cedp" ["E"; "D"], [ Rel (Deltainsert ("ced", [ NamedVar "E"; NamedVar "D" ])) ]);
-          (!: "cedp" ["E"; "D"], [
-            Rel (Pred ("ced", [ NamedVar "E"; NamedVar "D" ]));
-            Not (Deltadelete ("ced", [ NamedVar "E"; NamedVar "D" ]));
-          ]);
-          (!+ "ed" ["E"; "D"], [
-            Rel (Pred ("cedp", [ NamedVar "E"; NamedVar "D" ]));
-            Not (Pred ("ed", [ NamedVar "E"; NamedVar "D" ]));
-          ]);
-          (!- "eed" ["E"; "D"], [
-            Rel (Pred ("cedp", [ NamedVar "E"; NamedVar "D" ]));
-            Rel (Pred ("eed", [ NamedVar "E"; NamedVar "D" ]));
-          ]);
-          (!+ "eed" ["E"; "D"], [
-            Rel (Pred ("ed", [ NamedVar "E"; NamedVar "D" ]));
-            Not (Pred ("cedp", [ NamedVar "E"; NamedVar "D" ]));
-            Not (Pred ("eed", [ NamedVar "E"; NamedVar "D" ]));
-          ]);
-          (!- "ced" ["E"; "D"], [ ConstTerm false ]);
-        ];
-        expected =
-          make_lines [
-            "-ced(E, D) :- false.";
-            "-eed(E, D) :- ced(E, D) , true , eed(E, D).";
-            "-eed(E, D) :- +ced(E, D) , eed(E, D).";
-            "+ed(E, D) :- ced(E, D) , true , not ed(E, D).";
-            "+ed(E, D) :- +ced(E, D) , not ed(E, D).";
-            "+eed(E, D) :- ed(E, D) , not ced(E, D) , not +ced(E, D) , not eed(E, D).";
-            "+eed(E, D) :- ed(E, D) , false , not +ced(E, D) , not eed(E, D).";
-            "cedp(E, D) :- ced(E, D) , true.";
-            "cedp(E, D) :- +ced(E, D).";
-          ]
-      } *)
     ]
   in
   run_tests test_cases
