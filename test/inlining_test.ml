@@ -185,6 +185,30 @@ let main () =
             "g(Y) :- Y = 42 , true."
           ]
       };
+      {
+        title = "negative delta predicate";
+        input = [
+          (!: "cp_v" [], [
+            Rel (Deltainsert ("v", [ NamedVar "N"; NamedVar "T"]));
+            Equat (Equation ("<>", Var (NamedVar "T"), Const (String "'A'")));
+            Equat (Equation ("<>", Var (NamedVar "T"), Const (String "'B'")));
+          ]);
+          (!+ "a" ["N"], [
+            Rel (Deltainsert ("v", [ NamedVar "N"; NamedVar "T"]));
+            Not (Pred ("a", [ NamedVar "N" ]));
+            Equat (Equation ("=", Var (NamedVar "T"), Const (String "'A'")));
+            Not (Pred ("cp_v", []))
+          ])
+        ];
+        (* Input:
+         *   cp_v() :- +v(N,T), T <> 'A', T <> 'B'.
+         *   +a(N) :- +v(N,T), not a(N), T='A', not cp_v().
+         *)
+        expected = make_lines [
+          "+a(N) :- +v(N, T) , not a(N) , T = 'A' , not cp_v().";
+          "cp_v() :- +v(N, T) , T <> 'A' , T <> 'B'."
+        ]
+      };
     ]
   in
   run_tests test_cases
