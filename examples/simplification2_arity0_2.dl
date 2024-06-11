@@ -1,0 +1,5 @@
+source eed('EMP_NAME':string, 'DEPT_NAME':string).
+source ed('EMP_NAME':string, 'DEPT_NAME':string).
+view ced('EMP_NAME':string, 'DEPT_NAME':string).
+f() :- true.
+-eed(E, D) :- ced(E, D) , f() , eed(E, D).
