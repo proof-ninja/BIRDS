@@ -1,0 +1,10 @@
+fd1() :- +ac(_,_,BRAND_ID,BRAND_NAME1), +ac(_,_,BRAND_ID,BRAND_NAME2), BRAND_NAME1 <> BRAND_NAME2.
+fd1() :- dac(_,_,BRAND_ID,BRAND_NAME1), +ac(_,_,BRAND_ID,BRAND_NAME2), BRAND_NAME1 <> BRAND_NAME2.
+fd2() :- +ac(CAR_ID, CAR_NAME1, _, _), +ac(CAR_ID, CAR_NAME2, _, _), CAR_NAME1 <> CAR_NAME2.
+fd2() :- +ac(CAR_ID, CAR_NAME1, _, _), dac(CAR_ID, CAR_NAME2, _, _), CAR_NAME1 <> CAR_NAME2.
+fd3() :- +ac(CAR_ID, _, BRAND_ID1, _), +ac(CAR_ID, _, BRAND_ID2, _), BRAND_ID1 <> BRAND_ID2.
+fd3() :- +ac(CAR_ID, _, BRAND_ID1, _), dac(CAR_ID, _, BRAND_ID2, _), BRAND_ID1 <> BRAND_ID2.
+fd() :- not fd1(), not fd2(), not fd3().
+-bi(BID, BN) :- db(BID, BN), iac(_, _, BID, _), not iac(_, _, BID, BN), fd().
++ci(CID, CN, BID) :- +ac(CID, CN, BID, _), not dc(CID, CN, BID), fd().
++bi(BID, BN) :- +ac(_, _, BID, BN), not db(BID, BN), fd().

@@ -186,41 +186,29 @@ let main () =
           ]
       };
       {
-        title = "inlining negative predications";
+        title = "negative delta predicate";
         input = [
-          (!: "cedp" ["E"; "D"], [ Rel (Deltainsert ("ced", [ NamedVar "E"; NamedVar "D" ])) ]);
-          (!: "cedp" ["E"; "D"], [
-            Rel (Pred ("ced", [ NamedVar "E"; NamedVar "D" ]));
-            Not (Deltadelete ("ced", [ NamedVar "E"; NamedVar "D" ]));
+          (!: "cp_v" [], [
+            Rel (Deltainsert ("v", [ NamedVar "N"; NamedVar "T"]));
+            Equat (Equation ("<>", Var (NamedVar "T"), Const (String "'A'")));
+            Equat (Equation ("<>", Var (NamedVar "T"), Const (String "'B'")));
           ]);
-          (!+ "ed" ["E"; "D"], [
-            Rel (Pred ("cedp", [ NamedVar "E"; NamedVar "D" ]));
-            Not (Pred ("ed", [ NamedVar "E"; NamedVar "D" ]));
-          ]);
-          (!- "eed" ["E"; "D"], [
-            Rel (Pred ("cedp", [ NamedVar "E"; NamedVar "D" ]));
-            Rel (Pred ("eed", [ NamedVar "E"; NamedVar "D" ]));
-          ]);
-          (!+ "eed" ["E"; "D"], [
-            Rel (Pred ("ed", [ NamedVar "E"; NamedVar "D" ]));
-            Not (Pred ("cedp", [ NamedVar "E"; NamedVar "D" ]));
-            Not (Pred ("eed", [ NamedVar "E"; NamedVar "D" ]));
-          ]);
-          (!- "ced" ["E"; "D"], [ ConstTerm false ]);
+          (!+ "a" ["N"], [
+            Rel (Deltainsert ("v", [ NamedVar "N"; NamedVar "T"]));
+            Not (Pred ("a", [ NamedVar "N" ]));
+            Equat (Equation ("=", Var (NamedVar "T"), Const (String "'A'")));
+            Not (Pred ("cp_v", []))
+          ])
         ];
-        expected =
-          make_lines [
-            "-ced(E, D) :- false.";
-            "-eed(E, D) :- ced(E, D) , true , eed(E, D).";
-            "-eed(E, D) :- +ced(E, D) , eed(E, D).";
-            "+ed(E, D) :- ced(E, D) , true , not ed(E, D).";
-            "+ed(E, D) :- +ced(E, D) , not ed(E, D).";
-            "+eed(E, D) :- ed(E, D) , not ced(E, D) , not +ced(E, D) , not eed(E, D).";
-            "+eed(E, D) :- ed(E, D) , false , not +ced(E, D) , not eed(E, D).";
-            "cedp(E, D) :- ced(E, D) , true.";
-            "cedp(E, D) :- +ced(E, D).";
-          ]
-      }
+        (* Input:
+         *   cp_v() :- +v(N,T), T <> 'A', T <> 'B'.
+         *   +a(N) :- +v(N,T), not a(N), T='A', not cp_v().
+         *)
+        expected = make_lines [
+          "+a(N) :- +v(N, T) , not a(N) , T = 'A' , not cp_v().";
+          "cp_v() :- +v(N, T) , T <> 'A' , T <> 'B'."
+        ]
+      };
     ]
   in
   run_tests test_cases

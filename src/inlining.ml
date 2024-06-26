@@ -465,28 +465,6 @@ let inline_rule_abstraction (state : state) (improg_inlined : intermediate_progr
               return (state, accs |> List.map (fun acc -> clause :: acc))
         end
 
-    | ImNegative (impred, imargs) ->
-      begin
-        match improg_inlined |> PredicateMap.find_opt impred with
-        | Some ruleabsset ->
-            let state, ruleabss =
-              ruleabsset
-              |> RuleAbstractionSet.elements
-              |> negate_rule_abstractions state
-            in
-            ruleabss |> foldM (fun (state, clauses_acc) ruleabs ->
-              reduce_rule state ruleabs imargs >>= fun (state, clauses) ->
-              return (state, clauses :: clauses_acc)
-            ) (state, []) >>= fun (state, clauses_acc) ->
-            let clausess = List.rev clauses_acc in
-            return (state, accs |> List.map (fun acc ->
-              clausess |> List.map (fun clauses -> List.rev_append clauses acc)
-            ) |> List.concat)
-
-        | None ->
-            return (state, accs |> List.map (fun acc -> clause :: acc))
-      end
-
     | _ ->
       (* Clauses other than positive applications are not inlined: *)
         return (state, accs |> List.map (fun acc -> clause :: acc))
