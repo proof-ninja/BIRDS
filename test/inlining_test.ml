@@ -6,6 +6,7 @@ open Expr
 type test_case = {
   title    : string;
   input    : rule list;
+  mode     : Inlining.inlining_mode;
   expected : string;
 }
 
@@ -18,7 +19,7 @@ let run_test (test_case : test_case) : (test_result, Inlining.error) result =
   let open ResultMonad in
   let expected = test_case.expected in
 
-  Inlining.inline_rules test_case.input >>= fun rules_output ->
+  Inlining.inline_rules test_case.mode test_case.input >>= fun rules_output ->
   let got = rules_output |> List.map string_of_rule |> String.concat "" in
 
   if String.equal got test_case.expected then
@@ -64,6 +65,7 @@ let main () =
       {
         title = "inlining the empty program";
         input = [];
+        mode = Inlining.All;
         expected = "";
       };
       {
@@ -75,6 +77,7 @@ let main () =
         (* Input:
              +foo(X) :- bar(X).
              bar(Y) :- qux(Y). *)
+        mode = Inlining.All;
         expected =
           make_lines [
             "+foo(X) :- qux(X).";
@@ -90,6 +93,7 @@ let main () =
         (* Input:
             +foo(X) :- bar(X, _).
             bar(A, B) :- qux(A, B, _). *)
+        mode = Inlining.All;
         expected =
           make_lines [
             "+foo(X) :- qux(X, GENV1, GENV3).";
@@ -108,6 +112,7 @@ let main () =
         (* Input:
             +foo(X, Y) :- bar(X, _), bar(Y, _).
             bar(A, B) :- qux(A, B, _). *)
+        mode = Inlining.All;
         expected =
           make_lines [
             "+foo(X, Y) :- qux(X, GENV1, GENV4) , qux(Y, GENV2, GENV5).";
@@ -125,6 +130,7 @@ let main () =
             +foo(X) :- bar(X).
             bar(A) :- qux(A, _).
             bar(B) :- thud(_, B). *)
+        mode = Inlining.All;
         expected =
           make_lines [
             "+foo(X) :- qux(X, GENV3).";
@@ -145,6 +151,7 @@ let main () =
         (* Input:
              +foo(X) :- bar(X).
              bar(B) :- qux(A, B), A = 42. *)
+        mode = Inlining.All;
         expected =
           make_lines [
             "+foo(X) :- qux(GENV1, X) , GENV1 = 42.";
@@ -160,6 +167,7 @@ let main () =
         (* Input:
              +foo(X) :- bar(X, 42).
              bar(A, B) :- qux(A, B, 57). *)
+        mode = Inlining.All;
         expected =
           make_lines [
             "+foo(X) :- qux(X, 42, 57).";
@@ -179,6 +187,7 @@ let main () =
          *   +f(X) :- g(X).
          *   g(Y) :- Y = 42, true.
          *)
+        mode = Inlining.All;
         expected =
           make_lines [
             "+f(X) :- X = 42 , true.";
@@ -204,6 +213,7 @@ let main () =
          *   cp_v() :- +v(N,T), T <> 'A', T <> 'B'.
          *   +a(N) :- +v(N,T), not a(N), T='A', not cp_v().
          *)
+        mode = Inlining.All;
         expected = make_lines [
           "+a(N) :- +v(N, T) , not a(N) , T = 'A' , not cp_v().";
           "cp_v() :- +v(N, T) , T <> 'A' , T <> 'B'."

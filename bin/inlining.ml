@@ -9,7 +9,14 @@ let _ =
     let lexbuf = Lexing.from_channel chan in
     let ast = Parser.main Lexer.token lexbuf in
     let rules = ast.rules in
-    match Inlining.inline_rules rules with
+    let mode =
+      if Array.length Sys.argv < 3 then
+        Inlining.All
+      else
+        let target = Inlining.TableNameSet.singleton Sys.argv.(2) in
+        Inlining.Just target
+    in
+    match Inlining.inline_rules mode rules with
     | Result.Error err ->
       print_endline @@ Inlining.string_of_error err
     | Result.Ok rules ->

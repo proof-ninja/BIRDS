@@ -2,6 +2,13 @@
 open Expr
 open Utils
 
+module TableNameSet = Set.Make(String)
+
+(** Select whether all predicates should be inlining or only certain predicates should be inlining. *)
+type inlining_mode =
+  | All
+  | Just of TableNameSet.t
+
 
 (** The prefix used for variables generated during inlining. *)
 let generated_variable_prefix = "GENV"
@@ -438,14 +445,24 @@ let negate_rule_abstractions (state : state) (ruleabss : rule_abstraction list) 
           |> List.map (fun body -> { binder; body })
         )
 
+let is_inlined (mode : inlining_mode) (pred : intermediate_predicate) : bool =
+  match mode with
+  | All -> true
+  | Just tables -> tables |> TableNameSet.mem (
+    match pred with
+    | ImPred table -> table
+    | ImDeltaInsert table -> table
+    | ImDeltaDelete table -> table
+  )
+
 (** `inline_rule_abstraction state improg_inlined ruleabs` performs inlining of `ruleabs`
     by using `improg_inlined`, which consists of "already inlined" definitions. *)
-let inline_rule_abstraction (state : state) (improg_inlined : intermediate_program) (ruleabs : rule_abstraction) : (state * rule_abstraction list, error) result =
+let inline_rule_abstraction (state : state) (mode : inlining_mode) (improg_inlined : intermediate_program) (ruleabs : rule_abstraction) : (state * rule_abstraction list, error) result =
   let open ResultMonad in
   let { binder; body } = ruleabs in
   body |> foldM (fun ((state, accs) : state * (intermediate_clause list) list) (clause : intermediate_clause) ->
     match clause with
-    | ImPositive (impred, imargs) ->
+    | ImPositive (impred, imargs) when is_inlined mode impred ->
         begin
           match improg_inlined |> PredicateMap.find_opt impred with
           | Some ruleabsset ->
@@ -501,7 +518,7 @@ let inject_rule (impred : intermediate_predicate) (ruleabs : rule_abstraction) :
   let terms = body |> List.map inject_clause in
   (rterm, terms)
 
-let inline_rules (rules : rule list) : (rule list, error) result =
+let inline_rules (mode : inlining_mode) (rules : rule list) : (rule list, error) result =
   let open ResultMonad in
 
   (* Converts rules into intermediate ones
@@ -519,7 +536,7 @@ let inline_rules (rules : rule list) : (rule list, error) result =
   sorted_rules |> foldM (fun (state, improg_inlined) (impred, ruleabsset) ->
     let ruleabss = RuleAbstractionSet.elements ruleabsset in
     ruleabss |> foldM (fun (state, ruleabss_inlined) ruleabs ->
-      ruleabs |> inline_rule_abstraction state improg_inlined >>= fun (state, ruleabss_inlined_new) ->
+      ruleabs |> inline_rule_abstraction state mode improg_inlined >>= fun (state, ruleabss_inlined_new) ->
       return (state, List.append ruleabss_inlined ruleabss_inlined_new)
       ) (state, []) >>= fun (state, ruleabss_inlined) ->
     return (state, improg_inlined |> PredicateMap.add impred (RuleAbstractionSet.of_list ruleabss_inlined))
