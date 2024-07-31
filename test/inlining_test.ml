@@ -219,6 +219,61 @@ let main () =
           "cp_v() :- +v(N, T) , T <> 'A' , T <> 'B'."
         ]
       };
+      {
+        title = "inlining rules specified a target (1)";
+        input = [
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!: "b" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!: "b" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!: "f" ["X"], [Rel (Pred ("a", [NamedVar "X"])); Not (Pred ("b", [NamedVar "X"]))])
+        ];
+        (* Input:
+        *    a(X) :- X = 1.
+        *    a(X) :- X = 2.
+        *
+        *    b(X) :- X = 1.
+        *    b(X) :- X = 2.
+        *
+        *    f(X) :- a(X), NOT b(X).
+        *)
+        mode = Inlining.Just (Inlining.TableNameSet.singleton "a");
+        expected = make_lines [
+          "a(X) :- X = 1.";
+          "a(X) :- X = 2.";
+          "b(X) :- X = 1.";
+          "b(X) :- X = 2.";
+          "f(X) :- X = 1 , not b(X).";
+          "f(X) :- X = 2 , not b(X).";
+        ]
+      };
+      {
+        title = "inlining rules specified a target (2)";
+        input = [
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!: "b" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!: "b" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!: "f" ["X"], [Rel (Pred ("a", [NamedVar "X"])); Not (Pred ("b", [NamedVar "X"]))])
+        ];
+        (* Input:
+        *    a(X) :- X = 1.
+        *    a(X) :- X = 2.
+        *
+        *    b(X) :- X = 1.
+        *    b(X) :- X = 2.
+        *
+        *    f(X) :- a(X), NOT b(X).
+        *)
+        mode = Inlining.Just (Inlining.TableNameSet.singleton "b");
+        expected = make_lines [
+          "a(X) :- X = 1.";
+          "a(X) :- X = 2.";
+          "b(X) :- X = 1.";
+          "b(X) :- X = 2.";
+          "f(X) :- a(X) , not b(X).";
+        ]
+      }
     ]
   in
   run_tests test_cases
