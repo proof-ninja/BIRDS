@@ -40,3 +40,9 @@
   (modules s2e)
   (libraries birds))
 
+(executable
+  (public_name removebottom)
+  (name removebottom)
+  (modules removebottom)
+  (libraries birds))
+
