@@ -2,7 +2,31 @@
 open Expr
 open Utils
 
-module TableNameSet = Set.Make(String)
+module InliningPredType = struct
+  type t =
+    | Pred
+    | Deltainsert
+    | Deltadelete
+
+  let compare (type1 : t) (type2 : t) : int =
+    match (type1, type2) with
+    | (Pred, Pred)               -> 0
+    | (Pred, _)                  -> 1
+    | (_, Pred)                  -> -1
+    | (Deltainsert, Deltainsert) -> 0
+    | (Deltainsert, _)           -> 1
+    | (_, Deltainsert)           -> -1
+    | (Deltadelete, Deltadelete) -> 0
+end
+
+module TableNameSet = Set.Make(struct
+  type t = InliningPredType.t * string
+
+  let compare (type1, name1) (type2, name2) =
+    match InliningPredType.compare type1 type2 with
+    | 0 -> String.compare name1 name2
+    | c -> c
+end)
 
 (** Select whether all predicates should be inlining or only certain predicates should be inlining. *)
 type inlining_mode =
@@ -450,9 +474,9 @@ let is_inlined (mode : inlining_mode) (pred : intermediate_predicate) : bool =
   | All -> true
   | Just tables -> tables |> TableNameSet.mem (
     match pred with
-    | ImPred table -> table
-    | ImDeltaInsert table -> table
-    | ImDeltaDelete table -> table
+    | ImPred table -> InliningPredType.Pred, table
+    | ImDeltaInsert table -> InliningPredType.Deltainsert, table
+    | ImDeltaDelete table -> InliningPredType.Deltadelete, table
   )
 
 (** `inline_rule_abstraction state improg_inlined ruleabs` performs inlining of `ruleabs`

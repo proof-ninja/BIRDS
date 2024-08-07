@@ -237,7 +237,7 @@ let main () =
         *
         *    f(X) :- a(X), NOT b(X).
         *)
-        mode = Inlining.Just (Inlining.TableNameSet.singleton "a");
+        mode = Inlining.Just (Inlining.TableNameSet.singleton (Inlining.InliningPredType.Pred, "a"));
         expected = make_lines [
           "a(X) :- X = 1.";
           "a(X) :- X = 2.";
@@ -265,13 +265,95 @@ let main () =
         *
         *    f(X) :- a(X), NOT b(X).
         *)
-        mode = Inlining.Just (Inlining.TableNameSet.singleton "b");
+        mode = Inlining.Just (Inlining.TableNameSet.singleton (Inlining.InliningPredType.Pred, "b"));
         expected = make_lines [
           "a(X) :- X = 1.";
           "a(X) :- X = 2.";
           "b(X) :- X = 1.";
           "b(X) :- X = 2.";
           "f(X) :- a(X) , not b(X).";
+        ]
+      };
+      {
+        title = "inlining rules specified a target (3)";
+        input = [
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!+ "a" ["X"], [Rel (Pred ("a", [NamedVar "X"])); Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!+ "a" ["X"], [Rel (Pred ("a", [NamedVar "X"])); Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!+ "f" ["X"], [Rel (Deltainsert ("a", [NamedVar "X"]))])
+        ];
+        (* Input:
+        *    a(X) :- X = 1.
+        *    a(X) :- X = 2.
+        *    +a(X) :- a(X), X = 1.
+        *    +a(X) :- a(X), X = 2.
+        *
+        *    +f(X) :- +a(X).
+        *)
+        mode = Inlining.Just (Inlining.TableNameSet.singleton (Inlining.InliningPredType.Pred, "a"));
+        expected = make_lines [
+          "+a(X) :- X = 1 , X = 1.";
+          "+a(X) :- X = 1 , X = 2.";
+          "+a(X) :- X = 2 , X = 1.";
+          "+a(X) :- X = 2 , X = 2.";
+          "+f(X) :- +a(X).";
+          "a(X) :- X = 1.";
+          "a(X) :- X = 2.";
+        ]
+      };
+      {
+        title = "inlining rules specified a target (4)";
+        input = [
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!+ "a" ["X"], [Rel (Pred ("a", [NamedVar "X"])); Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!+ "a" ["X"], [Rel (Pred ("a", [NamedVar "X"])); Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!+ "f" ["X"], [Rel (Deltainsert ("a", [NamedVar "X"]))])
+        ];
+        (* Input:
+        *    a(X) :- X = 1.
+        *    a(X) :- X = 2.
+        *    +a(X) :- a(X), X = 1.
+        *    +a(X) :- a(X), X = 2.
+        *
+        *    +f(X) :- +a(X).
+        *)
+        mode = Inlining.Just (Inlining.TableNameSet.singleton (Inlining.InliningPredType.Deltainsert, "a"));
+        expected = make_lines [
+          "+a(X) :- a(X) , X = 1.";
+          "+a(X) :- a(X) , X = 2.";
+          "+f(X) :- a(X) , X = 1.";
+          "+f(X) :- a(X) , X = 2.";
+          "a(X) :- X = 1.";
+          "a(X) :- X = 2.";
+        ]
+      };
+      {
+        title = "inlining rules specified a target (5)";
+        input = [
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!: "a" ["X"], [Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!- "a" ["X"], [Rel (Pred ("a", [NamedVar "X"])); Equat (Equation ("=", Var (NamedVar "X"), Const (Int 1)))]);
+          (!- "a" ["X"], [Rel (Pred ("a", [NamedVar "X"])); Equat (Equation ("=", Var (NamedVar "X"), Const (Int 2)))]);
+          (!+ "f" ["X"], [Rel (Deltadelete ("a", [NamedVar "X"]))])
+        ];
+        (* Input:
+        *    a(X) :- X = 1.
+        *    a(X) :- X = 2.
+        *    -a(X) :- a(X), X = 1.
+        *    -a(X) :- a(X), X = 2.
+        *
+        *    +f(X) :- -a(X).
+        *)
+        mode = Inlining.Just (Inlining.TableNameSet.singleton (Inlining.InliningPredType.Deltadelete, "a"));
+        expected = make_lines [
+          "-a(X) :- a(X) , X = 1.";
+          "-a(X) :- a(X) , X = 2.";
+          "+f(X) :- a(X) , X = 1.";
+          "+f(X) :- a(X) , X = 2.";
+          "a(X) :- X = 1.";
+          "a(X) :- X = 2.";
         ]
       }
     ]
