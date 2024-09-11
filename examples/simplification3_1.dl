@@ -1,0 +1,8 @@
+source ps('A':int, 'B':int).
+view pv('A':int).
+-ps(A, B) :- ps(A, B) , ps(A, GENV9) , A = 1 , A <> 4.
+-pv(GENV1) :- ps(GENV1, GENV7) , GENV1 = 1 , GENV1 <> 4.
++ps(A, B) :- A = 4 , ps(GENV10, GENV11) , GENV10 = 1 , GENV10 <> 4 , not ps(A, GENV1) , ps(GENV2, B) , ps(GENV2, GENV12) , GENV2 = 1 , GENV2 <> 4.
++ps(A, B) :- A = 4 , ps(GENV13, GENV14) , GENV13 = 1 , GENV13 <> 4 , not ps(A, GENV3) , not -ps(GENV4, GENV5) , B = -100.
++pv(GENV1) :- GENV1 = 4 , ps(GENV1_2, GENV8) , GENV1_2 = 1 , GENV1_2 <> 4.
+pv(A) :- ps(A, GENV6).

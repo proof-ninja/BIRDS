@@ -209,7 +209,8 @@ let main () =
                   Printf.printf "Error: %s\n" (Inlining.string_of_error err);
                   assert false
               | Ok rules ->
-                match Simplification.simplify rules with
+                let sources = [ "a", []; "b", []; "v", [] ] in
+                match Simplification.simplify rules sources with
                 | Error err ->
                     Printf.printf "Error: %s\n" (Simplification.string_of_error err);
                     assert false

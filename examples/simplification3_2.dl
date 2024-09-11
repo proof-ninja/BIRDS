@@ -1,0 +1,14 @@
+source b('B':int, 'C':int).
+source a('A':int, 'B':int).
+view v('A':int, 'B':int, 'C':int).
+-a(A, B) :- a(A, B) , not __updated__v(A, B, GENV1).
+-b(B, C) :- b(B, C) , a(GENV2, B) , b(B, GENV3) , not -v(GENV2, B, GENV3) , not __updated__v(GENV4, B, C).
+-b(B, C) :- b(B, C) , +v(GENV2, B, GENV3) , not __updated__v(GENV4, B, C).
+-v(GENV1, GENV2, GENV3) :- a(GENV1, GENV2) , b(GENV2, GENV3) , GENV2 = 30 , GENV2 <> 60.
++a(A, B) :- a(A, B) , b(B, GENV5) , not -v(A, B, GENV5) , not a(A, B).
++a(A, B) :- +v(A, B, GENV5) , not a(A, B).
++b(B, C) :- a(GENV6, B) , b(B, C) , not -v(GENV6, B, C) , not b(B, C).
++b(B, C) :- +v(GENV6, B, C) , not b(B, C).
+__updated__v(A, B, C) :- a(A, B) , b(B, C) , not -v(A, B, C).
+__updated__v(A, B, C) :- +v(A, B, C).
+v(A, B, C) :- a(A, B) , b(B, C).

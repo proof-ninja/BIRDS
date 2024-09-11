@@ -628,38 +628,36 @@ let resolve_undefined_predicates (imrules : intermediate_rule list) : intermedia
 module TableNameSet = Set.Make(String)
 
 
-let remove_unused_rules (imrules : intermediate_rule list) : intermediate_rule list =
-  List.fold_right (fun imrule (table_name_set, acc) ->
+let remove_unused_rules (sources : TableNameSet.t) (imrules : intermediate_rule list) : intermediate_rule list =
+  List.fold_right (fun imrule (pred_set, acc) ->
     let { positive_terms; negative_terms; _ } = imrule in
     let terms = PredicateMap.union (fun _ x _ -> Some x) positive_terms negative_terms in
-    let table_names =
+    let preds =
       terms
       |> PredicateMap.bindings
-      |> List.filter_map (fun (pred, _) ->
-        match pred with
-        | ImPred t ->
-            Some t
-        | ImDeltaInsert _
-        | ImDeltaDelete _ ->
-            None
-      )
+      |> List.map fst
     in
-    let new_table_name_set =
-      table_name_set
-      |> TableNameSet.add_seq @@ List.to_seq table_names
+    let new_pred_set =
+      pred_set
+      |> PredicateSet.add_seq @@ List.to_seq preds
     in
-    match imrule.head_predicate with
-    | ImDeltaInsert _
-    | ImDeltaDelete _ ->
-        (new_table_name_set, imrule :: acc)
-
-    | ImPred table_name when table_name_set |> TableNameSet.mem table_name ->
-        (new_table_name_set, imrule :: acc)
+    let pred = imrule.head_predicate in
+    match pred with
+    | ImDeltaInsert table_name
+    | ImDeltaDelete table_name ->
+        (* Leave delta pred only if it is a predicate on sources or is used from another predicate. *)
+        if TableNameSet.mem table_name sources || PredicateSet.mem pred pred_set then
+          (new_pred_set, imrule :: acc)
+        else
+          (pred_set, acc)
 
     | ImPred _ ->
-        (table_name_set, acc)
+        if pred_set |> PredicateSet.mem pred then
+          (new_pred_set, imrule :: acc)
+        else
+          (pred_set, acc)
 
-  ) imrules (TableNameSet.empty, [])
+  ) imrules (PredicateSet.empty, [])
   |> snd
 
 
@@ -783,7 +781,7 @@ let remove_duplicate_rules (rules : rule list) : rule list =
   with
   | (rules, _) -> rules
 
-let simplify (rules : rule list) : (rule list, error) result =
+let simplify (rules : rule list) (sources : source list) : (rule list, error) result =
   let open ResultMonad in
 
   (* Converts each rule to an intermediate rule (with unsatisfiable ones removed): *)
@@ -799,8 +797,14 @@ let simplify (rules : rule list) : (rule list, error) result =
   (* Removes predicates that are not defined: *)
   let imrules = imrules |> resolve_undefined_predicates in
 
+  let sources =
+    sources
+    |> List.map (fun (table_name, _) -> table_name)
+    |> TableNameSet.of_list
+  in
+
   (* Removes rules that are not used: *)
-  let imrules = imrules |> remove_unused_rules in
+  let imrules = imrules |> remove_unused_rules sources in
 
   (* Removes rules that have a contradicting body: *)
   let imrules = imrules |> List.filter (fun imrule -> not (has_contradicting_body imrule)) in
