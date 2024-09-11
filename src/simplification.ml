@@ -585,7 +585,7 @@ let rec simplify_rule_recursively (imrule1 : intermediate_rule) : intermediate_r
     simplify_rule_recursively imrule2
 
 
-let resolve_undefined_predicates (imrules : intermediate_rule list) : intermediate_rule list =
+let resolve_undefined_predicates (view : PredicateSet.t) (imrules : intermediate_rule list) : intermediate_rule list =
   imrules
   |> List.fold_left (fun (preds_set, acc) imrule ->
     let { head_predicate; positive_terms; negative_terms; _ } = imrule in
@@ -620,7 +620,7 @@ let resolve_undefined_predicates (imrules : intermediate_rule list) : intermedia
         let preds_set = preds_set |> PredicateSet.add head_predicate in
         let imrule = { imrule with positive_terms; negative_terms } in
         (preds_set, imrule :: acc)
-  ) (PredicateSet.empty, [])
+  ) (view, [])
   |> snd
   |> List.rev
 
@@ -628,7 +628,7 @@ let resolve_undefined_predicates (imrules : intermediate_rule list) : intermedia
 module TableNameSet = Set.Make(String)
 
 
-let remove_unused_rules (sources : TableNameSet.t) (imrules : intermediate_rule list) : intermediate_rule list =
+let remove_unused_rules (sources : TableNameSet.t) (view : PredicateSet.t) (imrules : intermediate_rule list) : intermediate_rule list =
   List.fold_right (fun imrule (pred_set, acc) ->
     let { positive_terms; negative_terms; _ } = imrule in
     let terms = PredicateMap.union (fun _ x _ -> Some x) positive_terms negative_terms in
@@ -657,7 +657,7 @@ let remove_unused_rules (sources : TableNameSet.t) (imrules : intermediate_rule 
         else
           (pred_set, acc)
 
-  ) imrules (PredicateSet.empty, [])
+  ) imrules (view, [])
   |> snd
 
 
@@ -781,7 +781,7 @@ let remove_duplicate_rules (rules : rule list) : rule list =
   with
   | (rules, _) -> rules
 
-let simplify (rules : rule list) (sources : source list) : (rule list, error) result =
+let simplify (rules : rule list) (view : view option) (sources : source list) : (rule list, error) result =
   let open ResultMonad in
 
   (* Converts each rule to an intermediate rule (with unsatisfiable ones removed): *)
@@ -794,8 +794,14 @@ let simplify (rules : rule list) (sources : source list) : (rule list, error) re
   (* Performs per-rule simplification: *)
   let imrules = imrules |> List.map simplify_rule_recursively in
 
+  let view =
+    match view with
+    | None      -> PredicateSet.empty
+    | Some (view, _) -> PredicateSet.of_list [ImDeltaInsert view; ImDeltaDelete view]
+  in
+
   (* Removes predicates that are not defined: *)
-  let imrules = imrules |> resolve_undefined_predicates in
+  let imrules = imrules |> resolve_undefined_predicates view in
 
   let sources =
     sources
@@ -804,7 +810,7 @@ let simplify (rules : rule list) (sources : source list) : (rule list, error) re
   in
 
   (* Removes rules that are not used: *)
-  let imrules = imrules |> remove_unused_rules sources in
+  let imrules = imrules |> remove_unused_rules sources view in
 
   (* Removes rules that have a contradicting body: *)
   let imrules = imrules |> List.filter (fun imrule -> not (has_contradicting_body imrule)) in

@@ -5,7 +5,7 @@ open Expr
 
 type test_case = {
   title    : string;
-  input    : rule list * source list;
+  input    : rule list * view option * source list;
   expected : rule list;
 }
 
@@ -16,12 +16,12 @@ type test_result =
 
 let run_test (test_case : test_case) =
   let open ResultMonad in
-  let rules, sources = test_case.input in
+  let rules, view, sources = test_case.input in
   match Inlining.sort_rules rules with
   | Error err ->
       return (Fail { expected = "no error when sorting rules."; got = Inlining.string_of_error err })
   | Ok rules ->
-    Simplification.simplify rules sources >>= fun got ->
+    Simplification.simplify rules view sources >>= fun got ->
     let s_got = got |> List.map string_of_rule |> String.concat "; " in
     let s_expected = test_case.expected |> List.map string_of_rule |> String.concat "; " in
     if String.equal s_got s_expected then
@@ -61,7 +61,7 @@ let main () =
   run_tests [
     {
       title    = "empty";
-      input    = [], [];
+      input    = [], None, [];
       expected = [];
     };
     {
@@ -82,6 +82,7 @@ let main () =
           Equat (Equation ("=", Var rating, Const (Int 1)));
         ]);
       ],
+      None,
       [ "tracks", [] ];
       expected = [
         (* (1) simplified:
@@ -118,6 +119,7 @@ let main () =
           Not (Pred ("tracks", [ NamedVar "V31"; NamedVar "V32"; NamedVar "V33"; album ]));
         ]);
       ],
+      None,
       [ "tracks", [] ];
       expected = [];
     };
@@ -139,6 +141,7 @@ let main () =
           Equat (Equation ("=", Var (NamedVar "V6855"), Const (Int 1)));
         ]);
       ],
+      None,
       [ "albums", [] ];
       expected = [
         (* (7) simplified:
@@ -173,6 +176,7 @@ let main () =
           Noneq (Equation ("=", Var rating, Const (Int 1)));
         ]);
       ],
+      None,
       [ "albums", [] ];
       expected = [
         (* (32) simplified:
@@ -209,6 +213,7 @@ let main () =
           Not (Pred ("eed", [NamedVar "E"; NamedVar "D"]));
         ]);
       ],
+      None,
       [ "eed", []; "ed", [] ];
       expected = [
         (* Boolean body simplified:
@@ -257,6 +262,7 @@ let main () =
         (Pred ("g", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
         (Pred ("f", [NamedVar "X"]), [Equat (Equation ("=", (Var (NamedVar "X")), (Const (Int 1))))]);
       ],
+      None,
       [ "f", []; "g", []; "a", []; "b", []; "c", []; "d", [] ];
       expected = [
         (Deltadelete ("g", [NamedVar "X"]), [Rel (Pred ("g", [NamedVar "X"]))]);
@@ -309,6 +315,7 @@ let main () =
           ]);
           (Pred ("v", [NamedVar "A"]), [Rel (Pred ("s", [NamedVar "A"; NamedVar "B"]))]);
       ],
+      None,
       [ "v", []; "s", [] ];
       expected = [
         (Deltainsert ("s", [NamedVar "A"; NamedVar "B"]), [
@@ -394,6 +401,7 @@ let main () =
           (Equat (Equation ("<>", Var (NamedVar "A"), Const (Int 4))));
         ]);
       ],
+      None,
       ["ps", []];
       expected = [
         (*
@@ -507,6 +515,7 @@ let main () =
           Not (Pred ("__updated__v", [NamedVar "A"; NamedVar "B"; NamedVar "GENV1"]))
         ]);
       ],
+      None,
       ["a", []; "b", []];
       expected = [
         (*
