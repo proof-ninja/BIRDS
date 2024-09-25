@@ -11,7 +11,7 @@ let sort rules =
 
 let simplify rules sources =
   let open Result in
-  match Simplification.simplify rules sources with
+  match Simplification.simplify rules None sources with
   | Error err ->
       error @@ Simplification.string_of_error err
   | Result.Ok rules ->

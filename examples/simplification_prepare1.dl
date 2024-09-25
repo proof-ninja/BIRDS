@@ -1,0 +1,5 @@
+source x('A':int).
+view v('A':int).
+
++x(A) :- x(A), v(A), A <> 42.
+-x(A) :- +x(A), -v(A).

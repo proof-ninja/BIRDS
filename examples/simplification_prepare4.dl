@@ -1,0 +1,10 @@
+source projs('A':int, 'B':string).
+view projv('A':int).
+-projs(A, B) :- projs(A, B) , -projv(A).
++projs(A, B) :- projs(A, GENV7) , not -projv(A) , not projs(A, GENV1) , not -projs(GENV2, GENV3) , B = 'a'.
++projs(A, B) :- projs(A, GENV8) , not -projv(A) , not projs(A, GENV4) , projs(GENV5, B) , -projv(GENV5).
++projs(A, B) :- +projv(A) , not projs(A, GENV1) , not -projs(GENV2, GENV3) , B = 'a'.
++projs(A, B) :- +projv(A) , not projs(A, GENV4) , projs(GENV5, B) , -projv(GENV5).
+__updated__projv(A) :- projs(A, GENV6) , not -projv(A).
+__updated__projv(A) :- +projv(A).
+projv(A) :- projs(A, B).

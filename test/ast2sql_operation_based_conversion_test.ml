@@ -210,7 +210,7 @@ let main () =
                   assert false
               | Ok rules ->
                 let sources = [ "a", []; "b", []; "v", [] ] in
-                match Simplification.simplify rules sources with
+                match Simplification.simplify rules None sources with
                 | Error err ->
                     Printf.printf "Error: %s\n" (Simplification.string_of_error err);
                     assert false
