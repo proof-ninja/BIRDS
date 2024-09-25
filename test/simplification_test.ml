@@ -552,5 +552,431 @@ let main () =
           Equat (Equation ("=", Var (NamedVar "GENV2"), Const (Int 30)))
         ]);
       ]
+    };
+    (* --prepare *)
+    {
+      title = "--prepare option";
+      input = [
+        (*
+        source x('A':int).
+        view v('A':int).
+
+        +x(A) :- x(A), v(A), A <> 42.
+        -x(A) :- +x(A), -v(A).
+        *)
+        (Deltainsert ("x", [NamedVar "A"]), [
+          Rel (Pred ("x", [NamedVar "A"]));
+          Rel (Pred ("v", [NamedVar "A"]));
+          Equat (Equation ("<>", Var (NamedVar "A"), Const (Int 42)))
+        ]);
+        (Deltadelete ("x", [NamedVar "A"]), [
+          Rel (Deltainsert ("x", [NamedVar "A"]));
+          Rel (Deltadelete ("v", [NamedVar "A"]))
+        ]);
+      ],
+      Some ("v", []),
+      ["x", []];
+      expected = [
+        (*
+        -x(A) :- -v(A) , +x(A).
+        +x(A) :- v(A) , x(A) , not A = 42.
+        *)
+        (Deltadelete ("x", [NamedVar "A"]), [
+          Rel (Deltadelete ("v", [NamedVar "A"]));
+          Rel (Deltainsert ("x", [NamedVar "A"]))
+        ]);
+        (Deltainsert ("x", [NamedVar "A"]), [
+          Rel (Pred ("v", [NamedVar "A"]));
+          Rel (Pred ("x", [NamedVar "A"]));
+          Noneq (Equation ("=", Var (NamedVar "A"), Const (Int 42)))
+        ]);
+      ]
+    };
+    {
+      title = "Same input without --prepare option";
+      input = [
+        (*
+        source x('A':int).
+        view v('A':int).
+
+        +x(A) :- x(A), v(A), A <> 42.
+        -x(A) :- +x(A), -v(A).
+        *)
+        (Deltainsert ("x", [NamedVar "A"]), [
+          Rel (Pred ("x", [NamedVar "A"]));
+          Rel (Pred ("v", [NamedVar "A"]));
+          Equat (Equation ("<>", Var (NamedVar "A"), Const (Int 42)))
+        ]);
+        (Deltadelete ("x", [NamedVar "A"]), [
+          Rel (Deltainsert ("x", [NamedVar "A"]));
+          Rel (Deltadelete ("v", [NamedVar "A"]))
+        ]);
+      ],
+      None,
+      ["x", []];
+      expected = [
+        (*
+        +x(A) :- v(A) , x(A) , not A = 42.
+        *)
+        (Deltainsert ("x", [NamedVar "A"]), [
+          Rel (Pred ("v", [NamedVar "A"]));
+          Rel (Pred ("x", [NamedVar "A"]));
+          Noneq (Equation ("=", Var (NamedVar "A"), Const (Int 42)))
+        ]);
+      ]
+    };
+    {
+      title = "--prepare option: join";
+      input = [
+        (*
+        source b('B':int, 'C':int).
+        source a('A':int, 'B':int).
+        view v('A':int, 'B':int, 'C':int).
+        -a(A, B) :- a(A, B) , not __updated__v(A, B, GENV1).
+        -b(B, C) :- b(B, C) , a(GENV2, B) , b(B, GENV3) , not -v(GENV2, B, GENV3) , not __updated__v(GENV4, B, C).
+        -b(B, C) :- b(B, C) , +v(GENV2, B, GENV3) , not __updated__v(GENV4, B, C).
+        +a(A, B) :- a(A, B) , b(B, GENV5) , not -v(A, B, GENV5) , not a(A, B).
+        +a(A, B) :- +v(A, B, GENV5) , not a(A, B).
+        +b(B, C) :- a(GENV6, B) , b(B, C) , not -v(GENV6, B, C) , not b(B, C).
+        +b(B, C) :- +v(GENV6, B, C) , not b(B, C).
+        __updated__v(A, B, C) :- a(A, B) , b(B, C) , not -v(A, B, C).
+        __updated__v(A, B, C) :- +v(A, B, C).
+        v(A, B, C) :- a(A, B) , b(B, C).
+        *)
+        (* -a(A, B) :- a(A, B) , not __updated__v(A, B, GENV1). *)
+        (Deltadelete ("a", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Pred ("a", [NamedVar "A"; NamedVar "B"]));
+          Not (Pred ("__updated__v", [NamedVar "A"; NamedVar "B"; NamedVar "GENV1"]))
+        ]);
+        (* -b(B, C) :- b(B, C) , a(GENV2, B) , b(B, GENV3) , not -v(GENV2, B, GENV3) , not __updated__v(GENV4, B, C). *)
+        (Deltadelete ("b", [NamedVar "B"; NamedVar "C"]), [
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "C"]));
+          Rel (Pred ("a", [NamedVar "GENV2"; NamedVar "B"]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "GENV3"]));
+          Not (Deltadelete ("v", [NamedVar "GENV2"; NamedVar "B"; NamedVar "GENV3"]));
+          Not (Pred ("__updated__v", [NamedVar "GENV4"; NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* -b(B, C) :- b(B, C) , +v(GENV2, B, GENV3) , not __updated__v(GENV4, B, C). *)
+        (Deltadelete ("b", [NamedVar "B"; NamedVar "C"]), [
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "C"]));
+          Rel (Deltainsert ("v", [NamedVar "GENV2"; NamedVar "B"; NamedVar "GENV3"]));
+          Not (Pred ("__updated__v", [NamedVar "GENV4"; NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* +a(A, B) :- a(A, B) , b(B, GENV5) , not -v(A, B, GENV5) , not a(A, B). *)
+        (Deltainsert ("a", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Pred ("a", [NamedVar "A"; NamedVar "B"]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "GENV5"]));
+          Not (Deltadelete ("v", [NamedVar "A"; NamedVar "B"; NamedVar "GENV5"]));
+          Not (Pred ("a", [NamedVar "A"; NamedVar "B"]))
+        ]);
+        (* +a(A, B) :- +v(A, B, GENV5) , not a(A, B). *)
+        (Deltainsert ("a", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Deltainsert ("v", [NamedVar "A"; NamedVar "B"; NamedVar "GENV5"]));
+          Not (Pred ("a", [NamedVar "A"; NamedVar "B"]))
+        ]);
+        (* +b(B, C) :- a(GENV6, B) , b(B, C) , not -v(GENV6, B, C) , not b(B, C). *)
+        (Deltainsert ("b", [NamedVar "B"; NamedVar "C"]), [
+          Rel (Pred ("a", [NamedVar "GENV6"; NamedVar "B"]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "C"]));
+          Not (Deltadelete ("v", [NamedVar "GENV6"; NamedVar "B"; NamedVar "C"]));
+          Not (Pred ("b", [NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* +b(B, C) :- +v(GENV6, B, C) , not b(B, C). *)
+        (Deltainsert ("b", [NamedVar "B"; NamedVar "C"]), [
+          Rel (Deltainsert ("v", [NamedVar "GENV6"; NamedVar "B"; NamedVar "C"]));
+          Not (Pred ("b", [NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* __updated__v(A, B, C) :- a(A, B) , b(B, C) , not -v(A, B, C). *)
+        (Pred ("__updated__v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]), [
+          Rel (Pred ("a", [NamedVar "A"; NamedVar "B"]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "C"]));
+          Not (Deltadelete ("v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* __updated__v(A, B, C) :- +v(A, B, C). *)
+        (Pred ("__updated__v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]), [
+          Rel (Deltainsert ("v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* v(A, B, C) :- a(A, B) , b(B, C). *)
+        (Pred ("v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]), [
+          Rel (Pred ("a", [NamedVar "A"; NamedVar "B"]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "C"]))
+        ]);
+      ],
+      Some ("v", []),
+      ["a", []; "b", []];
+      expected = [
+        (*
+        source a('A':int, 'B':int).
+        source b('B':int, 'C':int).
+        view v('A':int, 'B':int, 'C':int).
+        -a(A, B) :- a(A, B) , not __updated__v(A, B, _).
+        -b(B, C) :- +v(_, B, _) , b(B, C) , not __updated__v(_, B, C).
+        -b(B, C) :- a(GENV2, B) , b(B, C) , b(B, GENV3) , not -v(GENV2, B, GENV3) , not __updated__v(_, B, C).
+        __updated__v(A, B, C) :- +v(A, B, C).
+        __updated__v(A, B, C) :- a(A, B) , b(B, C) , not -v(A, B, C).
+        +b(B, C) :- +v(_, B, C) , not b(B, C).
+        +a(A, B) :- +v(A, B, _) , not a(A, B).
+        *)
+        (* -a(A, B) :- a(A, B) , not __updated__v(A, B, _). *)
+        (Deltadelete ("a", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Pred ("a", [NamedVar "A"; NamedVar "B"]));
+          Not (Pred ("__updated__v", [NamedVar "A"; NamedVar "B"; AnonVar]))
+        ]);
+        (* -b(B, C) :- +v(_, B, _) , b(B, C) , not __updated__v(_, B, C). *)
+        (Deltadelete ("b", [NamedVar "B"; NamedVar "C"]), [
+          Rel (Deltainsert ("v", [AnonVar; NamedVar "B"; AnonVar]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "C"]));
+          Not (Pred ("__updated__v", [AnonVar; NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* -b(B, C) :- a(GENV2, B) , b(B, C) , b(B, GENV3) , not -v(GENV2, B, GENV3) , not __updated__v(_, B, C). *)
+        (Deltadelete ("b", [NamedVar "B"; NamedVar "C"]), [
+          Rel (Pred ("a", [NamedVar "GENV2"; NamedVar "B"]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "C"]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "GENV3"]));
+          Not (Deltadelete ("v", [NamedVar "GENV2"; NamedVar "B"; NamedVar "GENV3"]));
+          Not (Pred ("__updated__v", [AnonVar; NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* __updated__v(A, B, C) :- +v(A, B, C). *)
+        (Pred ("__updated__v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]), [
+          Rel (Deltainsert ("v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* __updated__v(A, B, C) :- a(A, B) , b(B, C) , not -v(A, B, C). *)
+        (Pred ("__updated__v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]), [
+          Rel (Pred ("a", [NamedVar "A"; NamedVar "B"]));
+          Rel (Pred ("b", [NamedVar "B"; NamedVar "C"]));
+          Not (Deltadelete ("v", [NamedVar "A"; NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* +b(B, C) :- +v(_, B, C) , not b(B, C). *)
+        (Deltainsert ("b", [NamedVar "B"; NamedVar "C"]), [
+          Rel (Deltainsert ("v", [AnonVar; NamedVar "B"; NamedVar "C"]));
+          Not (Pred ("b", [NamedVar "B"; NamedVar "C"]))
+        ]);
+        (* +a(A, B) :- +v(A, B, _) , not a(A, B). *)
+        (Deltainsert ("a", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Deltainsert ("v", [NamedVar "A"; NamedVar "B"; AnonVar]));
+          Not (Pred ("a", [NamedVar "A"; NamedVar "B"]))
+        ]);
+      ]
+    };
+    {
+      title = "--prepare option: projection";
+      input = [
+        (*
+        source projs('A':int, 'B':string).
+        view projv('A':int).
+        -projs(A, B) :- projs(A, B) , -projv(A).
+        +projs(A, B) :- projs(A, GENV7) , not -projv(A) , not projs(A, GENV1) , not -projs(GENV2, GENV3) , B = 'a'.
+        +projs(A, B) :- projs(A, GENV8) , not -projv(A) , not projs(A, GENV4) , projs(GENV5, B) , -projv(GENV5).
+        +projs(A, B) :- +projv(A) , not projs(A, GENV1) , not -projs(GENV2, GENV3) , B = 'a'.
+        +projs(A, B) :- +projv(A) , not projs(A, GENV4) , projs(GENV5, B) , -projv(GENV5).
+        __updated__projv(A) :- projs(A, GENV6) , not -projv(A).
+        __updated__projv(A) :- +projv(A).
+        projv(A) :- projs(A, B).
+        *)
+        (* -projs(A, B) :- projs(A, B) , -projv(A). *)
+        (Deltadelete ("projs", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Pred ("projs", [NamedVar "A"; NamedVar "B"]));
+          Rel (Deltadelete ("projv", [NamedVar "A"]))
+        ]);
+        (* +projs(A, B) :- projs(A, GENV7) , not -projv(A) , not projs(A, GENV1) , not -projs(GENV2, GENV3) , B = 'a'. *)
+        (Deltainsert ("projs", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Pred ("projs", [NamedVar "A"; NamedVar "GENV7"]));
+          Not (Deltadelete ("projv", [NamedVar "A"]));
+          Not (Pred ("projs", [NamedVar "A"; NamedVar "GENV1"]));
+          Not (Deltadelete ("projs", [NamedVar "GENV2"; NamedVar "GENV3"]));
+          Equat (Equation ("=", Var (NamedVar "B"), Const (String "a")))
+        ]);
+        (* +projs(A, B) :- projs(A, GENV8) , not -projv(A) , not projs(A, GENV4) , projs(GENV5, B) , -projv(GENV5). *)
+        (Deltainsert ("projs", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Pred ("projs", [NamedVar "A"; NamedVar "GENV8"]));
+          Not (Deltadelete ("projv", [NamedVar "A"]));
+          Not (Pred ("projs", [NamedVar "A"; NamedVar "GENV4"]));
+          Rel (Pred ("projs", [NamedVar "GENV5"; NamedVar "B"]));
+          Rel (Deltadelete ("projv", [NamedVar "GENV5"]))
+        ]);
+        (* +projs(A, B) :- +projv(A) , not projs(A, GENV1) , not -projs(GENV2, GENV3) , B = 'a'. *)
+        (Deltainsert ("projs", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Deltainsert ("projv", [NamedVar "A"]));
+          Not (Pred ("projs", [NamedVar "A"; NamedVar "GENV1"]));
+          Not (Deltadelete ("projs", [NamedVar "GENV2"; NamedVar "GENV3"]));
+          Equat (Equation ("=", Var (NamedVar "B"), Const (String "a")))
+        ]);
+        (* +projs(A, B) :- +projv(A) , not projs(A, GENV4) , projs(GENV5, B) , -projv(GENV5). *)
+        (Deltainsert ("projs", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Deltainsert ("projv", [NamedVar "A"]));
+          Not (Pred ("projs", [NamedVar "A"; NamedVar "GENV4"]));
+          Rel (Pred ("projs", [NamedVar "GENV5"; NamedVar "B"]));
+          Rel (Deltadelete ("projv", [NamedVar "GENV5"]))
+        ]);
+        (* __updated__projv(A) :- projs(A, GENV6) , not -projv(A). *)
+        (Pred ("__updated__projv", [NamedVar "A"]), [
+          Rel (Pred ("projs", [NamedVar "A"; NamedVar "GENV6"]));
+          Not (Deltadelete ("projv", [NamedVar "A"]))
+        ]);
+        (* __updated__projv(A) :- +projv(A). *)
+        (Pred ("__updated__projv", [NamedVar "A"]), [
+          Rel (Deltainsert ("projv", [NamedVar "A"]))
+        ]);
+        (* projv(A) :- projs(A, B). *)
+        (Pred ("projv", [NamedVar "A"]), [
+          Rel (Pred ("projs", [NamedVar "A"; NamedVar "B"]))
+        ]);
+      ],
+      Some ("projv", []),
+      ["projs", []];
+      expected = [
+        (*
+        source projs('A':int, 'B':string).
+        view projv('A':int).
+        +projs(A, B) :- -projv(GENV5) , +projv(A) , projs(GENV5, B) , not projs(A, _).
+        +projs(A, B) :- +projv(A) , not -projs(_, _) , not projs(A, _) , B = 'a'.
+        -projs(A, B) :- -projv(A) , projs(A, B).
+        *)
+        (* +projs(A, B) :- -projv(GENV5) , +projv(A) , projs(GENV5, B) , not projs(A, _). *)
+        (Deltainsert ("projs", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Deltadelete ("projv", [NamedVar "GENV5"]));
+          Rel (Deltainsert ("projv", [NamedVar "A"]));
+          Rel (Pred ("projs", [NamedVar "GENV5"; NamedVar "B"]));
+          Not (Pred ("projs", [NamedVar "A"; AnonVar]))
+        ]);
+        (* +projs(A, B) :- +projv(A) , not -projs(_, _) , not projs(A, _) , B = 'a'. *)
+        (Deltainsert ("projs", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Deltainsert ("projv", [NamedVar "A"]));
+          Not (Deltadelete ("projs", [AnonVar; AnonVar]));
+          Not (Pred ("projs", [NamedVar "A"; AnonVar]));
+          Equat (Equation ("=", Var (NamedVar "B"), Const (String "a")))
+        ]);
+        (* -projs(A, B) :- -projv(A) , projs(A, B). *)
+        (Deltadelete ("projs", [NamedVar "A"; NamedVar "B"]), [
+          Rel (Deltadelete ("projv", [NamedVar "A"]));
+          Rel (Pred ("projs", [NamedVar "A"; NamedVar "B"]))
+        ]);
+      ]
+    };
+    {
+      title = "--prepare option: union";
+      input = [
+        (*
+        source uniona('NAME':string).
+        source unionb('NAME':string).
+        source uniono('NAME':string, 'TP':string).
+        view unionview('NAME':string, 'TP':string).
+        -uniona(N) :- uniona(N) , -unionview(N, T) , T = 'A'.
+        -unionb(N) :- unionb(N) , -unionview(N, T) , T = 'B'.
+        -uniono(N, T) :- uniono(N, T) , -unionview(N, T).
+        +uniona(N) :- +unionview(N, T) , not uniona(N) , T = 'A' , not uniono(N, T).
+        +unionb(N) :- +unionview(N, T) , not unionb(N) , T = 'B' , not uniono(N, T).
+        +uniono(N, T) :- +unionview(N, T) , not uniono(N, T) , not T = 'A' , not T = 'B'.
+        unionview(N, T) :- uniona(N) , T = 'A'.
+        unionview(N, T) :- unionb(N) , T = 'B'.
+        unionview(N, T) :- uniono(N, T).
+        *)
+        (* -uniona(N) :- uniona(N) , -unionview(N, T) , T = 'A'. *)
+        (Deltadelete ("uniona", [NamedVar "N"]), [
+          Rel (Pred ("uniona", [NamedVar "N"]));
+          Rel (Deltadelete ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "A")))
+        ]);
+        (* -unionb(N) :- unionb(N) , -unionview(N, T) , T = 'B'. *)
+        (Deltadelete ("unionb", [NamedVar "N"]), [
+          Rel (Pred ("unionb", [NamedVar "N"]));
+          Rel (Deltadelete ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "B")))
+        ]);
+        (* -uniono(N, T) :- uniono(N, T) , -unionview(N, T). *)
+        (Deltadelete ("uniono", [NamedVar "N"; NamedVar "T"]), [
+          Rel (Pred ("uniono", [NamedVar "N"; NamedVar "T"]));
+          Rel (Deltadelete ("unionview", [NamedVar "N"; NamedVar "T"]))
+        ]);
+        (* +uniona(N) :- +unionview(N, T) , not uniona(N) , T = 'A' , not uniono(N, T). *)
+        (Deltainsert ("uniona", [NamedVar "N"]), [
+          Rel (Deltainsert ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Not (Pred ("uniona", [NamedVar "N"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "A")));
+          Not (Pred ("uniono", [NamedVar "N"; NamedVar "T"]))
+        ]);
+        (* +unionb(N) :- +unionview(N, T) , not unionb(N) , T = 'B' , not uniono(N, T). *)
+        (Deltainsert ("unionb", [NamedVar "N"]), [
+          Rel (Deltainsert ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Not (Pred ("unionb", [NamedVar "N"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "B")));
+          Not (Pred ("uniono", [NamedVar "N"; NamedVar "T"]))
+        ]);
+        (* +uniono(N, T) :- +unionview(N, T) , not uniono(N, T) , not T = 'A' , not T = 'B'. *)
+        (Deltainsert ("uniono", [NamedVar "N"; NamedVar "T"]), [
+          Rel (Deltainsert ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Not (Pred ("uniono", [NamedVar "N"; NamedVar "T"]));
+          Noneq (Equation ("=", Var (NamedVar "T"), Const (String "A")));
+          Noneq (Equation ("=", Var (NamedVar "T"), Const (String "B")))
+        ]);
+        (* unionview(N, T) :- uniona(N) , T = 'A'. *)
+        (Pred ("unionview", [NamedVar "N"; NamedVar "T"]), [
+          Rel (Pred ("uniona", [NamedVar "N"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "A")))
+        ]);
+        (* unionview(N, T) :- unionb(N) , T = 'B'. *)
+        (Pred ("unionview", [NamedVar "N"; NamedVar "T"]), [
+          Rel (Pred ("unionb", [NamedVar "N"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "B")))
+        ]);
+        (* unionview(N, T) :- uniono(N, T). *)
+        (Pred ("unionview", [NamedVar "N"; NamedVar "T"]), [
+          Rel (Pred ("uniono", [NamedVar "N"; NamedVar "T"]))
+        ]);
+      ],
+      Some ("unionview", []),
+      ["uniona", []; "unionb", []; "uniono", []];
+      expected = [
+        (*
+        source uniono('NAME':string, 'TP':string).
+        source unionb('NAME':string).
+        source uniona('NAME':string).
+        view unionview('NAME':string, 'TP':string).
+        +uniono(N, T) :- +unionview(N, T) , not uniono(N, T) , not T = 'A' , not T = 'B'.
+        +unionb(N) :- +unionview(N, T) , not unionb(N) , not uniono(N, T) , T = 'B'.
+        +uniona(N) :- +unionview(N, T) , not uniona(N) , not uniono(N, T) , T = 'A'.
+        -uniono(N, T) :- -unionview(N, T) , uniono(N, T).
+        -unionb(N) :- -unionview(N, T) , unionb(N) , T = 'B'.
+        -uniona(N) :- -unionview(N, T) , uniona(N) , T = 'A'.
+        *)
+        (* +uniono(N, T) :- +unionview(N, T) , not uniono(N, T) , not T = 'A' , not T = 'B'. *)
+        (Deltainsert ("uniono", [NamedVar "N"; NamedVar "T"]), [
+          Rel (Deltainsert ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Not (Pred ("uniono", [NamedVar "N"; NamedVar "T"]));
+          Noneq (Equation ("=", Var (NamedVar "T"), Const (String "A")));
+          Noneq (Equation ("=", Var (NamedVar "T"), Const (String "B")))
+        ]);
+        (* +unionb(N) :- +unionview(N, T) , not unionb(N) , not uniono(N, T) , T = 'B'. *)
+        (Deltainsert ("unionb", [NamedVar "N"]), [
+          Rel (Deltainsert ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Not (Pred ("unionb", [NamedVar "N"]));
+          Not (Pred ("uniono", [NamedVar "N"; NamedVar "T"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "B")))
+        ]);
+        (* +uniona(N) :- +unionview(N, T) , not uniona(N) , not uniono(N, T) , T = 'A'. *)
+        (Deltainsert ("uniona", [NamedVar "N"]), [
+          Rel (Deltainsert ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Not (Pred ("uniona", [NamedVar "N"]));
+          Not (Pred ("uniono", [NamedVar "N"; NamedVar "T"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "A")))
+        ]);
+        (* -uniono(N, T) :- -unionview(N, T) , uniono(N, T). *)
+        (Deltadelete ("uniono", [NamedVar "N"; NamedVar "T"]), [
+          Rel (Deltadelete ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Rel (Pred ("uniono", [NamedVar "N"; NamedVar "T"]))
+        ]);
+        (* -unionb(N) :- -unionview(N, T) , unionb(N) , T = 'B'. *)
+        (Deltadelete ("unionb", [NamedVar "N"]), [
+          Rel (Deltadelete ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Rel (Pred ("unionb", [NamedVar "N"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "B")))
+        ]);
+        (* -uniona(N) :- -unionview(N, T) , uniona(N) , T = 'A'. *)
+        (Deltadelete ("uniona", [NamedVar "N"]), [
+          Rel (Deltadelete ("unionview", [NamedVar "N"; NamedVar "T"]));
+          Rel (Pred ("uniona", [NamedVar "N"]));
+          Equat (Equation ("=", Var (NamedVar "T"), Const (String "A")))
+        ]);
+      ]
     }
   ]
