@@ -1,0 +1,13 @@
+source uniona('NAME':string).
+source unionb('NAME':string).
+source uniono('NAME':string, 'TP':string).
+view unionview('NAME':string, 'TP':string).
+-uniona(N) :- uniona(N) , -unionview(N, T) , T = 'A'.
+-unionb(N) :- unionb(N) , -unionview(N, T) , T = 'B'.
+-uniono(N, T) :- uniono(N, T) , -unionview(N, T).
++uniona(N) :- +unionview(N, T) , not uniona(N) , T = 'A' , not uniono(N, T).
++unionb(N) :- +unionview(N, T) , not unionb(N) , T = 'B' , not uniono(N, T).
++uniono(N, T) :- +unionview(N, T) , not uniono(N, T) , not T = 'A' , not T = 'B'.
+unionview(N, T) :- uniona(N) , T = 'A'.
+unionview(N, T) :- unionb(N) , T = 'B'.
+unionview(N, T) :- uniono(N, T).

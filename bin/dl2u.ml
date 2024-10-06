@@ -9,9 +9,9 @@ let sort rules =
   | Ok rules ->
       ok rules
 
-let simplify rules =
+let simplify rules sources =
   let open Result in
-  match Simplification.simplify rules with
+  match Simplification.simplify rules None sources with
   | Error err ->
       error @@ Simplification.string_of_error err
   | Result.Ok rules ->
@@ -33,7 +33,7 @@ let convert ast =
 let main (ast : Expr.expr) =
   let open ResultMonad in
   sort ast.rules >>= fun rules ->
-  simplify rules >>= fun rules ->
+  simplify rules ast.sources >>= fun rules ->
   let ast = { ast with rules = rules } in
   convert ast
 

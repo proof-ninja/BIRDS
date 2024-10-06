@@ -1,5 +1,11 @@
 open Birds
 
+let build_view ast =
+  if Array.length Sys.argv >= 3 && Sys.argv.(2) = "--prepare" then
+    ast.Expr.view
+  else
+    None
+
 let _ =
   if Array.length Sys.argv < 2 then
     print_endline "Invalid arguments. File name must be passed."
@@ -9,11 +15,13 @@ let _ =
     let lexbuf = Lexing.from_channel chan in
     let ast = Parser.main Lexer.token lexbuf in
     let rules = ast.rules in
+    let sources = ast.sources in
+    let view = build_view ast in
     match Inlining.sort_rules rules with
     | Result.Error err ->
       print_endline @@ Inlining.string_of_error err
     | Result.Ok rules ->
-      match Simplification.simplify rules with
+      match Simplification.simplify rules view sources with
       | Result.Error err ->
         print_endline @@ Simplification.string_of_error err
       | Result.Ok rules ->
