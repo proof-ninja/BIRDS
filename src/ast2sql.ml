@@ -2323,42 +2323,10 @@ let update_table_env (head : rterm) (body : term list) (table_env : table_enviro
   if TableEnv.mem table table_env then
     return table_env
   else
-    args |> List.rev |> foldM (fun (colmns, arg_map) arg ->
+    args |> List.rev |> foldM (fun colmns arg ->
       match arg with
-      | NamedVar x -> return (x :: colmns, arg_map |> ArgMap.add x None)
+      | NamedVar x -> return (x :: colmns)
       | _          -> err @@ InvalidArgInHead { var = arg; error_detail = InRule (head, body) }
-    ) ([], ArgMap.empty) >>= fun (colmns, arg_map) ->
-    body |> foldM (fun arg_map term ->
-      match term with
-      | Rel (Pred (target, args))
-      | Rel (Deltainsert (target, args))
-      | Rel (Deltadelete (target, args)) ->
-          begin match TableEnv.find_opt target table_env with
-          | None ->
-              err @@ UnknownTable { table = target; error_detail = InRule (head, body) }
-          | Some cols ->
-              List.combine cols args |> foldM (fun arg_map (col, arg) ->
-                match arg with
-                | NamedVar x ->
-                    begin match arg_map |> ArgMap.find_opt x with
-                    | None                             -> err @@ InvalidArgInBody { var = arg; error_detail = InRule (head, body) }
-                    | Some None                        -> return (arg_map |> ArgMap.add x (Some col))
-                    | Some (Some col0) when col = col0 -> return arg_map
-                    | Some (Some _)                    -> err @@ InvalidArgInBody { var = arg; error_detail = InRule (head, body) }
-                    end
-
-                | _          ->
-                    err @@ InvalidArgInBody { var = arg; error_detail = InRule (head, body) }
-              ) arg_map
-          end
-
-      | _ -> return arg_map
-    ) arg_map >>= fun arg_map ->
-    colmns |> List.rev |> foldM (fun columns col ->
-      match arg_map |> ArgMap.find_opt col with
-      | None       -> err @@ HeadVariableDoesNotOccurInBody col
-      | Some None  -> err @@ HeadVariableDoesNotOccurInBody col
-      | Some Some col -> return (col :: columns)
     ) [] >>= fun columns ->
     return @@ TableEnv.add table columns table_env
 

@@ -227,14 +227,14 @@ let main () =
             primary_keys = [];
           };
         expected = String.concat " " [
-          "CREATE TEMPORARY TABLE v AS SELECT a_0.AA AS AA, a_0.BB AS BB, b_1.CC AS CC FROM a AS a_0, b AS b_1 WHERE b_1.BB = a_0.BB;";
-          "CREATE TEMPORARY TABLE temp0 AS SELECT v_0.AA AS AA, v_0.BB AS BB, 3 AS CC FROM v AS v_0 WHERE v_0.CC = 3 AND v_0.AA <> 4;";
-          "CREATE TEMPORARY TABLE temp1 AS SELECT 4 AS AA, temp0.BB AS BB, temp0.CC AS CC FROM temp0 AS temp0;";
-          "CREATE TEMPORARY TABLE uv AS SELECT v_0.AA AS AA, v_0.BB AS BB, v_0.CC AS CC FROM v AS v_0 WHERE NOT EXISTS ( SELECT * FROM temp0 AS t WHERE t.AA = v_0.AA AND t.BB = v_0.BB AND t.CC = v_0.CC ) UNION SELECT temp1.AA AS AA, temp1.BB AS BB, temp1.CC AS CC FROM temp1 AS temp1;";
-          "CREATE TEMPORARY TABLE temp2 AS SELECT uv_0.BB AS BB, uv_0.CC AS CC FROM uv AS uv_0 WHERE NOT EXISTS ( SELECT * FROM b AS t WHERE t.BB = uv_0.BB AND t.CC = uv_0.CC );";
-          "CREATE TEMPORARY TABLE temp3 AS SELECT uv_0.AA AS AA, uv_0.BB AS BB FROM uv AS uv_0 WHERE NOT EXISTS ( SELECT * FROM a AS t WHERE t.AA = uv_0.AA AND t.BB = uv_0.BB );";
-          "CREATE TEMPORARY TABLE temp4 AS SELECT b_0.BB AS BB, b_0.CC AS CC FROM b AS b_0, uv AS uv_1 WHERE uv_1.BB = b_0.BB AND NOT EXISTS ( SELECT * FROM uv AS t WHERE t.BB = b_0.BB AND t.CC = b_0.CC );";
-          "CREATE TEMPORARY TABLE temp5 AS SELECT a_0.AA AS AA, a_0.BB AS BB FROM a AS a_0 WHERE NOT EXISTS ( SELECT * FROM uv AS t WHERE t.AA = a_0.AA AND t.BB = a_0.BB );";
+          "CREATE TEMPORARY TABLE v AS SELECT a_0.AA AS A, a_0.BB AS B, b_1.CC AS C FROM a AS a_0, b AS b_1 WHERE b_1.BB = a_0.BB;";
+          "CREATE TEMPORARY TABLE temp0 AS SELECT v_0.A AS A, v_0.B AS B, 3 AS C FROM v AS v_0 WHERE v_0.C = 3 AND v_0.A <> 4;";
+          "CREATE TEMPORARY TABLE temp1 AS SELECT 4 AS A, temp0.B AS B, temp0.C AS C FROM temp0 AS temp0;";
+          "CREATE TEMPORARY TABLE uv AS SELECT v_0.A AS A, v_0.B AS B, v_0.C AS C FROM v AS v_0 WHERE NOT EXISTS ( SELECT * FROM temp0 AS t WHERE t.A = v_0.A AND t.B = v_0.B AND t.C = v_0.C ) UNION SELECT temp1.A AS A, temp1.B AS B, temp1.C AS C FROM temp1 AS temp1;";
+          "CREATE TEMPORARY TABLE temp2 AS SELECT uv_0.B AS BB, uv_0.C AS CC FROM uv AS uv_0 WHERE NOT EXISTS ( SELECT * FROM b AS t WHERE t.BB = uv_0.B AND t.CC = uv_0.C );";
+          "CREATE TEMPORARY TABLE temp3 AS SELECT uv_0.A AS AA, uv_0.B AS BB FROM uv AS uv_0 WHERE NOT EXISTS ( SELECT * FROM a AS t WHERE t.AA = uv_0.A AND t.BB = uv_0.B );";
+          "CREATE TEMPORARY TABLE temp4 AS SELECT b_0.BB AS BB, b_0.CC AS CC FROM b AS b_0, uv AS uv_1 WHERE uv_1.B = b_0.BB AND NOT EXISTS ( SELECT * FROM uv AS t WHERE t.B = b_0.BB AND t.C = b_0.CC );";
+          "CREATE TEMPORARY TABLE temp5 AS SELECT a_0.AA AS AA, a_0.BB AS BB FROM a AS a_0 WHERE NOT EXISTS ( SELECT * FROM uv AS t WHERE t.A = a_0.AA AND t.B = a_0.BB );";
           "INSERT INTO b SELECT * FROM temp2;";
           "INSERT INTO a SELECT * FROM temp3;";
           "DELETE FROM b USING temp4 WHERE b.BB = temp4.BB AND b.CC = temp4.CC;";
