@@ -2327,8 +2327,8 @@ let update_table_env (head : rterm) (body : term list) (table_env : table_enviro
       match arg with
       | NamedVar x -> return (x :: colmns, arg_map |> ArgMap.add x None)
       | _          -> err @@ InvalidArgInHead { var = arg; error_detail = InRule (head, body) }
-    ) ([], ArgMap.empty) >>= fun (colmns, arg_map) ->
-    body |> foldM (fun arg_map term ->
+    ) ([], ArgMap.empty) >>= fun (columns, arg_map) ->
+    (* body |> foldM (fun arg_map term ->
       match term with
       | Rel (Pred (target, args))
       | Rel (Deltainsert (target, args))
@@ -2354,12 +2354,12 @@ let update_table_env (head : rterm) (body : term list) (table_env : table_enviro
 
       | _ -> return arg_map
     ) arg_map >>= fun arg_map ->
-    colmns |> List.rev |> foldM (fun columns col ->
+    columns |> List.rev |> foldM (fun columns col ->
       match arg_map |> ArgMap.find_opt col with
       | None       -> err @@ HeadVariableDoesNotOccurInBody col
       | Some None  -> err @@ HeadVariableDoesNotOccurInBody col
       | Some Some col -> return (col :: columns)
-    ) [] >>= fun columns ->
+    ) [] >>= fun columns -> *)
     return @@ TableEnv.add table columns table_env
 
 
