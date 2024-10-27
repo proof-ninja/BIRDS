@@ -2320,9 +2320,9 @@ let update_table_env (head : rterm) (body : term list) (table_env : table_enviro
   if TableEnv.mem table table_env then
     return table_env
   else
-    args |> List.rev |> foldM (fun colmns arg ->
+    args |> List.rev |> foldM (fun columns arg ->
       match arg with
-      | NamedVar x -> return (x :: colmns)
+      | NamedVar x -> return (x :: columns)
       | _          -> err @@ InvalidArgInHead { var = arg; error_detail = InRule (head, body) }
     ) [] >>= fun columns ->
     return @@ TableEnv.add table columns table_env
