@@ -2473,6 +2473,7 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
       table_env |> TableEnv.add table cols
     ) TableEnv.empty
   in
+  let view_name = expr.view |> Option.map (fun (view_name, _) -> view_name) in
   let existent_tables = table_env |> TableEnv.to_list |> List.map fst |> TableSet.of_list in
   let rules = List.rev expr.rules in (* `expr` holds its rules in the reversed order *)
   divide_rules_into_groups table_env rules >>= fun (rule_groups, table_env) ->
@@ -2527,7 +2528,7 @@ let convert_expr_to_operation_based_sql (expr : expr) : (sql_operation list, err
         get_column_names_from_table ~error_detail:(InGroup delta_key) table_env table >>= fun cols ->
         let delta_env = delta_env |> DeltaEnv.add delta_key (temporary_table, cols) in
         let creation = SqlCreateTemporaryTable (temporary_table, sql_query) in
-        if TableSet.mem table existent_tables then
+        if Option.fold ~none:true ~some:((<>) table) view_name && TableSet.mem table existent_tables then
           let update =
             match delta_kind with
             | Insert ->
