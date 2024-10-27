@@ -2309,9 +2309,6 @@ type grouping_state =
   | NoneState
 
 
-module ArgMap = Map.Make(String)
-
-
 let update_table_env (head : rterm) (body : term list) (table_env : table_environment) : (table_environment, error) result =
   let open ResultMonad in
   let table, args =
