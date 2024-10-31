@@ -46,3 +46,8 @@
   (modules removebottom)
   (libraries birds))
 
+(executable
+  (public_name counterexample)
+  (name counterexample)
+  (modules counterexample)
+  (libraries birds))
