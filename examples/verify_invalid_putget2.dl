@@ -1,0 +1,13 @@
+source a('A':int, 'B':int).
+source b('B':int, 'C':int).
+view s('A':int, 'B':int, 'C':int).
+% view definition
+s(A,B,C) :- a(A,B), b(B,C).
+% putdelta
+%-a(A,B) :- a(A,B), not s(A,B,_).
++a(A,B) :- s(A,B,_), not a(A,B).
+-b(B,C) :- b(B,C), s(_,B,_), not s(_,B,C).
++b(B,C) :- s(_,B,C), not b(B,C).
+% constraints
+_|_ :- a(_,B), not b(B,_).
+_|_ :- s(_,B,C1), s(_,B,C2), C1<>C2.

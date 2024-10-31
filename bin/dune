@@ -46,3 +46,9 @@
   (modules removebottom)
   (libraries birds))
 
+(executable
+  (public_name verify)
+  (name verify)
+  (modules verify)
+  (libraries birds))
+

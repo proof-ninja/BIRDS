@@ -1,0 +1,9 @@
+source tracks2('TRACK':string,'RATING':int,'ALBUM':string,'QUANTITY':int).
+view tracks3('TRACK':string,'RATING':int,'ALBUM':string,'QUANTITY':int).
+% view definition:
+tracks3(T,R,A,Q) :- tracks2(T,R,A,Q),Q > 2.
+% putdelta
++tracks2(T,R,A,Q) :- tracks3(T,R,A,Q), not tracks2(T,R,A,Q).
+-tracks2(T,R,A,Q) :- tracks2(T,R,A,Q), not tracks3(T,R,A,Q).
+% constraints
+_|_ :- tracks3(T,R,A,Q), Q <= 2.
