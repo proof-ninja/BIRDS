@@ -1,0 +1,4 @@
+source a('A':int, 'B':int).
+view v('A':int, 'B':int, 'C':int).
+-a(A, B) :- f(B, A).
+f(C, D) :- a(D, C).
