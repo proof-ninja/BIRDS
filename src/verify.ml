@@ -33,7 +33,6 @@ let verify debug timeout ast =
   let satisfying_putget = ref false in
   let satisfying_deltadis = ref false in
   let verification_mess = ref "" in
-  let counterexample_mess = ref "" in
 
   if debug then
     print_endline "==> Verifying the delta disjointness property";
@@ -62,19 +61,10 @@ let verify debug timeout ast =
           verification_mess := String.concat "\n\n" [!verification_mess; m]
         end
       else
-        (* if (exitcode=1 && !cex_generation) then
-          (let error, counterexample = Debugger.gen_counterexample !log "disdelta" !cex_max !timeout constr_ast in
-          let m = if (error = "") then ("% Invalidity: The following counterexample shows that deltas in the datalog program are not disjoint:\n" ^ (string_of_prog {get_empty_expr with facts = counterexample}) )
-                  else "% Fail to generate a couterexample of delta disjointness: " ^ error in
-          if (!log) then print_endline m;
-          counterexample_mess := (!counterexample_mess) ^ "\n\n" ^ m
-            (* exit 0 *))
-        else *)
         begin
           let m = String.concat "" [
             Printf.sprintf "Invalidity: Deltas in the datalog program are not disjoint \nExit code: %i" exitcode;
             if debug then Printf.sprintf "\nError messange: %s" message else "";
-            "\nHint: use option --counterexample to generate a counterexample";
           ]
           in
           if debug then print_endline m;
@@ -107,20 +97,10 @@ let verify debug timeout ast =
         verification_mess := String.concat "\n\n" [!verification_mess; m]
       end
       else
-        (* if (exitcode=1 && !cex_generation) then
-          (let error, counterexample = Debugger.gen_counterexample !log "getput" !cex_max !timeout constr_ast in
-          let m = if (error = "") then ("% Invalidity: The following counterexample shows that getput is not satisfied:\n" ^ string_of_prog {get_empty_expr with facts = counterexample} )
-                  else "% Fail to generate a counterexample of getput: " ^error in
-          if (!log) then print_endline m;
-            counterexample_mess := (!counterexample_mess) ^ "\n\n" ^ m
-          (* exit 0 *)
-          )
-        else *)
         begin
           let m = String.concat "" [
             Printf.sprintf "Invalidity: Property getput is not validated \nExit code: %i" exitcode;
             if debug then Printf.sprintf "\nError messange: %s" message else "";
-            "\nHint: use option --counterexample to generate a counterexample";
           ] in
           if debug then print_endline m;
           verification_mess := String.concat "\n\n" [!verification_mess; m]
@@ -151,19 +131,10 @@ let verify debug timeout ast =
         verification_mess := String.concat"\n\n" [!verification_mess; m]
       end
       else
-        (* if (exitcode=1 && !cex_generation) then
-          (let error, counterexample = Debugger.gen_counterexample !log "putget" !cex_max !timeout constr_ast in
-          let m = if (error = "") then ("% Invalidity: The following counterexample shows that putget is not satisfied:\n" ^ string_of_prog {get_empty_expr with facts = counterexample})
-                  else "% Fail to generate a counterexample of putget: " ^error in
-          if (!log) then print_endline m;
-          counterexample_mess := (!counterexample_mess) ^ "\n\n" ^ m
-            (* exit 0 *))
-        else *)
         begin
           let m = String.concat "" [
             Printf.sprintf "Invalidity: Property putget is not validated \nExit code: %i" exitcode;
             if debug then Printf.sprintf "\nError messange: %s" message else "";
-            "\nHint: use option --counterexample to generate a counterexample";
           ] in
           if debug then print_endline m;
           verification_mess := String.concat "\n\n" [!verification_mess; m]
@@ -178,6 +149,4 @@ let verify debug timeout ast =
         print_endline "The program satisfies all delta disjointness, getput and putget"
     end
   else
-    (* if (!cex_generation) then (print_endline !counterexample_mess; exit 0)
-    else *)
-      raise (Utils.ChkErr !verification_mess)
+    raise (Utils.ChkErr !verification_mess)
