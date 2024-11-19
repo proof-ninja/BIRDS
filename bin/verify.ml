@@ -15,10 +15,10 @@ let rec parse_argv args = function
   | [] -> args
   | "--timeout" :: timeout :: tail ->
     begin match int_of_string_opt timeout with
-    | Some timeout -> parse_options { args with timeout } tail
+    | Some timeout -> parse_argv { args with timeout } tail
     | None -> failwith @@ Printf.sprintf "Invalid timeout: %s" timeout
     end
-  | filename :: tail -> parse_options { args with filename } tail
+  | filename :: tail -> parse_argv { args with filename } tail
 
 let _ =
   let args = parse_argv default_args @@ List.tl @@ Array.to_list Sys.argv in
