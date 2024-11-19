@@ -1,0 +1,24 @@
+source tracks2('TRACK':string,'RATING':int,'ALBUM':string,'QUANTITY':int).
+view tracks3('TRACK':string,'RATING':int,'ALBUM':string,'QUANTITY':int).
+
+tracks3(T,R,A,Q) :- tracks2(T,R,A,Q),Q > 2.
+⊥ :- tracks3(T,R,A,Q), NOT Q>2.
+
+% Album -> Quantity
+⊥ :- tracks2(_,_,A,Q1), tracks2(_,_,A,Q2), not Q1=Q2.
+⊥ :- tracks3(_,_,A,Q1), tracks3(_,_,A,Q2), not Q1=Q2.
+% Track -> Rating
+⊥ :- tracks2(T,R1,_,_), tracks2(T,R2,_,_), not R1=R2.
+⊥ :- tracks3(T,R1,_,_), tracks3(T,R2,_,_), not R1=R2.
+
+% put
+-tracks2(T,R,A,Q) :- tracks2(T,R,A,Q), not tracks3(T,R,A,Q), Q > 2.
++tracks2(T,R,A,Q) :- tracks3(T,R,A,Q), not tracks2(T,R,A,Q).
+
+% relational revision for Track -> Rating
+_|_ :- tracks2(T,R1,A,Q), tracks3(T,R2,_,_), not R1=R2.
+_|_ :- tracks2(T,R1,A,Q), tracks3(T,R2,_,_), not R1=R2.
+
+% relational revision for Album -> Quantity
+-tracks2(T,R,A,Q1) :- tracks2(T,R,A,Q1), tracks3(_,_,A,Q2), not Q1=Q2. 
++tracks2(T,R,A,Q2) :- tracks2(T,R,A,Q1), tracks3(_,_,A,Q2), not Q1=Q2.
