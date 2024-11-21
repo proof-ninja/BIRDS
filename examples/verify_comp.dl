@@ -1,0 +1,24 @@
+source classes('CLASS_ID':int, 'CLASS_NAME':string, 'FACULTY_ID':int).
+source faculty('FACULTY_ID':int, 'FACULTY_NAME':string, 'OFFICE':string).
+view v('CLASS_ID':int, 'CLASS_NAME':string, 'FACULTY_NAME':string).
+v(C,CN,FN) :- classes(C,CN,F), faculty(F,FN,O).
+all_classes(C,CN,F,FN,O) :- classes(C,CN,F), faculty(F,FN,O).
+mac(C,CN,F,FN,O) :- all_classes(C,CN,F,FN,O), not v(C,CN,FN).
+pac(C,CN,F,FN,O) :- v(C,CN,FN), not all_classes(C,CN,_,FN,_), not mac(_,_,_,_,_), faculty(F,FN,O).
+pac(C,CN,F,FN,O) :- v(C,CN,FN), not all_classes(C,CN,_,FN,_), not mac(_,_,_,_,_), not faculty(_,FN,_), F=-100, O='New'.
+pac(C,CN,F,FN,O) :- v(C,CN,FN), not all_classes(C,CN,_,FN,_), mac(_,_,F,_,O).
+uac(C,CN,F,FN,O) :- pac(C,CN,F,FN,O).
+uac(C,CN,F,FN,O) :- all_classes(C,CN,F,FN,O), not mac(C,CN,F,FN,O).
+% foreign key on base tables
+_|_ :- classes(_,_,F), not faculty(F,_,_).
+% constraints on views
+_|_ :- uac(_,_,F,FN1,_), uac(_,_,F,FN2,_), FN1<>FN2.
+_|_ :- uac(_,_,F,_,O1), uac(_,_,F,_,O2), O1<>O2.
+% faculty_name -> faculty_id on faculty
+_|_ :- faculty(F1, FN, _), faculty(F2, FN, _), F1<>F2.
+-classes(C,CN,F) :- classes(C,CN,F), not uac(C,CN,F,_,_).
++classes(C,CN,F) :- uac(C,CN,F,_,_), not classes(C,CN,F).
+-faculty(F,FN,O) :- faculty(F,FN,O), uac(_,_,F,_,_), not uac(_,_,F,FN,O).
+% The following rule is for strategy 2
+-faculty(F,FN,O) :- faculty(F,FN,O), uac(_,_,_,FN,_), not uac(_,_,F,FN,_).
++faculty(F,FN,O) :- uac(_,_,F,FN,O), not faculty(F,FN,O).
