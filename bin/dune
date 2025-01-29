@@ -51,3 +51,10 @@
   (name counterexample)
   (modules counterexample)
   (libraries birds))
+
+(executable
+  (public_name verify)
+  (name verify)
+  (modules verify)
+  (libraries birds))
+
