@@ -121,6 +121,7 @@ type intermediate_rule = {
   positive_terms : predicate_map;
   negative_terms : predicate_map;
   equations      : equation_map;
+  unsupported_terms : term list;
 }
 
 module Debug = struct
@@ -148,8 +149,8 @@ module Debug = struct
     |> String.concat ", "
   
   let string_of_intermediate_rule imrule =
-    let { head_predicate; head_arguments; positive_terms; negative_terms; equations } = imrule in
-    Printf.sprintf "{ head_predicate = %s; head_arguments = [%s]; positive_terms = %s; negative_terms = %s; equations = %s }"
+    let { head_predicate; head_arguments; positive_terms; negative_terms; equations; unsupported_terms } = imrule in
+    Printf.sprintf "{ head_predicate = %s; head_arguments = [%s]; positive_terms = %s; negative_terms = %s; equations = %s; unsupported_terms = [%s] }"
       (match head_predicate with
       | ImPred t        -> t
       | ImDeltaInsert t -> Printf.sprintf "+%s" t
@@ -159,6 +160,7 @@ module Debug = struct
       (positive_terms |> string_of_predicate_map)
       (negative_terms |> string_of_predicate_map)
       (equations |> string_of_equation_map)
+      (unsupported_terms |> List.map Expr.string_of_term |> String.concat ", ")
 end
 
 type error =
@@ -239,27 +241,35 @@ let convert_body_rterm (rterm : rterm) : (intermediate_predicate * body_term_arg
   vars |> mapM convert_body_var >>= fun imbvars ->
   return (impred, imbvars)
 
+type conerted_eterm = [
+  | `Constraint of (var_name * constant_requirement)
+  | `Unsupported of eterm
+]
 
-let convert_eterm ~(negated : bool) (eterm : eterm) : (var_name * constant_requirement, error) result =
+let convert_eterm ~(negated : bool) (eterm : eterm) : conerted_eterm =
   let open ResultMonad in
   begin
     match eterm with
-    | Equation("=", Var (NamedVar x), Const c)           -> return (x, true, c)
-    | Equation("=", Var (NamedVar x), Var (ConstVar c))  -> return (x, true, c)
-    | Equation("=", Const c, Var (NamedVar x))           -> return (x, true, c)
-    | Equation("=", Var (ConstVar c), Var (NamedVar x))  -> return (x, true, c)
-    | Equation("<>", Var (NamedVar x), Const c)          -> return (x, false, c)
-    | Equation("<>", Var (NamedVar x), Var (ConstVar c)) -> return (x, false, c)
-    | Equation("<>", Const c, Var (NamedVar x))          -> return (x, false, c)
-    | Equation("<>", Var (ConstVar c), Var (NamedVar x)) -> return (x, false, c)
-    | _                                                  -> err (UnsupportedEquation eterm)
-  end >>= fun (x, equal, c) ->
-  let equal = if negated then not equal else equal in
-  if equal then
-    return (x, EqualTo c)
-  else
-    return (x, NotEqualTo (ConstSet.singleton c))
-
+    | Equation("=", Var (NamedVar x), Const c)           -> `Constraint (x, true, c)
+    | Equation("=", Var (NamedVar x), Var (ConstVar c))  -> `Constraint (x, true, c)
+    | Equation("=", Const c, Var (NamedVar x))           -> `Constraint (x, true, c)
+    | Equation("=", Var (ConstVar c), Var (NamedVar x))  -> `Constraint (x, true, c)
+    | Equation("<>", Var (NamedVar x), Const c)          -> `Constraint (x, false, c)
+    | Equation("<>", Var (NamedVar x), Var (ConstVar c)) -> `Constraint (x, false, c)
+    | Equation("<>", Const c, Var (NamedVar x))          -> `Constraint (x, false, c)
+    | Equation("<>", Var (ConstVar c), Var (NamedVar x)) -> `Constraint (x, false, c)
+    | _                                                  ->
+        Printf.eprintf "[WARN] Unsupported equation: %s\n" (Expr.string_of_eterm eterm);
+        `Unsupported
+  end |> function
+  | `Constraint(x, equal, c) ->
+      let equal = if negated then not equal else equal in
+      if equal then
+        `Constraint (x, EqualTo c)
+      else
+        `Constraint (x, NotEqualTo (ConstSet.singleton c))
+  | `Unsupported ->
+      `Unsupported eterm
 
 let extend_predicate_map (impred : intermediate_predicate) (args : body_term_arguments) (predmap : predicate_map) : predicate_map =
   let argsset =
@@ -316,60 +326,69 @@ let convert_rule (rule : rule) : (intermediate_rule option, error) result =
     | None ->
         return None
 
-    | Some (predmap_pos, predmap_neg, eqnmap) ->
+    | Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms) ->
         begin
           match term with
           | Rel rterm ->
               convert_body_rterm rterm >>= fun (impred, imbvars) ->
               let predmap_pos = predmap_pos |> extend_predicate_map impred imbvars in
-              return (Some (predmap_pos, predmap_neg, eqnmap))
+              return (Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms))
 
           | Not rterm ->
               convert_body_rterm rterm >>= fun (impred, imbvars) ->
               let predmap_neg = predmap_neg |> extend_predicate_map impred imbvars in
-              return (Some (predmap_pos, predmap_neg, eqnmap))
+              return (Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms))
 
           | Equat eterm ->
-              convert_eterm ~negated:false eterm >>= fun (x, cr) ->
-              begin
-                match eqnmap |> check_equation_map x cr with
-                | None ->
-                  (* If it turns out that the list of equations is unsatisfiable: *)
-                    return None
+              begin match convert_eterm ~negated:false eterm with
+              | `Constraint (x, cr) ->
+                  begin
+                    match eqnmap |> check_equation_map x cr with
+                    | None ->
+                      (* If it turns out that the list of equations is unsatisfiable: *)
+                        return None
 
-                | Some eqnmap ->
-                    return (Some (predmap_pos, predmap_neg, eqnmap))
+                    | Some eqnmap ->
+                        return (Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms))
+                  end
+              | `Unsupported eterm ->
+                  return (Some (predmap_pos, predmap_neg, eqnmap, Equat eterm :: unsupported_terms))
               end
 
           | Noneq eterm ->
-              convert_eterm ~negated:true eterm >>= fun (x, cr) ->
-              begin
-                match eqnmap |> check_equation_map x cr with
-                | None ->
-                  (* If it turns out that the list of equations is unsatisfiable: *)
-                    return None
+              begin match convert_eterm ~negated:true eterm with
+              | `Constraint (x, cr) ->
+                  begin
+                    match eqnmap |> check_equation_map x cr with
+                    | None ->
+                      (* If it turns out that the list of equations is unsatisfiable: *)
+                        return None
 
-                | Some eqnmap ->
-                    return (Some (predmap_pos, predmap_neg, eqnmap))
+                    | Some eqnmap ->
+                        return (Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms))
+                  end
+              | `Unsupported eterm ->
+                  return (Some (predmap_pos, predmap_neg, eqnmap, Noneq eterm :: unsupported_terms))
               end
 
           | ConstTerm bool ->
             if bool then
-              return (Some (predmap_pos, predmap_neg, eqnmap))
+              return (Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms))
             else
               return None
         end
-  ) (Some (PredicateMap.empty, PredicateMap.empty, VariableMap.empty)) >>= function
+  ) (Some (PredicateMap.empty, PredicateMap.empty, VariableMap.empty, [])) >>= function
   | None ->
       return None
 
-  | Some (predmap_pos, predmap_neg, eqnmap) ->
+  | Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms) ->
       return (Some {
         head_predicate = impred_head;
         head_arguments = imhvars;
         positive_terms = predmap_pos;
         negative_terms = predmap_neg;
         equations      = eqnmap;
+        unsupported_terms = unsupported_terms;
       })
 
 
@@ -406,7 +425,7 @@ let revert_body_terms ~(positive : bool) ((impred, argsset) : intermediate_predi
 
 
 let revert_rule (imrule : intermediate_rule) : (rule, error) result =
-  let { head_predicate; head_arguments; positive_terms; negative_terms; equations } = imrule in
+  let { head_predicate; head_arguments; positive_terms; negative_terms; equations; unsupported_terms } = imrule in
   let head = revert_head head_predicate head_arguments in
   let terms_pos =
     positive_terms |> PredicateMap.bindings |> List.map (revert_body_terms ~positive:true) |> List.concat
@@ -426,6 +445,7 @@ let revert_rule (imrule : intermediate_rule) : (rule, error) result =
           )
     )
   in
+  let terms_eq = List.append terms_eq unsupported_terms in
   let body = List.concat [ terms_pos; terms_neg; terms_eq ] in
   if List.length body = 0 then
     if List.is_empty head_arguments then
@@ -482,7 +502,7 @@ let erase_sole_occurrences_in_predicate_map (count_map : occurrence_count_map) (
 
 
 let erase_sole_occurrences (imrule : intermediate_rule) : intermediate_rule =
-  let { head_predicate; head_arguments; positive_terms; negative_terms; equations } = imrule in
+  let { head_predicate; head_arguments; positive_terms; negative_terms; equations; unsupported_terms } = imrule in
 
   (* Counts occurrence of each variables: *)
   let count_map =
@@ -510,7 +530,7 @@ let erase_sole_occurrences (imrule : intermediate_rule) : intermediate_rule =
         equations_new |> VariableMap.add x c
     ) equations VariableMap.empty
   in
-  { head_predicate; head_arguments; positive_terms; negative_terms; equations }
+  { head_predicate; head_arguments; positive_terms; negative_terms; equations; unsupported_terms }
 
 
 let is_looser ~than:(args1 : body_term_arguments) (args2 : body_term_arguments) : bool =
@@ -565,10 +585,10 @@ let remove_looser_negative_terms (argsset : BodyTermArgumentsSet.t) : BodyTermAr
 
 
 let remove_looser_terms (imrule : intermediate_rule) : intermediate_rule =
-  let { head_predicate; head_arguments; positive_terms; negative_terms; equations } = imrule in
+  let { head_predicate; head_arguments; positive_terms; negative_terms; equations; unsupported_terms } = imrule in
   let positive_terms = positive_terms |> PredicateMap.map remove_looser_positive_terms in
   let negative_terms = negative_terms |> PredicateMap.map remove_looser_negative_terms in
-  { head_predicate; head_arguments; positive_terms; negative_terms; equations }
+  { head_predicate; head_arguments; positive_terms; negative_terms; equations; unsupported_terms }
 
 
 let simplify_rule_step (imrule : intermediate_rule) : intermediate_rule =
@@ -718,17 +738,17 @@ let substitute_equation_map (subst : head_var_substitution) (eqns1 : equation_ma
     | Some (ImHeadVar x2) -> acc |> VariableMap.add x2 cr
   ) eqns1 VariableMap.empty
 
-
 let are_alpha_equivalent_rules (imrule1 : intermediate_rule) (imrule2 : intermediate_rule) : bool =
   let
     {
       head_predicate = hp1; head_arguments = hvars1;
       positive_terms = poss1; negative_terms = negs1; equations = eqns1;
+      unsupported_terms = terms1;
     } = imrule1
   in
   let
     {
-      head_predicate = hp2; head_arguments = hvars2; _
+      head_predicate = hp2; head_arguments = hvars2; unsupported_terms = terms2; _
     } = imrule2
   in
   if not (predicate_equal hp1 hp2) then
@@ -747,10 +767,18 @@ let are_alpha_equivalent_rules (imrule1 : intermediate_rule) (imrule2 : intermed
         let poss1subst = poss1 |> substitute_predicate_map subst in
         let negs1subst = negs1 |> substitute_predicate_map subst in
         let eqns1subst = eqns1 |> substitute_equation_map subst in
+        let same_terms: bool =
+          if not (List.length terms1 = List.length terms2) then
+            false
+          else
+            let term1, term2 = List.sort Expr.Term.compare terms1, List.sort Expr.Term.compare terms2 in
+            List.for_all2 Expr.Term.equal term1 term2
+        in
         List.fold_left ( && ) true [
           PredicateMap.equal BodyTermArgumentsSet.equal poss1subst poss1;
           PredicateMap.equal BodyTermArgumentsSet.equal negs1subst negs1;
           VariableMap.equal constant_requirement_equal eqns1subst eqns1;
+          same_terms;
         ]
 
 

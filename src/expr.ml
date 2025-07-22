@@ -183,6 +183,9 @@ module Term = struct
     | Noneq _, _ -> 1
     | _, Noneq _ -> -1
     | ConstTerm e1, ConstTerm e2 -> Bool.compare e1 e2
+  
+  let equal t1 t2 =
+    compare t1 t2 = 0
 end
 
 module Rule = struct
