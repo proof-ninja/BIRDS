@@ -246,7 +246,7 @@ type conerted_eterm = [
   | `Unsupported of eterm
 ]
 
-let convert_eterm ~(negated : bool) (eterm : eterm) : conerted_eterm =
+let convert_eterm ~(negated : bool) (eterm : eterm) : (conerted_eterm, error) result =
   let open ResultMonad in
   begin
     match eterm with
@@ -258,18 +258,22 @@ let convert_eterm ~(negated : bool) (eterm : eterm) : conerted_eterm =
     | Equation("<>", Var (NamedVar x), Var (ConstVar c)) -> `Constraint (x, false, c)
     | Equation("<>", Const c, Var (NamedVar x))          -> `Constraint (x, false, c)
     | Equation("<>", Var (ConstVar c), Var (NamedVar x)) -> `Constraint (x, false, c)
+    | Equation("=", Var (NamedVar _), Var (NamedVar _))  -> `Error
     | _                                                  ->
         Printf.eprintf "[WARN] Unsupported equation: %s\n" (Expr.string_of_eterm eterm);
         `Unsupported
   end |> function
   | `Constraint(x, equal, c) ->
       let equal = if negated then not equal else equal in
-      if equal then
+      return begin if equal then
         `Constraint (x, EqualTo c)
       else
         `Constraint (x, NotEqualTo (ConstSet.singleton c))
+      end
   | `Unsupported ->
-      `Unsupported eterm
+      return (`Unsupported eterm)
+  | `Error ->
+      err (UnsupportedEquation eterm)
 
 let extend_predicate_map (impred : intermediate_predicate) (args : body_term_arguments) (predmap : predicate_map) : predicate_map =
   let argsset =
@@ -340,7 +344,7 @@ let convert_rule (rule : rule) : (intermediate_rule option, error) result =
               return (Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms))
 
           | Equat eterm ->
-              begin match convert_eterm ~negated:false eterm with
+              begin convert_eterm ~negated:false eterm >>= function
               | `Constraint (x, cr) ->
                   begin
                     match eqnmap |> check_equation_map x cr with
@@ -356,7 +360,7 @@ let convert_rule (rule : rule) : (intermediate_rule option, error) result =
               end
 
           | Noneq eterm ->
-              begin match convert_eterm ~negated:true eterm with
+              begin convert_eterm ~negated:true eterm >>= function
               | `Constraint (x, cr) ->
                   begin
                     match eqnmap |> check_equation_map x cr with
