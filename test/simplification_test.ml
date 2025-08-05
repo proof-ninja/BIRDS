@@ -978,5 +978,47 @@ let main () =
           Equat (Equation ("=", Var (NamedVar "T"), Const (String "A")))
         ]);
       ]
+    };
+    {
+      title = "Issue #56: Greater than operator (>) should be kept as unsupported";
+      input = [
+        (*
+        source tracks2('TRACK':string, 'RATING':int, 'ALBUM':string, 'QUANTITY':int).
+        view tracks3('TRACK':string, 'RATING':int, 'ALBUM':string, 'QUANTITY':int).
+        -tracks2(T, R, A, Q) :- tracks2(T, R, A, Q) , -tracks3(T, R, A, Q) , Q > 2.
+        +tracks2(T, R, A, Q) :- +tracks3(T, R, A, Q) , not tracks2(T, R, A, Q).
+        tracks3(T, R, A, Q) :- tracks2(T, R, A, Q) , Q > 2.
+        *)
+        (Deltadelete ("tracks2", [track; rating; album; quantity]), [
+          Rel (Pred ("tracks2", [track; rating; album; quantity]));
+          Rel (Deltadelete ("tracks3", [track; rating; album; quantity]));
+          Equat (Equation (">", Var quantity, Const (Int 2)))
+        ]);
+        (Deltainsert ("tracks2", [track; rating; album; quantity]), [
+          Rel (Deltainsert ("tracks3", [track; rating; album; quantity]));
+          Not (Pred ("tracks2", [track; rating; album; quantity]))
+        ]);
+        (Pred ("tracks3", [track; rating; album; quantity]), [
+          Rel (Pred ("tracks2", [track; rating; album; quantity]));
+          Equat (Equation (">", Var quantity, Const (Int 2)))
+        ]);
+      ],
+      Some ("tracks3", []),
+      ["tracks2", []];
+      expected = [
+        (*
+        +tracks2(T, R, A, Q) :- +tracks3(T, R, A, Q) , not tracks2(T, R, A, Q).
+        -tracks2(T, R, A, Q) :- tracks2(T, R, A, Q) , -tracks3(T, R, A, Q) , Q > 2.
+        *)
+        (Deltainsert ("tracks2", [track; rating; album; quantity]), [
+          Rel (Deltainsert ("tracks3", [track; rating; album; quantity]));
+          Not (Pred ("tracks2", [track; rating; album; quantity]))
+        ]);
+        (Deltadelete ("tracks2", [track; rating; album; quantity]), [
+          Rel (Deltadelete ("tracks3", [track; rating; album; quantity]));
+          Rel (Pred ("tracks2", [track; rating; album; quantity]));
+          Equat (Equation (">", Var quantity, Const (Int 2)))
+        ]);
+      ]
     }
   ]

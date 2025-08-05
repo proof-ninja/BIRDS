@@ -486,6 +486,20 @@ let fold_predicate_map_for_counting (predmap : predicate_map) (count_map : occur
     ) argsset count_map
   ) predmap count_map
 
+let rec fold_unsupported_terms_for_counting (unsupported_terms : term list) (count_map : occurrence_count_map) : occurrence_count_map =
+  List.fold_left (fun count_map term ->
+    match term with
+    | Equat (Equation (_, Var (NamedVar x), Var (NamedVar y))) ->
+        count_map |> increment_occurrence_count x |> increment_occurrence_count y
+    | Equat (Equation (_, Var (NamedVar x), _)) | Equat (Equation (_, _, Var (NamedVar x))) ->
+        count_map |> increment_occurrence_count x
+    | Noneq (Equation (_, Var (NamedVar x), Var (NamedVar y))) ->
+        count_map |> increment_occurrence_count x |> increment_occurrence_count y
+    | Noneq (Equation (_, Var (NamedVar x), _)) | Noneq (Equation (_, _, Var (NamedVar x))) ->
+        count_map |> increment_occurrence_count x
+    | _ -> count_map
+  ) count_map unsupported_terms
+
 
 let erase_sole_occurrences_in_predicate_map (count_map : occurrence_count_map) (predmap : predicate_map) : predicate_map =
   predmap |> PredicateMap.map (fun argsset ->
@@ -514,6 +528,7 @@ let erase_sole_occurrences (imrule : intermediate_rule) : intermediate_rule =
       |> fold_predicate_map_for_counting positive_terms
       |> fold_predicate_map_for_counting negative_terms
       |> VariableMap.fold (fun x _c count_map -> count_map |> increment_occurrence_count x) equations
+      |> fold_unsupported_terms_for_counting unsupported_terms
   in
 
   (* Removes variables occurring in head arguments: *)

@@ -1,9 +1,14 @@
 source tracks2('TRACK':string, 'RATING':int, 'ALBUM':string, 'QUANTITY':int).
 view tracks3('TRACK':string, 'RATING':int, 'ALBUM':string, 'QUANTITY':int).
 -tracks2(T, R, A, Q) :- tracks2(T, R, A, Q) , -tracks3(T, R, A, Q) , Q = 2.
--tracks2(T, R1, A, Q) :- tracks2(T, R1, A, Q) , tracks2(T, R2, GENV3, GENV4) , GENV4 = 2 , not -tracks3(T, R2, GENV3, GENV4) , R1 <> R2.
+-tracks2(T, R1, A, Q) :- tracks2(T, R1, A, Q) , tracks2(T, R2, GENV3, GENV4) , GENV4 = 2 , not -tracks3(T, R2, GENV3, GENV4).
+-tracks2(T, R1, A, Q) :- tracks2(T, R1, A, Q) , +tracks3(T, R2, GENV3, GENV4) , R1 =1,  R2=1.
 -tracks2(T, R1, A, Q) :- tracks2(T, R1, A, Q) , +tracks3(T, R2, GENV3, GENV4) , R1 <> R2.
 +tracks2(T, R, A, Q) :- +tracks3(T, R, A, Q) , not tracks2(T, R, A, Q).
++tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , not -tracks2(T, R1, A, Q) , tracks2(T, R2, GENV1, GENV2) , GENV2 = 2 , not -tracks3(T, R2, GENV1, GENV2).
++tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , not -tracks2(T, R1, A, Q) , +tracks3(T, R2, GENV1, GENV2) .
++tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , not -tracks2(T, R1, A, Q) , tracks2(T, R2, GENV1, GENV2) , GENV2 = 2 , not -tracks3(T, R2, GENV1, GENV2) , R1=1, R2=1.
++tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , not -tracks2(T, R1, A, Q) , +tracks3(T, R2, GENV1, GENV2) , R1 =1, R2=1.
 +tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , not -tracks2(T, R1, A, Q) , tracks2(T, R2, GENV1, GENV2) , GENV2 = 2 , not -tracks3(T, R2, GENV1, GENV2) , R1 <> R2.
 +tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , not -tracks2(T, R1, A, Q) , +tracks3(T, R2, GENV1, GENV2) , R1 <> R2.
 __updated__tracks3(TRACK, RATING, ALBUM, QUANTITY) :- tracks2(TRACK, RATING, ALBUM, QUANTITY) , QUANTITY = 2 , not -tracks3(TRACK, RATING, ALBUM, QUANTITY).
