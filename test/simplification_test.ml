@@ -1178,5 +1178,123 @@ let main () =
         ])
       ]
       )
+    };
+    {
+      title = "Issue #58-1: Comparison operators";
+      input = (
+        let t = NamedVar "T" in
+        let r = NamedVar "R" in
+        let a = NamedVar "A" in
+        let q = NamedVar "Q" in
+        let genv1 = NamedVar "GENV1" in
+        
+        [
+          (* +tracks2(T, R, A, Q) :- tracks2(T, GENV1, A, Q) , not tracks2(T, R, A, Q) , A = 'Show' , not GENV1 = 4 , Q > 2 , R = 4. *)
+          (Deltainsert ("tracks2", [t; r; a; q]), [
+            Rel (Pred ("tracks2", [t; genv1; a; q]));
+            Not (Pred ("tracks2", [t; r; a; q]));
+            Equat (Equation ("=", Var a, Const (String "'Show'")));
+            Noneq (Equation ("=", Var genv1, Const (Int 4)));
+            Equat (Equation (">", Var q, Const (Int 2)));
+            Equat (Equation ("=", Var r, Const (Int 4)))
+          ]);
+          (* -tracks2(T, R, A, Q) :- tracks2(T, R, A, Q) , A = 'Show' , Q > 2 , not R = 4. *)
+          (Deltadelete ("tracks2", [t; r; a; q]), [
+            Rel (Pred ("tracks2", [t; r; a; q]));
+            Equat (Equation ("=", Var a, Const (String "'Show'")));
+            Equat (Equation (">", Var q, Const (Int 2)));
+            Noneq (Equation ("=", Var r, Const (Int 4)))
+          ])
+        ],
+        Some ("tracks3", []),
+        ["tracks2", []]
+      );
+      expected = (
+        let t = NamedVar "T" in
+        let r = NamedVar "R" in
+        let a = NamedVar "A" in
+        let q = NamedVar "Q" in
+        let genv1 = NamedVar "GENV1" in
+        
+        [
+          (* +tracks2(T, R, A, Q) :- tracks2(T, GENV1, A, Q) , not tracks2(T, R, A, Q) , A = 'Show' , not GENV1 = 4 , R = 4 , Q > 2. *)
+          (Deltainsert ("tracks2", [t; r; a; q]), [
+            Rel (Pred ("tracks2", [t; genv1; a; q]));
+            Not (Pred ("tracks2", [t; r; a; q]));
+            Equat (Equation ("=", Var a, Const (String "'Show'")));
+            Noneq (Equation ("=", Var genv1, Const (Int 4)));
+            Equat (Equation ("=", Var r, Const (Int 4)));
+            Equat (Equation (">", Var q, Const (Int 2)))
+          ]);
+          (* -tracks2(T, R, A, Q) :- tracks2(T, R, A, Q) , A = 'Show' , not R = 4 , Q > 2. *)
+          (Deltadelete ("tracks2", [t; r; a; q]), [
+            Rel (Pred ("tracks2", [t; r; a; q]));
+            Equat (Equation ("=", Var a, Const (String "'Show'")));
+            Noneq (Equation ("=", Var r, Const (Int 4)));
+            Equat (Equation (">", Var q, Const (Int 2)))
+          ])
+        ]
+      )
+    };
+    {
+      title = "Issue #58-2: Variable inequalities";
+      input = (
+        let t = NamedVar "T" in
+        let r1 = NamedVar "R1" in
+        let r2 = NamedVar "R2" in
+        let a = NamedVar "A" in
+        let q = NamedVar "Q" in
+        let genv1 = NamedVar "GENV1" in
+        let genv2 = NamedVar "GENV2" in
+        let genv3 = NamedVar "GENV3" in
+        let genv4 = NamedVar "GENV4" in
+        
+        [
+          (* -tracks2(T, R1, A, Q) :- tracks2(T, R1, A, Q) , tracks2(T, R2, GENV3, GENV4) , GENV4 = 2 , R1 <> R2. *)
+          (Deltadelete ("tracks2", [t; r1; a; q]), [
+            Rel (Pred ("tracks2", [t; r1; a; q]));
+            Rel (Pred ("tracks2", [t; r2; genv3; genv4]));
+            Equat (Equation ("=", Var genv4, Const (Int 2)));
+            Equat (Equation ("<>", Var r1, Var r2))
+          ]);
+          (* +tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , not -tracks2(T, R1, A, Q) , tracks2(T, R2, GENV1, GENV2) , GENV2 = 2 , R1 <> R2. *)
+          (Deltainsert ("tracks2", [t; r2; a; q]), [
+            Rel (Pred ("tracks2", [t; r1; a; q]));
+            Not (Deltadelete ("tracks2", [t; r1; a; q]));
+            Rel (Pred ("tracks2", [t; r2; genv1; genv2]));
+            Equat (Equation ("=", Var genv2, Const (Int 2)));
+            Equat (Equation ("<>", Var r1, Var r2))
+          ])
+        ],
+        Some ("tracks3", []),
+        ["tracks2", []]
+      );
+      expected = (
+        let t = NamedVar "T" in
+        let r1 = NamedVar "R1" in
+        let r2 = NamedVar "R2" in
+        let a = NamedVar "A" in
+        let q = NamedVar "Q" in
+        let genv2 = NamedVar "GENV2" in
+        let genv4 = NamedVar "GENV4" in
+        
+        [
+          (* +tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , tracks2(T, R2, _, GENV2) , not -tracks2(T, R1, A, Q) , GENV2 = 2 , R1 <> R2. *)
+          (Deltainsert ("tracks2", [t; r2; a; q]), [
+            Rel (Pred ("tracks2", [t; r1; a; q]));
+            Rel (Pred ("tracks2", [t; r2; AnonVar; genv2]));
+            Not (Deltadelete ("tracks2", [t; r1; a; q]));
+            Equat (Equation ("=", Var genv2, Const (Int 2)));
+            Equat (Equation ("<>", Var r1, Var r2))
+          ]);
+          (* -tracks2(T, R1, A, Q) :- tracks2(T, R1, A, Q) , tracks2(T, R2, _, GENV4) , GENV4 = 2 , R1 <> R2. *)
+          (Deltadelete ("tracks2", [t; r1; a; q]), [
+            Rel (Pred ("tracks2", [t; r1; a; q]));
+            Rel (Pred ("tracks2", [t; r2; AnonVar; genv4]));
+            Equat (Equation ("=", Var genv4, Const (Int 2)));
+            Equat (Equation ("<>", Var r1, Var r2))
+          ])
+        ]
+      )
     }
   ]
