@@ -240,6 +240,101 @@ let main () =
           "DELETE FROM b USING temp4 WHERE b.BB = temp4.BB AND b.CC = temp4.CC;";
           "DELETE FROM a USING temp5 WHERE a.AA = temp5.AA AND a.BB = temp5.BB;";
         ]
+      };
+      {
+        title = "Issue #58-1: Comparison operators in SQL generation";
+        expr = 
+          {
+            rules = begin
+              let t = NamedVar "T" in
+              let r = NamedVar "R" in
+              let a = NamedVar "A" in
+              let q = NamedVar "Q" in
+              let genv1 = NamedVar "GENV1" in
+              
+              (* Rules after simplification with --prepare option - rules are in reverse order *)
+              [
+                (* +tracks2(T, R, A, Q) :- tracks2(T, GENV1, A, Q) , not tracks2(T, R, A, Q) , A = 'Show' , not GENV1 = 4 , R = 4 , Q > 2. *)
+                (Deltainsert ("tracks2", [t; r; a; q]), [
+                  Rel (Pred ("tracks2", [t; genv1; a; q]));
+                  Not (Pred ("tracks2", [t; r; a; q]));
+                  Equat (Equation ("=", Var a, Const (String "'Show'")));
+                  Noneq (Equation ("=", Var genv1, Const (Int 4)));
+                  Equat (Equation ("=", Var r, Const (Int 4)));
+                  Equat (Equation (">", Var q, Const (Int 2)))
+                ]);
+                (* -tracks2(T, R, A, Q) :- tracks2(T, R, A, Q) , A = 'Show' , not R = 4 , Q > 2. *)
+                (Deltadelete ("tracks2", [t; r; a; q]), [
+                  Rel (Pred ("tracks2", [t; r; a; q]));
+                  Equat (Equation ("=", Var a, Const (String "'Show'")));
+                  Noneq (Equation ("=", Var r, Const (Int 4)));
+                  Equat (Equation (">", Var q, Const (Int 2)));
+                ])
+              ]
+            end;
+            facts = [];
+            query = None;
+            sources = [
+              ("tracks2", [ ("TRACK", Sstring); ("RATING", Sint); ("ALBUM", Sstring); ("QUANTITY", Sint) ])
+            ];
+            view = Some ("tracks3", []);
+            constraints = [];
+            primary_keys = [];
+          };
+        expected = String.concat " " [
+          "CREATE TEMPORARY TABLE temp0 AS SELECT tracks2_0.TRACK AS TRACK, tracks2_0.RATING AS RATING, 'Show' AS ALBUM, tracks2_0.QUANTITY AS QUANTITY FROM tracks2 AS tracks2_0 WHERE tracks2_0.ALBUM = 'Show' AND tracks2_0.RATING <> 4 AND tracks2_0.QUANTITY > 2;";
+          "CREATE TEMPORARY TABLE temp1 AS SELECT tracks2_0.TRACK AS TRACK, 4 AS RATING, 'Show' AS ALBUM, tracks2_0.QUANTITY AS QUANTITY FROM tracks2 AS tracks2_0 WHERE tracks2_0.ALBUM = 'Show' AND tracks2_0.RATING <> 4 AND tracks2_0.QUANTITY > 2 AND NOT EXISTS ( SELECT * FROM tracks2 AS t WHERE t.TRACK = tracks2_0.TRACK AND t.RATING = 4 AND t.ALBUM = 'Show' AND t.QUANTITY = tracks2_0.QUANTITY );";
+          "DELETE FROM tracks2 USING temp0 WHERE tracks2.TRACK = temp0.TRACK AND tracks2.RATING = temp0.RATING AND tracks2.ALBUM = temp0.ALBUM AND tracks2.QUANTITY = temp0.QUANTITY;";
+          "INSERT INTO tracks2 SELECT * FROM temp1;"
+        ]
+      };
+      {
+        title = "Issue #58-2: Variable inequalities in SQL generation";
+        expr = 
+          {
+            rules = begin
+              let t = NamedVar "T" in
+              let r1 = NamedVar "R1" in
+              let r2 = NamedVar "R2" in
+              let a = NamedVar "A" in
+              let q = NamedVar "Q" in
+              let genv2 = NamedVar "GENV2" in
+              let genv4 = NamedVar "GENV4" in
+              
+              (* Rules after simplification - simplified order *)
+              [
+                (* +tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , tracks2(T, R2, _, GENV2) , not -tracks2(T, R1, A, Q) , GENV2 = 2 , R1 <> R2. *)
+                (Deltainsert ("tracks2", [t; r2; a; q]), [
+                  Rel (Pred ("tracks2", [t; r1; a; q]));
+                  Rel (Pred ("tracks2", [t; r2; AnonVar; genv2]));
+                  Not (Deltadelete ("tracks2", [t; r1; a; q]));
+                  Equat (Equation ("=", Var genv2, Const (Int 2)));
+                  Equat (Equation ("<>", Var r1, Var r2))
+                ]);
+                (* -tracks2(T, R1, A, Q) :- tracks2(T, R1, A, Q) , tracks2(T, R2, _, GENV4) , GENV4 = 2 , R1 <> R2. *)
+                (Deltadelete ("tracks2", [t; r1; a; q]), [
+                  Rel (Pred ("tracks2", [t; r1; a; q]));
+                  Rel (Pred ("tracks2", [t; r2; AnonVar; genv4]));
+                  Equat (Equation ("=", Var genv4, Const (Int 2)));
+                  Equat (Equation ("<>", Var r1, Var r2))
+                ])
+              ]
+            end;
+            facts = [];
+            query = None;
+            sources = [
+              ("tracks2", [ ("TRACK", Sstring); ("RATING", Sint); ("ALBUM", Sstring); ("QUANTITY", Sint) ])
+            ];
+            view = None;
+            constraints = [];
+            primary_keys = [];
+          };
+        expected = String.concat " " [
+          "CREATE TEMPORARY TABLE temp0 AS SELECT tracks2_0.TRACK AS TRACK, tracks2_0.RATING AS RATING, tracks2_0.ALBUM AS ALBUM, tracks2_0.QUANTITY AS QUANTITY FROM tracks2 AS tracks2_0, tracks2 AS tracks2_1 WHERE tracks2_1.QUANTITY = 2 AND tracks2_1.TRACK = tracks2_0.TRACK AND tracks2_0.RATING <> tracks2_1.RATING;";
+          "CREATE TEMPORARY TABLE temp1 AS SELECT tracks2_0.TRACK AS TRACK, tracks2_1.RATING AS RATING, tracks2_0.ALBUM AS ALBUM, tracks2_0.QUANTITY AS QUANTITY FROM tracks2 AS tracks2_0, tracks2 AS tracks2_1 WHERE tracks2_1.QUANTITY = 2 AND tracks2_1.TRACK = tracks2_0.TRACK AND tracks2_0.RATING <> tracks2_1.RATING AND NOT EXISTS ( SELECT * FROM temp0 AS t WHERE t.TRACK = tracks2_0.TRACK AND t.RATING = tracks2_0.RATING AND t.ALBUM = tracks2_0.ALBUM AND t.QUANTITY = tracks2_0.QUANTITY );";
+          "DELETE FROM tracks2 USING temp0 WHERE tracks2.TRACK = temp0.TRACK AND tracks2.RATING = temp0.RATING AND tracks2.ALBUM = temp0.ALBUM AND tracks2.QUANTITY = temp0.QUANTITY;";
+          "INSERT INTO tracks2 SELECT * FROM temp1;"
+        ]
       }
     ]
   in

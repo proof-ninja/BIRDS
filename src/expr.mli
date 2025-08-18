@@ -78,6 +78,13 @@ module Rule : sig
   val equal : t -> t -> bool
 end
 
+module Term : sig
+  type t = term
+
+  val compare : t -> t -> int
+  val equal : t -> t -> bool
+end
+
 module RuleSet : sig
   include module type of Set.Make(Rule)
 end
