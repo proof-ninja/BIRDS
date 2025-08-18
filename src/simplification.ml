@@ -241,12 +241,13 @@ let convert_body_rterm (rterm : rterm) : (intermediate_predicate * body_term_arg
   vars |> mapM convert_body_var >>= fun imbvars ->
   return (impred, imbvars)
 
-type conerted_eterm = [
-  | `Constraint of (var_name * constant_requirement)
-  | `Unsupported of eterm
-]
+type converted_eterm =
+  | Constraint of (var_name * constant_requirement)
+  (* This constraint is not used for simplification processing at this stage and is kept as-is in the rule,
+     but there is potential to utilize this constraint in the future *)
+  | NotSimplified of eterm
 
-let convert_eterm ~(negated : bool) (eterm : eterm) : (conerted_eterm, error) result =
+let convert_eterm ~(negated : bool) (eterm : eterm) : (converted_eterm, error) result =
   let open ResultMonad in
   begin
     match eterm with
@@ -261,17 +262,18 @@ let convert_eterm ~(negated : bool) (eterm : eterm) : (conerted_eterm, error) re
     | Equation("=", Var (NamedVar _), Var (NamedVar _))  -> `Error
     | _                                                  ->
         Printf.eprintf "[WARN] Unsupported equation: %s\n" (Expr.string_of_eterm eterm);
-        `Unsupported
+        `NotSimplified
   end |> function
   | `Constraint(x, equal, c) ->
       let equal = if negated then not equal else equal in
-      return begin if equal then
-        `Constraint (x, EqualTo c)
-      else
-        `Constraint (x, NotEqualTo (ConstSet.singleton c))
-      end
-  | `Unsupported ->
-      return (`Unsupported eterm)
+      return
+        begin if equal then
+          Constraint (x, EqualTo c)
+        else
+          Constraint (x, NotEqualTo (ConstSet.singleton c))
+        end
+  | `NotSimplified ->
+      return (NotSimplified eterm)
   | `Error ->
       err (UnsupportedEquation eterm)
 
@@ -345,7 +347,7 @@ let convert_rule (rule : rule) : (intermediate_rule option, error) result =
 
           | Equat eterm ->
               begin convert_eterm ~negated:false eterm >>= function
-              | `Constraint (x, cr) ->
+              | Constraint (x, cr) ->
                   begin
                     match eqnmap |> check_equation_map x cr with
                     | None ->
@@ -355,13 +357,13 @@ let convert_rule (rule : rule) : (intermediate_rule option, error) result =
                     | Some eqnmap ->
                         return (Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms))
                   end
-              | `Unsupported eterm ->
+              | NotSimplified eterm ->
                   return (Some (predmap_pos, predmap_neg, eqnmap, Equat eterm :: unsupported_terms))
               end
 
           | Noneq eterm ->
               begin convert_eterm ~negated:true eterm >>= function
-              | `Constraint (x, cr) ->
+              | Constraint (x, cr) ->
                   begin
                     match eqnmap |> check_equation_map x cr with
                     | None ->
@@ -371,7 +373,7 @@ let convert_rule (rule : rule) : (intermediate_rule option, error) result =
                     | Some eqnmap ->
                         return (Some (predmap_pos, predmap_neg, eqnmap, unsupported_terms))
                   end
-              | `Unsupported eterm ->
+              | NotSimplified eterm ->
                   return (Some (predmap_pos, predmap_neg, eqnmap, Noneq eterm :: unsupported_terms))
               end
 
