@@ -1,0 +1,4 @@
+source tracks2('TRACK':string, 'RATING':int, 'ALBUM':string, 'QUANTITY':int).
+view tracks3('TRACK':string, 'RATING':int, 'ALBUM':string, 'QUANTITY':int).
+-tracks2(T, R1, A, Q) :- tracks2(T, R1, A, Q) , tracks2(T, R2, GENV3, GENV4) , GENV4 = 2 , R1 <> R2.
++tracks2(T, R2, A, Q) :- tracks2(T, R1, A, Q) , not -tracks2(T, R1, A, Q) , tracks2(T, R2, GENV1, GENV2) , GENV2 = 2 , R1 <> R2.
