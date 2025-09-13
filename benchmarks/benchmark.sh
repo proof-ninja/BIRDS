@@ -1,9 +1,9 @@
 #!/bin/sh
 
-RESULTS="results"
+RESULTS=${1:-"results"}
 LOGFILE=benchmarks.log
 
-function print_log() {
+print_log() {
 
 	local message=$1
 
@@ -11,7 +11,7 @@ function print_log() {
 
 }
 
-mkdir -p $RESULTS
+mkdir -p "$RESULTS"
 # rm $RESULTS/$LOGFILE || true
 
 echo "==> verifying datalog programs";
@@ -20,5 +20,5 @@ print_log "==> verifying datalog programs";
 # bash putbxdebug.sh $RESULTS
 # bash putbxdebug.inc.sh $RESULTS
 
-bash putbx.sh $RESULTS
-bash putbx.inc.sh $RESULTS
+bash putbx.sh "$RESULTS"
+bash putbx.inc.sh "$RESULTS"
